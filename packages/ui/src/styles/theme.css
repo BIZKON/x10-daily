@@ -27,15 +27,17 @@
   --color-ink: #111111;
   --color-ink-muted: #4b5563;
 
-  /* ---- Dark (mini-app default) ---- */
-  --color-night: #0b0b0e;
-  --color-paper: #f2f2f2;
-  --color-mist: #b3b3b3;
-  --color-fence: #2a2a30;
-  --color-card: #13131a;
+  /* ---- Dark (mini-app default — точные значения из прототипа) ---- */
+  --color-night: #0b0b0e;     /* background */
+  --color-card: #16161b;      /* card surface (proto C.surface) */
+  --color-fence: #26262c;     /* borders/dividers (proto C.border) */
+  --color-paper: #f2f2f2;     /* primary text (proto C.textPri) */
+  --color-mist: #a0a0a8;      /* secondary text (proto C.textSec) */
+  --color-haze: #6b6b73;      /* muted text (proto C.textMut) */
+  --color-red-deep: #8e1b26;  /* deep red for gradients (proto C.redDark) */
 
   /* ---- Semantic ---- */
-  --color-success: #2f9e6a;
+  --color-success: #3fb950;
   --color-warning: #d4a24c;
   --color-danger: #e63946;
 

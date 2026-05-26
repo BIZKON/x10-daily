@@ -16,12 +16,12 @@ export function FeedCard({ item }: { item: FeedItem }) {
   return (
     <Link
       href={`/article/${item.slug}`}
-      className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] rounded-[var(--radius-web)]"
+      className="block rounded-web focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
     >
       <Card
         className={cn(
-          "bg-[#13131a] border-[var(--color-border-dark)] text-[var(--color-text-primary)] transition-colors",
-          "hover:border-[var(--color-gold)]",
+          "bg-card border-fence text-paper transition-colors",
+          "hover:border-gold",
         )}
       >
         <CardHeader>
@@ -30,13 +30,11 @@ export function FeedCard({ item }: { item: FeedItem }) {
               {sectionLabel[item.section]}
               {item.isPaid && " · X10+"}
             </Badge>
-            <span className="x10-num text-xs text-[var(--color-text-secondary)]">
-              {item.readSeconds}″
-            </span>
+            <span className="x10-num text-xs text-mist">{item.readSeconds}″</span>
           </div>
-          <CardTitle className="text-[var(--color-text-primary)]">{item.tease}</CardTitle>
+          <CardTitle className="text-paper">{item.tease}</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-[var(--color-text-secondary)]">{item.lede}</CardContent>
+        <CardContent className="text-sm text-mist">{item.lede}</CardContent>
       </Card>
     </Link>
   );

@@ -5,28 +5,39 @@
 
 @import "tailwindcss";
 
+/* Tailwind v4 эмитит CSS-переменные и утилиты из @theme.
+   Имена выбраны так, чтобы сгенерированные утилиты читались естественно:
+     --color-red    → bg-red, text-red, border-red
+     --color-night  → bg-night (тёмный фон mini-app)
+     --color-paper  → text-paper (основной текст на night)
+     --color-mist   → text-mist (вторичный текст)
+     --color-fence  → border-fence (тёмные границы)
+   Arbitrary-values вида bg-[var(--color-...)] в v4 НЕ детектятся надёжно
+   через Turbopack — поэтому используем сгенерированные классы. */
+
 @theme {
-  /* ---- Brand colors (печать-совместимые, CMYK-friendly) ---- */
+  /* ---- Brand ---- */
   --color-red: #e63946;
   --color-gold: #d4a24c;
   --color-steel: #1f2937;
 
-  /* ---- Light surfaces (PDF / print baseline) ---- */
+  /* ---- Light (PDF / print baseline) ---- */
   --color-surface: #fafaf7;
   --color-border: #e5e2da;
   --color-ink: #111111;
   --color-ink-muted: #4b5563;
 
-  /* ---- Dark surfaces (mini-app default) ---- */
-  --color-bg-dark: #0b0b0e;
-  --color-text-primary: #f2f2f2;
-  --color-text-secondary: #b3b3b3;
-  --color-border-dark: #2a2a30;
+  /* ---- Dark (mini-app default) ---- */
+  --color-night: #0b0b0e;
+  --color-paper: #f2f2f2;
+  --color-mist: #b3b3b3;
+  --color-fence: #2a2a30;
+  --color-card: #13131a;
 
   /* ---- Semantic ---- */
   --color-success: #2f9e6a;
-  --color-warning: #d4a24c; /* gold */
-  --color-danger: #e63946;  /* red */
+  --color-warning: #d4a24c;
+  --color-danger: #e63946;
 
   /* ---- Typography ---- */
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -37,10 +48,6 @@
   --radius-print: 6px;
   --radius-web: 16px;
   --radius-pill: 9999px;
-
-  /* ---- Spacing scale extension for editorial layouts ---- */
-  --spacing-print-x: 16mm;
-  --spacing-print-y: 13mm;
 
   /* ---- Motion ---- */
   --ease-x10: cubic-bezier(0.22, 1, 0.36, 1);

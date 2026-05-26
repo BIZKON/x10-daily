@@ -9,7 +9,7 @@ export default function DailyPage() {
       <header className="mb-6 flex items-baseline justify-between">
         <div>
           <h1 className="font-display text-2xl font-extrabold tracking-tight">X10 Daily</h1>
-          <p className="mt-1 text-xs uppercase tracking-widest text-[var(--color-text-secondary)]">
+          <p className="mt-1 text-xs uppercase tracking-widest text-mist">
             Деловое утро · 7 минут
           </p>
         </div>
@@ -43,7 +43,7 @@ function FeedSkeleton() {
       {Array.from({ length: 4 }).map((_, i) => (
         <li
           key={i}
-          className="h-32 animate-pulse rounded-[var(--radius-web)] border border-[var(--color-border-dark)] bg-[#13131a]"
+          className="h-32 animate-pulse rounded-web border border-fence bg-card"
         />
       ))}
     </ul>

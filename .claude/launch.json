@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "miniapp",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["-F", "@x10/miniapp", "dev"],
+      "port": 3000
+    }
+  ]
+}

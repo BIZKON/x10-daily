@@ -4,18 +4,14 @@ import * as React from "react";
 import { cn } from "../lib/cn";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-web)] font-display text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-web font-display text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        primary:
-          "bg-[var(--color-red)] text-white hover:bg-[#cf2f3c] active:bg-[#b9272f]",
-        secondary:
-          "bg-[var(--color-steel)] text-white hover:bg-[#2a3645] active:bg-[#172029]",
-        ghost:
-          "bg-transparent text-[var(--color-ink)] hover:bg-black/5 active:bg-black/10",
-        outline:
-          "border border-[var(--color-border)] bg-transparent text-[var(--color-ink)] hover:bg-[var(--color-surface)]",
+        primary: "bg-red text-white hover:bg-[#cf2f3c] active:bg-[#b9272f]",
+        secondary: "bg-steel text-white hover:bg-[#2a3645] active:bg-[#172029]",
+        ghost: "bg-transparent text-ink hover:bg-black/5 active:bg-black/10",
+        outline: "border border-border bg-transparent text-ink hover:bg-surface",
       },
       size: {
         sm: "h-8 px-3 text-xs",

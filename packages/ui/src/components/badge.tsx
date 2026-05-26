@@ -3,14 +3,14 @@ import * as React from "react";
 import { cn } from "../lib/cn";
 
 const badgeVariants = cva(
-  "inline-flex items-center gap-1 rounded-[var(--radius-pill)] px-2.5 py-0.5 font-display text-xs font-semibold uppercase tracking-wide",
+  "inline-flex items-center gap-1 rounded-pill px-2.5 py-0.5 font-display text-xs font-semibold uppercase tracking-wide",
   {
     variants: {
       tone: {
-        red: "bg-[var(--color-red)] text-white",
-        gold: "bg-[var(--color-gold)] text-[var(--color-steel)]",
-        steel: "bg-[var(--color-steel)] text-white",
-        muted: "bg-[var(--color-border)] text-[var(--color-steel)]",
+        red: "bg-red text-white",
+        gold: "bg-gold text-steel",
+        steel: "bg-steel text-white",
+        muted: "bg-border text-steel",
       },
     },
     defaultVariants: { tone: "steel" },

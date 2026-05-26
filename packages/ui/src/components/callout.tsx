@@ -22,7 +22,7 @@ export interface CalloutProps extends React.HTMLAttributes<HTMLDivElement> {
 export const Callout = React.forwardRef<HTMLDivElement, CalloutProps>(
   ({ className, kind, label, children, ...props }, ref) => (
     <aside ref={ref} className={cn("x10-callout font-sans text-sm leading-relaxed", className)} {...props}>
-      <div className="mb-1.5 font-display text-xs font-bold uppercase tracking-wider text-[var(--color-gold)]">
+      <div className="mb-1.5 font-display text-xs font-bold uppercase tracking-wider text-gold">
         {label ?? labelByKind[kind]}
       </div>
       <div>{children}</div>

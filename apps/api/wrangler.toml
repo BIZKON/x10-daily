@@ -1,0 +1,27 @@
+# X10 Daily — Edge API на Cloudflare Workers (Hono v4)
+# См. CLAUDE.md §2 — Hyperdrive cache на Neon Frankfurt
+name = "x10-api"
+main = "src/index.ts"
+compatibility_date = "2026-01-15"
+compatibility_flags = ["nodejs_compat"]
+
+# Observability — wrangler tail + Logpush integration
+[observability]
+enabled = true
+
+# Hyperdrive — кэш для Neon (cold start 300-500 мс → <5 мс на хит)
+# ID получается через `wrangler hyperdrive create` после привязки Neon URL.
+# [[hyperdrive]]
+# binding = "HYPERDRIVE"
+# id = "REPLACE_AFTER_HYPERDRIVE_CREATE"
+
+# Secrets ставятся через `wrangler secret put`:
+#   DATABASE_URL, ANTHROPIC_API_KEY, MASKER_BASE_URL, MASKER_API_KEY
+[vars]
+NODE_ENV = "production"
+NEXT_PUBLIC_POSTHOG_HOST = "https://eu.posthog.com"
+
+[env.staging]
+name = "x10-api-staging"
+[env.staging.vars]
+NODE_ENV = "staging"

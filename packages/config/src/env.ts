@@ -59,7 +59,7 @@ export class EnvValidationError extends Error {
   }
 }
 
-export function loadEnv(source: EnvSource = process.env): Env {
+export function loadEnv(source: EnvSource): Env {
   const parsed = baseSchema.safeParse(source);
   if (!parsed.success) {
     throw new EnvValidationError(parsed.error.issues);

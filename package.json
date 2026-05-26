@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "description": "X10 Daily — ежедневное мини-апп-медиа на стеке 2026 (Next.js 16 + Hono + Cloudflare Workers + Neon + AI-пайплайн на Claude)",
-  "packageManager": "pnpm@10",
+  "packageManager": "pnpm@10.33.4",
   "engines": { "node": ">=22" },
   "scripts": {
     "dev":      "turbo run dev",

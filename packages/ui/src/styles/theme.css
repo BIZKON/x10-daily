@@ -1,0 +1,72 @@
+/* =============================================================
+   X10 Daily — design tokens (Tailwind v4 CSS-first @theme)
+   Источник правды: CLAUDE.md §5 (дизайн-канон)
+   ============================================================= */
+
+@import "tailwindcss";
+
+@theme {
+  /* ---- Brand colors (печать-совместимые, CMYK-friendly) ---- */
+  --color-red: #e63946;
+  --color-gold: #d4a24c;
+  --color-steel: #1f2937;
+
+  /* ---- Light surfaces (PDF / print baseline) ---- */
+  --color-surface: #fafaf7;
+  --color-border: #e5e2da;
+  --color-ink: #111111;
+  --color-ink-muted: #4b5563;
+
+  /* ---- Dark surfaces (mini-app default) ---- */
+  --color-bg-dark: #0b0b0e;
+  --color-text-primary: #f2f2f2;
+  --color-text-secondary: #b3b3b3;
+  --color-border-dark: #2a2a30;
+
+  /* ---- Semantic ---- */
+  --color-success: #2f9e6a;
+  --color-warning: #d4a24c; /* gold */
+  --color-danger: #e63946;  /* red */
+
+  /* ---- Typography ---- */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Manrope", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Menlo", monospace;
+
+  /* ---- Radii (печать 6px / web 16px — см. CLAUDE.md §5) ---- */
+  --radius-print: 6px;
+  --radius-web: 16px;
+  --radius-pill: 9999px;
+
+  /* ---- Spacing scale extension for editorial layouts ---- */
+  --spacing-print-x: 16mm;
+  --spacing-print-y: 13mm;
+
+  /* ---- Motion ---- */
+  --ease-x10: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+}
+
+/* =============================================================
+   Smart Brevity callout blocks — ТОЛЬКО сплошной steel-фон
+   Градиенты в смысловых блоках запрещены (CLAUDE.md §5).
+   ============================================================= */
+.x10-callout {
+  background-color: var(--color-steel);
+  color: #ffffff;
+  border-radius: var(--radius-web);
+  padding: 1.25rem 1.5rem;
+}
+.x10-callout b,
+.x10-callout strong {
+  color: var(--color-gold);
+  font-weight: 700;
+}
+
+/* Числа — всегда JetBrains Mono с табличными цифрами. */
+.x10-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}

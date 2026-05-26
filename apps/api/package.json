@@ -13,9 +13,11 @@
   },
   "dependencies": {
     "@hono/zod-validator": "^0.8.0",
+    "@x10/agents": "workspace:*",
     "@x10/config": "workspace:*",
     "@x10/db": "workspace:*",
     "hono": "^4.12.23",
+    "inngest": "^4.4.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

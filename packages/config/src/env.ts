@@ -36,6 +36,9 @@ const baseSchema = z.object({
   NEXT_PUBLIC_POSTHOG_HOST: urlOrEmpty.default("https://eu.posthog.com"),
 
   SENTRY_DSN: urlOrEmpty.optional(),
+
+  INNGEST_EVENT_KEY: z.string().optional(),
+  INNGEST_SIGNING_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof baseSchema>;
@@ -46,6 +49,8 @@ const productionRequired: Array<keyof Env> = [
   "ANTHROPIC_API_KEY",
   "MASKER_BASE_URL",
   "MASKER_API_KEY",
+  "INNGEST_EVENT_KEY",
+  "INNGEST_SIGNING_KEY",
 ];
 
 export class EnvValidationError extends Error {

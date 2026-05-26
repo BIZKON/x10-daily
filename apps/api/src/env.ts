@@ -16,6 +16,7 @@ export function getEnv(bindings: CloudflareBindings): BaseEnv {
     MASKER_BASE_URL: bindings.MASKER_BASE_URL,
     MASKER_API_KEY: bindings.MASKER_API_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: bindings.NEXT_PUBLIC_POSTHOG_HOST,
+    INNGEST_EVENT_KEY: bindings.INNGEST_EVENT_KEY,
   };
   cached = loadEnv(source);
   return cached;

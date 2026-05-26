@@ -4,6 +4,7 @@ import { logger } from "hono/logger";
 import { articlesRoute } from "./routes/articles";
 import { feedRoute } from "./routes/feed";
 import { healthRoute } from "./routes/health";
+import { pipelineRoute } from "./routes/pipeline";
 
 export type AppEnv = {
   Bindings: CloudflareBindings;
@@ -26,6 +27,7 @@ export function createApp() {
   app.route("/health", healthRoute);
   app.route("/v1/feed", feedRoute);
   app.route("/v1/articles", articlesRoute);
+  app.route("/v1/pipeline", pipelineRoute);
 
   app.notFound((c) => c.json({ error: "not_found", path: c.req.path }, 404));
 

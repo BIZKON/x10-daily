@@ -13,6 +13,9 @@ interface CloudflareBindings {
   MASKER_BASE_URL?: string;
   MASKER_API_KEY?: string;
 
+  // ---- Inngest (отправка событий в pipeline worker) ----
+  INNGEST_EVENT_KEY?: string;
+
   // ---- Bindings (раскомментировать после `wrangler hyperdrive create`) ----
   // HYPERDRIVE: Hyperdrive;
 }

@@ -1,0 +1,19 @@
+@import "@x10/ui/styles/theme.css";
+
+/* Tailwind v4 не видит исходники @x10/ui автоматически — указываем явно. */
+@source "../../../../packages/ui/src/**/*.{ts,tsx}";
+
+html,
+body {
+  background-color: var(--color-night);
+  color: var(--color-paper);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background-color: var(--color-gold);
+  color: var(--color-steel);
+}

@@ -6,6 +6,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["-F", "@x10/miniapp", "dev"],
       "port": 3000
+    },
+    {
+      "name": "admin",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["-F", "@x10/admin", "dev"],
+      "port": 3001
     }
   ]
 }

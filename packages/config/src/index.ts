@@ -4,5 +4,7 @@ export {
   COST_PER_MTOK,
   PERF_BUDGETS,
   BREVITY_LIMITS,
+  TEMPLATE_LIMITS,
   type ModelTier,
+  type TemplateKind,
 } from "./constants";

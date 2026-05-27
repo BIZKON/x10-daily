@@ -223,6 +223,49 @@ export type AdminDigest = {
   sentAt: string | null;
 };
 
+/* ----------------------------------------------------------------
+ * Pipeline config — 12 агентов из @x10/db agentKind enum.
+ * confidenceThreshold приходит как numeric(4,3) string ("0.700"),
+ * UI парсит parseFloat при отображении.
+ * ---------------------------------------------------------------- */
+
+export type PipelineAgent =
+  | "ingest"
+  | "draft"
+  | "numbers"
+  | "factcheck"
+  | "tov"
+  | "brevity"
+  | "audio"
+  | "hookgen"
+  | "social"
+  | "visual"
+  | "score"
+  | "newsletter";
+
+export const PIPELINE_AGENTS: readonly PipelineAgent[] = [
+  "ingest",
+  "draft",
+  "numbers",
+  "factcheck",
+  "tov",
+  "brevity",
+  "audio",
+  "hookgen",
+  "social",
+  "visual",
+  "score",
+  "newsletter",
+] as const;
+
+export type AdminPipelineConfig = {
+  agent: PipelineAgent;
+  enabled: boolean;
+  modelOverride: string | null;
+  /** numeric(4,3) string из БД. parseFloat при отображении. */
+  confidenceThreshold: string;
+};
+
 async function getJson<T>(path: string): Promise<T | null> {
   const base = getBaseUrl();
   if (!base) return null;
@@ -294,7 +337,7 @@ export type MutationResult<T = unknown> =
   | { ok: false; error: string; status?: number };
 
 export async function adminMutate<T = unknown>(
-  method: "POST" | "PATCH" | "DELETE",
+  method: "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
 ): Promise<MutationResult<T>> {
@@ -365,4 +408,32 @@ export async function fetchAdminDigestByDate(date: string): Promise<AdminDigest 
   if (!isDemoMode()) return null;
   const { findMockDigest } = await import("./mocks");
   return findMockDigest(date) ?? null;
+}
+
+/* ----------------------------------------------------------------
+ * Pipeline config fetchers.
+ * ---------------------------------------------------------------- */
+
+/** Список всех 12 агентов с effective config. Backend всегда возвращает 12. */
+export async function fetchAdminPipelineConfigs(): Promise<
+  { items: AdminPipelineConfig[] } | null
+> {
+  const real = await getJson<{ items: AdminPipelineConfig[] }>("/v1/admin/pipeline-config");
+  if (real) return real;
+  if (!isDemoMode()) return null;
+  const { MOCK_PIPELINE_CONFIGS } = await import("./mocks");
+  return { items: MOCK_PIPELINE_CONFIGS };
+}
+
+/** Single config для edit-формы. Backend всегда 200 (дефолты если не сохранён). */
+export async function fetchAdminPipelineConfigByAgent(
+  agent: PipelineAgent,
+): Promise<AdminPipelineConfig | null> {
+  const real = await getJson<AdminPipelineConfig>(
+    `/v1/admin/pipeline-config/${encodeURIComponent(agent)}`,
+  );
+  if (real) return real;
+  if (!isDemoMode()) return null;
+  const { MOCK_PIPELINE_CONFIGS } = await import("./mocks");
+  return MOCK_PIPELINE_CONFIGS.find((c) => c.agent === agent) ?? null;
 }

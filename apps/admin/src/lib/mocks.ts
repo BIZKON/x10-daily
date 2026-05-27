@@ -14,7 +14,9 @@ import type {
   AdminDigest,
   AdminEvent,
   AdminKlamp,
+  AdminPipelineConfig,
   ArticleDetail,
+  PipelineAgent,
   QueueItem,
   QueueResponse,
 } from "./api";
@@ -500,3 +502,39 @@ export function findMockArticleDetail(id: string): ArticleDetail | undefined {
 export function findMockDigest(date: string): AdminDigest | undefined {
   return MOCK_DIGEST_LATEST.issueDate === date ? MOCK_DIGEST_LATEST : undefined;
 }
+
+/* ----------------------------------------------------------------
+ * Pipeline configs — 12 агентов с дефолтами (enabled=true, override=null,
+ * threshold=0.700). Дублирует schema defaults — для demo mode без api.
+ *
+ * Несколько демо-вариаций для эстетики (factcheck с threshold 0.85,
+ * audio/visual disabled — отражает планируемое состояние "scaffold").
+ * ---------------------------------------------------------------- */
+
+const PIPELINE_DEFAULT_CONFIG = {
+  enabled: true,
+  modelOverride: null,
+  confidenceThreshold: "0.700",
+} as const;
+
+function mockConfig(
+  agent: PipelineAgent,
+  overrides: Partial<Omit<AdminPipelineConfig, "agent">> = {},
+): AdminPipelineConfig {
+  return { agent, ...PIPELINE_DEFAULT_CONFIG, ...overrides };
+}
+
+export const MOCK_PIPELINE_CONFIGS: AdminPipelineConfig[] = [
+  mockConfig("ingest"),
+  mockConfig("draft"),
+  mockConfig("numbers"),
+  mockConfig("factcheck", { confidenceThreshold: "0.850" }),
+  mockConfig("tov"),
+  mockConfig("brevity"),
+  mockConfig("audio", { enabled: false }),
+  mockConfig("hookgen"),
+  mockConfig("social"),
+  mockConfig("visual", { enabled: false }),
+  mockConfig("score"),
+  mockConfig("newsletter"),
+];

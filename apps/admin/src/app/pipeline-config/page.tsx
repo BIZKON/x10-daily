@@ -1,193 +1,33 @@
-import { Cpu, Power } from "lucide-react";
+import { Cpu, Pencil, Power } from "lucide-react";
+import Link from "next/link";
+import {
+  fetchAdminPipelineConfigs,
+  type AdminPipelineConfig,
+  type PipelineAgent,
+} from "@/lib/api";
+import {
+  AGENTS,
+  isPipelineAgent,
+  STATUS_COLOR,
+  STATUS_LABEL,
+  TIER_COLOR,
+} from "./agent-meta";
 
 export const metadata = { title: "Pipeline config — X10 Admin" };
 
 /**
- * Pipeline config — обзор 12 агентов из CLAUDE.md §4.
+ * Pipeline config — обзор 13 пунктов (12 агентов из CLAUDE.md §4 + HumanGate как
+ * manual-step). Каждый агент enum-DB подгружает effective config из
+ * /v1/admin/pipeline-config и показывает enabled / override / threshold + Edit
+ * ссылку на /pipeline-config/[agent].
  *
- * Соответствует таблице `pipeline_config` в schema (см. packages/db/src/schema/pipeline.ts).
- * Сейчас read-only — показывает что сделано, тиром модели, триггер.
- *
- * CRUD (enabled toggle, model override, confidence threshold) — следующий заход,
- * когда подключим apps/api endpoint /v1/admin/pipeline-config к этой странице.
+ * HumanGate — без edit-ссылки (не агент, а UI-шаг редактора в admin queue).
  */
+export default async function PipelineConfigPage() {
+  const data = await fetchAdminPipelineConfigs();
+  const byAgent = new Map<PipelineAgent, AdminPipelineConfig>();
+  for (const c of data?.items ?? []) byAgent.set(c.agent, c);
 
-type AgentTier = "OPUS" | "SONNET" | "HAIKU" | "EXTERNAL";
-type AgentStatus = "shipped" | "scaffolded" | "planned";
-
-type Agent = {
-  num: string;
-  id: string;
-  label: string;
-  tier: AgentTier;
-  model: string;
-  trigger: string;
-  status: AgentStatus;
-  description: string;
-};
-
-const TIER_COLOR: Record<AgentTier, string> = {
-  OPUS: "text-red bg-red/[0.06] border-red/30",
-  SONNET: "text-gold bg-gold/[0.06] border-gold/30",
-  HAIKU: "text-success bg-success/[0.06] border-success/30",
-  EXTERNAL: "text-mist bg-fence/30 border-fence",
-};
-
-const STATUS_COLOR: Record<AgentStatus, string> = {
-  shipped: "text-success bg-success/[0.06] border-success/40",
-  scaffolded: "text-gold bg-gold/[0.06] border-gold/40",
-  planned: "text-haze bg-fence/30 border-fence",
-};
-
-const STATUS_LABEL: Record<AgentStatus, string> = {
-  shipped: "✓ работает",
-  scaffolded: "⊙ scaffold",
-  planned: "○ план",
-};
-
-const AGENTS: Agent[] = [
-  {
-    num: "01",
-    id: "ingest",
-    label: "IngestAgent",
-    tier: "HAIKU",
-    model: "claude-haiku-4-5",
-    trigger: "06:00 МСК cron / source.item.received event",
-    status: "shipped",
-    description:
-      "Парсит RSS/API item, классифицирует в category/template/tags, фильтр инфобиза/спама, флаг political.",
-  },
-  {
-    num: "02",
-    id: "draft",
-    label: "DraftAgent",
-    tier: "SONNET",
-    model: "claude-sonnet-4-6",
-    trigger: "after ingest",
-    status: "shipped",
-    description:
-      "Smart Brevity 6-block draft. Template-aware: card-news / deep-dive / daily-take / guide.",
-  },
-  {
-    num: "03",
-    id: "numbers",
-    label: "NumbersAgent",
-    tier: "HAIKU",
-    model: "claude-haiku-4-5",
-    trigger: "parallel to Draft",
-    status: "shipped",
-    description: "Извлекает все цифры, проверяет источник, форматирует JetBrains Mono.",
-  },
-  {
-    num: "04",
-    id: "factcheck",
-    label: "FactCheckAgent",
-    tier: "OPUS",
-    model: "claude-opus-4-7",
-    trigger: "political topics only",
-    status: "shipped",
-    description:
-      "Cross-source verification, halt-on-disagreement. Запускается если event.political=true.",
-  },
-  {
-    num: "05",
-    id: "tov",
-    label: "ToVAgent",
-    tier: "SONNET",
-    model: "claude-sonnet-4-6",
-    trigger: "after Draft+Numbers",
-    status: "shipped",
-    description:
-      "Применяет voice.md + about-author-{name}.md + blacklist ~30 слов (инфобиз-лексика).",
-  },
-  {
-    num: "06",
-    id: "brevity",
-    label: "BrevityAgent",
-    tier: "SONNET",
-    model: "claude-sonnet-4-6",
-    trigger: "after ToV",
-    status: "shipped",
-    description: "Per-template лимиты: card-news ≤300 слов, deep-dive ≤2000, daily-take ≤200.",
-  },
-  {
-    num: "07",
-    id: "audio",
-    label: "AudioAgent",
-    tier: "EXTERNAL",
-    model: "ElevenLabs via WS-proxy",
-    trigger: "optional · after HumanGate publish",
-    status: "planned",
-    description: "5-8 мин аудио-версия для подкаста. Требует deployment WS-proxy на Render.",
-  },
-  {
-    num: "08",
-    id: "humangate",
-    label: "HumanGate",
-    tier: "EXTERNAL",
-    model: "—",
-    trigger: "после всех 1-6 + factcheck (если)",
-    status: "shipped",
-    description:
-      "UI в apps/admin (Очередь к публикации). Редактор смотрит scorecard, нажимает Publish.",
-  },
-  {
-    num: "09",
-    id: "hookgen",
-    label: "HookGenAgent",
-    tier: "HAIKU",
-    model: "claude-haiku-4-5",
-    trigger: "after Brevity (parallel с Social/Score)",
-    status: "shipped",
-    description:
-      "6 паттернов хуков: number-led, contrarian, transformation, authority, admission, future-shock.",
-  },
-  {
-    num: "10",
-    id: "social",
-    label: "SocialAmplifyAgent",
-    tier: "SONNET",
-    model: "claude-sonnet-4-6",
-    trigger: "after Brevity",
-    status: "shipped",
-    description:
-      "Конвертирует в TG-Рыбакова / TG-X10 / VK / Дзен / LinkedIn. Frameworks: PAS/AIDA/BAB/STAR/SLAY.",
-  },
-  {
-    num: "11",
-    id: "visual",
-    label: "VisualAgent",
-    tier: "EXTERNAL",
-    model: "Gemini 2.5 Flash via proxy",
-    trigger: "feature flag · viral-friendly",
-    status: "planned",
-    description: "Инфографика для топ-статей. Требует Gemini API ключ + промпт-шаблоны.",
-  },
-  {
-    num: "12",
-    id: "score",
-    label: "ScoreAgent (weekly)",
-    tier: "SONNET",
-    model: "claude-sonnet-4-6",
-    trigger: "weekly cron Mon 09:00 МСК",
-    status: "shipped",
-    description:
-      "Парсит engagement из PostHog, hook pattern ranking, до 5 config-рекомендаций с rationale.",
-  },
-  {
-    num: "13",
-    id: "newsletter",
-    label: "NewsletterAssembleAgent",
-    tier: "SONNET",
-    model: "claude-sonnet-4-6",
-    trigger: "06:00 МСК daily",
-    status: "shipped",
-    description:
-      "Собирает выпуск из 7 секций (Главное/Цифры/Кто и что/...). A/B subject через HookGen.",
-  },
-];
-
-export default function PipelineConfigPage() {
   const shipped = AGENTS.filter((a) => a.status === "shipped").length;
   const planned = AGENTS.filter((a) => a.status === "planned").length;
   const scaffolded = AGENTS.filter((a) => a.status === "scaffolded").length;
@@ -199,56 +39,73 @@ export default function PipelineConfigPage() {
           <Cpu size={22} strokeWidth={1.75} /> Pipeline config
         </h1>
         <p className="mt-1.5 text-[13px] text-mist">
-          13 агентов из CLAUDE.md §4. {shipped} работают · {scaffolded} scaffold ·{" "}
+          13 пунктов из CLAUDE.md §4. {shipped} работают · {scaffolded} scaffold ·{" "}
           {planned} запланированы.
         </p>
         <p className="mt-1 text-[12px] text-haze">
-          Read-only обзор. Edit (toggle enabled, model override, confidence threshold) подключим
-          к таблице{" "}
-          <code className="font-mono text-mist">pipeline_config</code> следующим заходом.
+          Click «Изменить» — переопределить{" "}
+          <code className="font-mono text-mist">enabled</code> /{" "}
+          <code className="font-mono text-mist">model_override</code> /{" "}
+          <code className="font-mono text-mist">confidence_threshold</code>. HumanGate — manual-step,
+          не редактируется.
         </p>
       </header>
 
       <div className="grid gap-3">
-        {AGENTS.map((a) => (
-          <article
-            key={a.id}
-            className="flex items-start gap-4 rounded-xl border border-fence bg-card p-4"
-          >
-            <span className="x10-num shrink-0 font-display text-2xl font-extrabold text-haze">
-              {a.num}
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <h3 className="m-0 font-display text-[15px] font-extrabold">{a.label}</h3>
-                <code className="rounded-pill border border-fence bg-night px-2 py-0.5 font-mono text-[10px] text-haze">
-                  {a.id}
-                </code>
-                <span
-                  className={`inline-block rounded-pill border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${TIER_COLOR[a.tier]}`}
-                >
-                  {a.tier}
-                </span>
-                <span
-                  className={`inline-flex items-center gap-1 rounded-pill border px-2 py-0.5 text-[10px] font-bold ${STATUS_COLOR[a.status]}`}
-                >
-                  <Power size={9} strokeWidth={2.5} />
-                  {STATUS_LABEL[a.status]}
-                </span>
+        {AGENTS.map((a) => {
+          const editableId = isPipelineAgent(a.id) ? a.id : null;
+          const config = editableId ? byAgent.get(editableId) : undefined;
+          return (
+            <article
+              key={a.id}
+              className="flex items-start gap-4 rounded-xl border border-fence bg-card p-4"
+            >
+              <span className="x10-num shrink-0 font-display text-2xl font-extrabold text-haze">
+                {a.num}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <h3 className="m-0 font-display text-[15px] font-extrabold">{a.label}</h3>
+                  <code className="rounded-pill border border-fence bg-night px-2 py-0.5 font-mono text-[10px] text-haze">
+                    {a.id}
+                  </code>
+                  <span
+                    className={`inline-block rounded-pill border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${TIER_COLOR[a.tier]}`}
+                  >
+                    {a.tier}
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-pill border px-2 py-0.5 text-[10px] font-bold ${STATUS_COLOR[a.status]}`}
+                  >
+                    <Power size={9} strokeWidth={2.5} />
+                    {STATUS_LABEL[a.status]}
+                  </span>
+                </div>
+                <p className="m-0 mt-1.5 text-[12.5px] text-mist">{a.description}</p>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-haze">
+                  <span>
+                    <span className="font-bold text-mist">Model:</span>{" "}
+                    <code className="font-mono">{a.model}</code>
+                  </span>
+                  <span>
+                    <span className="font-bold text-mist">Trigger:</span> {a.trigger}
+                  </span>
+                </div>
+                {editableId && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-fence pt-2.5">
+                    <ConfigChip config={config} />
+                    <Link
+                      href={`/pipeline-config/${editableId}`}
+                      className="ml-auto inline-flex items-center gap-1.5 rounded-pill border border-fence bg-night px-2.5 py-1 font-display text-[11px] font-semibold text-paper transition-colors hover:border-gold/60 hover:text-gold"
+                    >
+                      <Pencil size={11} strokeWidth={2} /> Изменить
+                    </Link>
+                  </div>
+                )}
               </div>
-              <p className="m-0 mt-1.5 text-[12.5px] text-mist">{a.description}</p>
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-haze">
-                <span>
-                  <span className="font-bold text-mist">Model:</span>{" "}
-                  <code className="font-mono">{a.model}</code>
-                </span>
-                <span>
-                  <span className="font-bold text-mist">Trigger:</span> {a.trigger}
-                </span>
-              </div>
-            </div>
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
 
       <div className="mt-6 rounded-xl border border-fence bg-card p-4 text-[12.5px] text-mist">
@@ -260,5 +117,37 @@ export default function PipelineConfigPage() {
         </p>
       </div>
     </>
+  );
+}
+
+/**
+ * Чип effective-конфига: enabled state + override + threshold.
+ * При отсутствии row (config=undefined) показывает schema-defaults inline.
+ */
+function ConfigChip({ config }: { config: AdminPipelineConfig | undefined }) {
+  const enabled = config?.enabled ?? true;
+  const override = config?.modelOverride ?? null;
+  const threshold = config?.confidenceThreshold ?? "0.700";
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-[11px]">
+      <span
+        className={
+          enabled
+            ? "inline-flex items-center gap-1 rounded-pill border border-success/40 bg-success/[0.08] px-2 py-0.5 font-bold text-success"
+            : "inline-flex items-center gap-1 rounded-pill border border-red/40 bg-red/[0.08] px-2 py-0.5 font-bold text-red"
+        }
+      >
+        <Power size={9} strokeWidth={2.5} />
+        {enabled ? "enabled" : "disabled"}
+      </span>
+      {override && (
+        <span className="rounded-pill border border-gold/40 bg-gold/[0.06] px-2 py-0.5 font-mono text-gold">
+          override: {override}
+        </span>
+      )}
+      <span className="rounded-pill border border-fence bg-night px-2 py-0.5 font-mono text-haze">
+        threshold {parseFloat(threshold).toFixed(2)}
+      </span>
+    </div>
   );
 }

@@ -5,6 +5,7 @@ import {
   eq,
   events,
   klamps,
+  pipelineConfig,
   sql,
 } from "@x10/db";
 import { Hono } from "hono";
@@ -143,6 +144,69 @@ const digestCreateSchema = z.object({
 });
 
 const digestUpdateSchema = digestCreateSchema.partial();
+
+/* ----------------------------------------------------------------
+ * Pipeline config — packages/db schema.pipeline.pipelineConfig
+ * Один effective row на agent (приложение enforces до миграции unique-индекса).
+ * ---------------------------------------------------------------- */
+
+const agentEnum = z.enum([
+  "ingest",
+  "draft",
+  "numbers",
+  "factcheck",
+  "tov",
+  "brevity",
+  "audio",
+  "hookgen",
+  "social",
+  "visual",
+  "score",
+  "newsletter",
+]);
+
+const PIPELINE_AGENTS = agentEnum.options;
+
+const pipelineAgentParam = z.object({ agent: agentEnum });
+
+const pipelineConfigUpsertSchema = z.object({
+  enabled: z.boolean(),
+  /** null → использовать model из кода агента (без override). */
+  modelOverride: z.string().max(64).nullable(),
+  /** 0..1, drizzle сохранит как numeric(4,3). */
+  confidenceThreshold: z.number().min(0).max(1),
+});
+
+/** Дефолты для отсутствующего row (соответствуют schema defaults). */
+const DEFAULT_CONFIG = {
+  enabled: true,
+  modelOverride: null as string | null,
+  confidenceThreshold: "0.700",
+};
+
+type PipelineConfigView = {
+  agent: (typeof PIPELINE_AGENTS)[number];
+  enabled: boolean;
+  modelOverride: string | null;
+  confidenceThreshold: string;
+};
+
+function toView(
+  agent: (typeof PIPELINE_AGENTS)[number],
+  row?: {
+    enabled: boolean;
+    modelOverride: string | null;
+    confidenceThreshold: string;
+  },
+): PipelineConfigView {
+  return {
+    agent,
+    enabled: row?.enabled ?? DEFAULT_CONFIG.enabled,
+    modelOverride: row?.modelOverride ?? DEFAULT_CONFIG.modelOverride,
+    confidenceThreshold:
+      row?.confidenceThreshold ?? DEFAULT_CONFIG.confidenceThreshold,
+  };
+}
 
 /* ----------------------------------------------------------------
  * Route definition
@@ -333,4 +397,111 @@ export const adminContentRoute = new Hono<AppEnv>()
       .returning();
     if (!row) return c.json({ error: "not_found", id }, 404);
     return c.json(row);
-  });
+  })
+
+  /* ===== PIPELINE CONFIG ===== */
+  /**
+   * GET /v1/admin/pipeline-config
+   * Все 12 агентов с эффективными значениями (stored row или defaults).
+   */
+  .get("/pipeline-config", async (c) => {
+    extractUserId(c);
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    const rows = await db
+      .select({
+        agent: pipelineConfig.agent,
+        enabled: pipelineConfig.enabled,
+        modelOverride: pipelineConfig.modelOverride,
+        confidenceThreshold: pipelineConfig.confidenceThreshold,
+      })
+      .from(pipelineConfig);
+    const byAgent = new Map(rows.map((r) => [r.agent, r]));
+    const items: PipelineConfigView[] = PIPELINE_AGENTS.map((a) =>
+      toView(a, byAgent.get(a)),
+    );
+    return c.json({ items });
+  })
+
+  /**
+   * GET /v1/admin/pipeline-config/:agent
+   * Effective config для одного агента — для edit-form. 200 всегда (дефолты если не сохранён).
+   */
+  .get(
+    "/pipeline-config/:agent",
+    zValidator("param", pipelineAgentParam),
+    async (c) => {
+      extractUserId(c);
+      const env = getEnv(c.env);
+      const db = getDb(env.DATABASE_URL);
+      const { agent } = c.req.valid("param");
+      const [row] = await db
+        .select({
+          enabled: pipelineConfig.enabled,
+          modelOverride: pipelineConfig.modelOverride,
+          confidenceThreshold: pipelineConfig.confidenceThreshold,
+        })
+        .from(pipelineConfig)
+        .where(eq(pipelineConfig.agent, agent))
+        .limit(1);
+      return c.json(toView(agent, row));
+    },
+  )
+
+  /**
+   * PUT /v1/admin/pipeline-config/:agent
+   * Upsert через SELECT+UPDATE/INSERT (нет unique-индекса на agent — приложение enforces).
+   * confidenceThreshold (number) → numeric(4,3) string в БД.
+   */
+  .put(
+    "/pipeline-config/:agent",
+    zValidator("param", pipelineAgentParam),
+    zValidator("json", pipelineConfigUpsertSchema),
+    async (c) => {
+      extractUserId(c);
+      const env = getEnv(c.env);
+      const db = getDb(env.DATABASE_URL);
+      const { agent } = c.req.valid("param");
+      const data = c.req.valid("json");
+      const thresholdStr = data.confidenceThreshold.toFixed(3);
+
+      const [existing] = await db
+        .select({ id: pipelineConfig.id })
+        .from(pipelineConfig)
+        .where(eq(pipelineConfig.agent, agent))
+        .limit(1);
+
+      if (existing) {
+        const [row] = await db
+          .update(pipelineConfig)
+          .set({
+            enabled: data.enabled,
+            modelOverride: data.modelOverride,
+            confidenceThreshold: thresholdStr,
+            updatedAt: sql`now()`,
+          })
+          .where(eq(pipelineConfig.id, existing.id))
+          .returning({
+            enabled: pipelineConfig.enabled,
+            modelOverride: pipelineConfig.modelOverride,
+            confidenceThreshold: pipelineConfig.confidenceThreshold,
+          });
+        return c.json(toView(agent, row));
+      }
+
+      const [row] = await db
+        .insert(pipelineConfig)
+        .values({
+          agent,
+          enabled: data.enabled,
+          modelOverride: data.modelOverride,
+          confidenceThreshold: thresholdStr,
+        })
+        .returning({
+          enabled: pipelineConfig.enabled,
+          modelOverride: pipelineConfig.modelOverride,
+          confidenceThreshold: pipelineConfig.confidenceThreshold,
+        });
+      return c.json(toView(agent, row), 201);
+    },
+  );

@@ -9,10 +9,11 @@
     "dev":      "turbo run dev",
     "build":    "turbo run build",
     "lint":     "turbo run lint",
-    "typecheck":"turbo run typecheck",
+    "typecheck":"turbo run typecheck && tsc --noEmit -p scripts/tsconfig.json",
     "test":     "turbo run test",
     "format":   "biome format --write .",
-    "check":    "biome check --apply ."
+    "check":    "biome check --apply .",
+    "db:seed":  "pnpm --filter @x10/db db:seed"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",

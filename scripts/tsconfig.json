@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    "baseUrl": "..",
+    "paths": {
+      "@x10/db": ["./packages/db/src/index.ts"],
+      "@x10/db/*": ["./packages/db/src/*"]
+    }
+  },
+  "include": ["**/*.ts"]
+}

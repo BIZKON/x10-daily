@@ -37,7 +37,12 @@ export type FeedItem = {
   excerpt: string;
   imageUrl: string;
   readMinutes: number;
+  /** Агрегированный счётчик для list-карточек (sum по 3 kinds). */
   reactions: number;
+  /** Структурированные counts — для EngagementBar в article reader. */
+  reactionBreakdown: { fire: number; insight: number; question: number };
+  /** Counter из articles row. В feed/daily пока не отдаётся — используем 0. */
+  bookmarkCount: number;
   comments: number;
   badge: "PREMIUM" | null;
   hot: boolean;
@@ -76,8 +81,15 @@ const CATEGORY_PLACEHOLDER_IMAGES: Record<ApiCategory, string> = {
 };
 
 function mapApiItem(row: ApiFeedItem): FeedItem {
-  const totalReactions =
-    (row.reactions?.fire ?? 0) + (row.reactions?.insight ?? 0) + (row.reactions?.question ?? 0);
+  const breakdown = {
+    fire: row.reactions?.fire ?? 0,
+    insight: row.reactions?.insight ?? 0,
+    question: row.reactions?.question ?? 0,
+  };
+  const totalReactions = breakdown.fire + breakdown.insight + breakdown.question;
+  // bookmarkCount / commentCount доступны только в article-detail (см. ApiArticle).
+  // В list-проекции feed/daily — fallback 0. Article reader использует articleDetail-mapper.
+  const detail = row as Partial<{ bookmarkCount: number; commentCount: number }>;
   return {
     id: row.id,
     slug: row.slug,
@@ -88,7 +100,9 @@ function mapApiItem(row: ApiFeedItem): FeedItem {
     imageUrl: row.coverImageUrl ?? CATEGORY_PLACEHOLDER_IMAGES[row.category],
     readMinutes: Math.max(1, Math.round(row.readSeconds / 60)),
     reactions: totalReactions,
-    comments: 0,
+    reactionBreakdown: breakdown,
+    bookmarkCount: detail.bookmarkCount ?? 0,
+    comments: detail.commentCount ?? 0,
     badge: row.isPaid ? "PREMIUM" : null,
     hot: row.isFeatured,
     authorName: null, // М1 — будет приходить из API когда добавим Authors сущность.
@@ -118,7 +132,7 @@ export const DAILY_DIGEST = {
 /** Mock feed для разработки без backend'a — покрывает все 3 template (M0 brief §10). */
 const FEED: FeedItem[] = [
   {
-    id: "1",
+    id: "00000000-0000-0000-0000-0000000000a1",
     slug: "usn-350mln-three-steps",
     category: "НАЛОГИ",
     template: "card-news",
@@ -129,13 +143,15 @@ const FEED: FeedItem[] = [
       "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&q=80",
     readMinutes: 12,
     reactions: 142,
+    reactionBreakdown: { fire: 88, insight: 39, question: 15 },
+    bookmarkCount: 47,
     comments: 38,
     badge: null,
     hot: true,
     authorName: null,
   },
   {
-    id: "2",
+    id: "00000000-0000-0000-0000-0000000000a2",
     slug: "rybakov-no-startup-2026",
     category: "РЫБАКОВ ГОВОРИТ",
     template: "daily-take",
@@ -146,13 +162,15 @@ const FEED: FeedItem[] = [
       "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=800&q=80",
     readMinutes: 1,
     reactions: 891,
+    reactionBreakdown: { fire: 612, insight: 187, question: 92 },
+    bookmarkCount: 124,
     comments: 214,
     badge: "PREMIUM",
     hot: false,
     authorName: "Игорь Рыбаков",
   },
   {
-    id: "3",
+    id: "00000000-0000-0000-0000-0000000000a3",
     slug: "ruble-100-three-scenarios",
     category: "ДЕНЬГИ",
     template: "card-news",
@@ -163,13 +181,15 @@ const FEED: FeedItem[] = [
       "https://images.unsplash.com/photo-1633158829585-23ba8f7c8caf?w=800&q=80",
     readMinutes: 4,
     reactions: 67,
+    reactionBreakdown: { fire: 28, insight: 24, question: 15 },
+    bookmarkCount: 19,
     comments: 12,
     badge: null,
     hot: false,
     authorName: null,
   },
   {
-    id: "4",
+    id: "00000000-0000-0000-0000-0000000000a4",
     slug: "wildberries-buys-taxi",
     category: "ПРАКТИКА",
     template: "deep-dive",
@@ -180,6 +200,8 @@ const FEED: FeedItem[] = [
       "https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&q=80",
     readMinutes: 9,
     reactions: 234,
+    reactionBreakdown: { fire: 128, insight: 71, question: 35 },
+    bookmarkCount: 56,
     comments: 56,
     badge: null,
     hot: false,

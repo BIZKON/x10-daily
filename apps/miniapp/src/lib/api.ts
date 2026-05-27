@@ -49,6 +49,10 @@ export type ApiArticle = ApiFeedItem & {
   body: ApiArticleBlock[];
   citations: Array<{ url: string; title: string; publisher: string; publishedAt?: string }>;
   audioUrl: string | null;
+  /** Engagement-счётчики из articles row (доступны только в article-detail, не в feed). */
+  bookmarkCount: number;
+  commentCount: number;
+  shareCount: number;
 };
 
 function getBaseUrl(): string | null {
@@ -207,4 +211,102 @@ export async function fetchProfileStats(): Promise<ApiProfileStats | null> {
   const res = await fetchAuthed(`/v1/profile/stats`);
   if (!res || !res.ok) return null;
   return (await res.json()) as ApiProfileStats;
+}
+
+/* ----------------------------------------------------------------
+ * Article engagement (optimistic UI — brief §11)
+ *
+ * /me — per-user snapshot для initial state.
+ * mutate-helpers — POST'ы, вызываются из Server Actions
+ * (apps/miniapp/src/lib/engagement-actions.ts).
+ * ---------------------------------------------------------------- */
+
+export type ReactionKind = "fire" | "insight" | "question";
+
+export type ApiArticleUserState = {
+  userReactions: { fire: boolean; insight: boolean; question: boolean };
+  isBookmarked: boolean;
+  readPercent: number;
+};
+
+export type ApiReactionResponse = {
+  action: "added" | "removed";
+  kind: ReactionKind;
+  userReacted: boolean;
+  reactions: { fire: number; insight: number; question: number };
+};
+
+export type ApiBookmarkResponse = {
+  action: "added" | "removed";
+  isBookmarked: boolean;
+  bookmarkCount: number;
+};
+
+/** Гостевой default — для случаев когда auth недоступен / api down. */
+export const ANONYMOUS_USER_STATE: ApiArticleUserState = {
+  userReactions: { fire: false, insight: false, question: false },
+  isBookmarked: false,
+  readPercent: 0,
+};
+
+export async function fetchArticleUserState(
+  articleId: string,
+): Promise<ApiArticleUserState> {
+  const res = await fetchAuthed(`/v1/articles/${encodeURIComponent(articleId)}/me`);
+  if (!res || !res.ok) return ANONYMOUS_USER_STATE;
+  return (await res.json()) as ApiArticleUserState;
+}
+
+async function postAuthed(path: string, body: unknown): Promise<Response | null> {
+  const base = getBaseUrl();
+  const userId = getDevUserId();
+  if (!base || !userId) return null;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    return await fetch(`${base}${path}`, {
+      method: "POST",
+      headers: {
+        "X-User-Id": userId,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body ?? {}),
+      signal: ctrl.signal,
+    });
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+export async function postReaction(
+  articleId: string,
+  kind: ReactionKind,
+): Promise<ApiReactionResponse | null> {
+  const res = await postAuthed(`/v1/articles/${encodeURIComponent(articleId)}/reactions`, {
+    kind,
+  });
+  if (!res || !res.ok) return null;
+  return (await res.json()) as ApiReactionResponse;
+}
+
+export async function postBookmark(
+  articleId: string,
+): Promise<ApiBookmarkResponse | null> {
+  const res = await postAuthed(`/v1/articles/${encodeURIComponent(articleId)}/bookmark`, {});
+  if (!res || !res.ok) return null;
+  return (await res.json()) as ApiBookmarkResponse;
+}
+
+export async function postProgress(
+  articleId: string,
+  readPercent: number,
+  readSeconds?: number,
+): Promise<boolean> {
+  const res = await postAuthed(`/v1/articles/${encodeURIComponent(articleId)}/progress`, {
+    readPercent,
+    ...(readSeconds !== undefined ? { readSeconds } : {}),
+  });
+  return Boolean(res?.ok);
 }

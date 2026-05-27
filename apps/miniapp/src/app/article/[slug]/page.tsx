@@ -3,15 +3,17 @@ import {
   BookOpen,
   ChevronLeft,
   Headphones,
-  HeartHandshake,
-  MessageCircle,
   Play,
   Quote,
-  Share2,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { EngagementBar } from "@/components/article/engagement-bar";
+import { HeaderShare } from "@/components/article/header-share";
+import { ReadingProgress } from "@/components/article/reading-progress";
+import { ANONYMOUS_USER_STATE, fetchArticleUserState } from "@/lib/api";
 import { loadArticle, loadDailyFeed, type FeedItem } from "@/lib/feed";
 
 export async function generateStaticParams() {
@@ -37,16 +39,17 @@ export default async function ArticlePage({
         <Link href="/" aria-label="Назад" className="grid h-9 w-9 place-items-center">
           <ChevronLeft size={24} strokeWidth={1.75} />
         </Link>
-        <div className="flex gap-4 text-mist">
-          <button type="button" aria-label="Аудио">
+        <div className="flex items-center gap-4 text-mist">
+          {/* Audio — placeholder до AudioAgent через ElevenLabs proxy. */}
+          <button
+            type="button"
+            aria-label="Аудио (скоро)"
+            disabled
+            className="opacity-40"
+          >
             <Headphones size={20} strokeWidth={1.75} />
           </button>
-          <button type="button" aria-label="Сохранить">
-            <HeartHandshake size={20} strokeWidth={1.75} />
-          </button>
-          <button type="button" aria-label="Поделиться">
-            <Share2 size={20} strokeWidth={1.75} />
-          </button>
+          <HeaderShare title={article.title} slug={article.slug} />
         </div>
       </header>
 
@@ -138,22 +141,9 @@ export default async function ArticlePage({
           </footer>
         </blockquote>
 
-        <div className="mt-8 flex items-center justify-between border-t border-fence pt-4">
-          <div className="flex gap-2">
-            {["🔥", "💯", "🤔", "😱"].map((e) => (
-              <button
-                key={e}
-                type="button"
-                className="rounded-pill border border-fence bg-card px-3 py-1.5 text-[15px]"
-              >
-                {e}
-              </button>
-            ))}
-          </div>
-          <button type="button" className="flex items-center gap-1.5 text-[13px] text-mist">
-            <MessageCircle size={16} strokeWidth={1.75} className="text-red" /> {article.reactions}
-          </button>
-        </div>
+        <Suspense fallback={<EngagementBarFallback article={article} />}>
+          <ArticleEngagement article={article} />
+        </Suspense>
 
         <div className="mt-7 rounded-2xl border border-gold/40 p-5 [background:linear-gradient(135deg,var(--color-steel),var(--color-night))]">
           <span className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-gold">
@@ -173,7 +163,39 @@ export default async function ArticlePage({
           </button>
         </div>
       </article>
+
+      <ReadingProgress articleId={article.id} />
     </main>
+  );
+}
+
+/**
+ * Async RSC внутри Suspense — фетчит per-user snapshot (X-User-Id из server env).
+ * Без auth — fetchArticleUserState вернёт нули, bar отрисуется в guest-режиме.
+ */
+async function ArticleEngagement({ article }: { article: FeedItem }) {
+  const userState = await fetchArticleUserState(article.id);
+  return (
+    <EngagementBar
+      articleId={article.id}
+      initialUserState={userState}
+      initialReactions={article.reactionBreakdown}
+      initialBookmarkCount={article.bookmarkCount}
+      commentCount={article.comments}
+    />
+  );
+}
+
+/** Fallback на время загрузки user state — рендерим bar в guest-режиме. */
+function EngagementBarFallback({ article }: { article: FeedItem }) {
+  return (
+    <EngagementBar
+      articleId={article.id}
+      initialUserState={ANONYMOUS_USER_STATE}
+      initialReactions={article.reactionBreakdown}
+      initialBookmarkCount={article.bookmarkCount}
+      commentCount={article.comments}
+    />
   );
 }
 

@@ -1,23 +1,38 @@
 /**
- * Mock data layer на M0. Структура зеркалит x10_news_mini_app_interactive_prototype.html;
- * после Layer 4 (workers + Inngest) — переключим на fetch к @x10/api.
+ * Data layer для miniapp.
+ *
+ * Источник данных выбирается так:
+ * 1. Если задан X10_API_BASE_URL — fetch к apps/api (Hono на CF Workers)
+ * 2. Если env не задан или fetch вернул null — fallback на статичные моки ниже
+ *
+ * Mapper из ApiFeedItem (DB schema) в FeedItem (UI):
+ * - section → category (русский label через SECTION_LABELS)
+ * - tease → title, lede → excerpt
+ * - readSeconds → readMinutes (round, min 1)
+ * - isPaid → badge "PREMIUM" | null
+ * - imageUrl, reactions, comments, hot — заглушки (в БД пока нет колонок)
  */
+import {
+  fetchArticle,
+  fetchFeed,
+  type ApiCategory,
+  type ApiFeedItem,
+  type ApiTemplate,
+} from "./api";
 
-export type FeedSection =
-  | "main"
-  | "money"
-  | "taxes"
-  | "business"
-  | "power"
-  | "rybakov"
-  | "x10";
+/** brief §5 — категории первого уровня (rubrics). */
+export type FeedSection = ApiCategory;
 
 export type FeedCategoryLabel = string;
+
+/** brief §3 — шаблоны материалов. UI выбирает компонент карточки по template. */
+export type FeedTemplate = ApiTemplate;
 
 export type FeedItem = {
   id: string;
   slug: string;
   category: FeedCategoryLabel;
+  template: FeedTemplate;
   title: string;
   excerpt: string;
   imageUrl: string;
@@ -26,17 +41,59 @@ export type FeedItem = {
   comments: number;
   badge: "PREMIUM" | null;
   hot: boolean;
+  /** Автор — для DailyTakeCard. Имя + инициал для аватарки-заглушки. */
+  authorName: string | null;
 };
 
+/** brief §1 — порядок отражает приоритет, taxes первый (главная боль ЦА в 2026). */
 export const HOME_CATEGORIES: { id: FeedSection; label: string }[] = [
-  { id: "main", label: "Главное" },
-  { id: "money", label: "Деньги" },
   { id: "taxes", label: "Налоги" },
-  { id: "business", label: "Бизнес" },
+  { id: "money", label: "Деньги" },
+  { id: "practice", label: "Практика" },
   { id: "power", label: "Власть" },
+  { id: "tech", label: "Технологии" },
   { id: "rybakov", label: "Рыбаков говорит" },
-  { id: "x10", label: "Х10" },
 ];
+
+/** Category → русский label для category-chip в карточке. */
+const CATEGORY_LABELS: Record<ApiCategory, string> = {
+  taxes: "НАЛОГИ",
+  money: "ДЕНЬГИ",
+  practice: "ПРАКТИКА",
+  power: "ВЛАСТЬ",
+  tech: "ТЕХНОЛОГИИ",
+  rybakov: "РЫБАКОВ ГОВОРИТ",
+};
+
+/** Картинка-заглушка per category. БД хранит coverImageUrl — используется при наличии. */
+const CATEGORY_PLACEHOLDER_IMAGES: Record<ApiCategory, string> = {
+  taxes: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&q=80",
+  money: "https://images.unsplash.com/photo-1633158829585-23ba8f7c8caf?w=800&q=80",
+  practice: "https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&q=80",
+  power: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&q=80",
+  tech: "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=800&q=80",
+  rybakov: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=800&q=80",
+};
+
+function mapApiItem(row: ApiFeedItem): FeedItem {
+  const totalReactions =
+    (row.reactions?.fire ?? 0) + (row.reactions?.insight ?? 0) + (row.reactions?.question ?? 0);
+  return {
+    id: row.id,
+    slug: row.slug,
+    category: CATEGORY_LABELS[row.category],
+    template: row.template,
+    title: row.tease,
+    excerpt: row.lede,
+    imageUrl: row.coverImageUrl ?? CATEGORY_PLACEHOLDER_IMAGES[row.category],
+    readMinutes: Math.max(1, Math.round(row.readSeconds / 60)),
+    reactions: totalReactions,
+    comments: 0,
+    badge: row.isPaid ? "PREMIUM" : null,
+    hot: row.isFeatured,
+    authorName: null, // М1 — будет приходить из API когда добавим Authors сущность.
+  };
+}
 
 export const DAILY_DIGEST = {
   date: "Понедельник, 26 мая",
@@ -58,11 +115,13 @@ export const DAILY_DIGEST = {
   ],
 };
 
+/** Mock feed для разработки без backend'a — покрывает все 3 template (M0 brief §10). */
 const FEED: FeedItem[] = [
   {
     id: "1",
     slug: "usn-350mln-three-steps",
     category: "НАЛОГИ",
+    template: "card-news",
     title: "Новый порог УСН 350 млн: кому грозит, кому выгодно",
     excerpt:
       "Разобрали с налоговым адвокатом, что меняется и какие три шага сделать сейчас.",
@@ -73,26 +132,30 @@ const FEED: FeedItem[] = [
     comments: 38,
     badge: null,
     hot: true,
+    authorName: null,
   },
   {
     id: "2",
     slug: "rybakov-no-startup-2026",
     category: "РЫБАКОВ ГОВОРИТ",
+    template: "daily-take",
     title: "Почему я не верю в стартап-инвестиции в 2026",
     excerpt:
-      "Игорь Рыбаков: «Хайп-экономика заканчивается. Что покупать вместо стартапов».",
+      "«Хайп-экономика заканчивается. Что покупать вместо стартапов».",
     imageUrl:
       "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=800&q=80",
-    readMinutes: 7,
+    readMinutes: 1,
     reactions: 891,
     comments: 214,
     badge: "PREMIUM",
     hot: false,
+    authorName: "Игорь Рыбаков",
   },
   {
     id: "3",
     slug: "ruble-100-three-scenarios",
     category: "ДЕНЬГИ",
+    template: "card-news",
     title: "Рубль по 100: три сценария на лето",
     excerpt:
       "Что говорят валютные стратеги Сбера, Тинькоффа и независимые аналитики.",
@@ -103,29 +166,38 @@ const FEED: FeedItem[] = [
     comments: 12,
     badge: null,
     hot: false,
+    authorName: null,
   },
   {
     id: "4",
     slug: "wildberries-buys-taxi",
-    category: "БИЗНЕС",
-    title: "Wildberries купил три такси-сервиса. Что это значит",
+    category: "ПРАКТИКА",
+    template: "deep-dive",
+    title: "Wildberries собирает логистическую империю. Разбор сделки на три такси-сервиса",
     excerpt:
-      "Маркетплейс собирает логистическую империю. Разбираем сделку.",
+      "Маркетплейс купил три такси за квартал. Что это даёт WB, что теряют продавцы, и какие 5 уроков для российского ритейла.",
     imageUrl:
       "https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&q=80",
-    readMinutes: 6,
+    readMinutes: 9,
     reactions: 234,
     comments: 56,
     badge: null,
     hot: false,
+    authorName: null,
   },
 ];
 
 export async function loadDailyFeed(limit = 20): Promise<FeedItem[]> {
+  const api = await fetchFeed(limit);
+  if (api && api.items.length > 0) {
+    return api.items.map(mapApiItem);
+  }
   return FEED.slice(0, limit);
 }
 
 export async function loadArticle(slug: string): Promise<FeedItem | null> {
+  const api = await fetchArticle(slug);
+  if (api) return mapApiItem(api);
   return FEED.find((i) => i.slug === slug) ?? null;
 }
 
@@ -216,12 +288,9 @@ export const PODCAST_OF_WEEK = {
 };
 
 // ---------- Community (Х10) ----------
-
-export const COMMUNITY_STATS = {
-  members: 30_885,
-  cities: 124,
-  countries: 11,
-};
+// COMMUNITY_STATS и EVENTS переехали в @/lib/community (Этап 3c — подключены к API).
+// MY_CLUMP остаётся моком до auth + user_clump_memberships (3d/4).
+// COMMUNITY_PATHS — статичный onboarding, не data-driven.
 
 export const MY_CLUMP = {
   name: "Кламп «Цифровой прорыв»",
@@ -231,12 +300,6 @@ export const MY_CLUMP = {
   progress: 0.67,
   nextMeet: "Завтра, 19:00",
 };
-
-export const EVENTS = [
-  { city: "МОСКВА", date: "4", month: "апр", title: "X10 Business Meet Up by Rybakov", attendees: 420, tone: "red" as const },
-  { city: "УФА", date: "12", month: "апр", title: "X10Talks: 7 историй о выходе из тени", attendees: 120, tone: "gold" as const },
-  { city: "ИРКУТСК", date: "18", month: "апр", title: "Кламперский бизнес-завтрак", attendees: 28, tone: "steel" as const },
-];
 
 export const COMMUNITY_PATHS = [
   { icon: "🚀", title: "Создать свой кламп", description: "Собрать команду 6-10 человек" },

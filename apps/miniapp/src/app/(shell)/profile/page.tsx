@@ -10,24 +10,19 @@ import {
   MapPin,
   Settings,
 } from "lucide-react";
+import { Suspense } from "react";
 import { TopBar } from "@/components/top-bar";
-import {
-  PROFILE,
-  PROFILE_MENU,
-  PROFILE_STATS,
-  SCHEDULE,
-  SUBSCRIPTIONS,
-  WEEK_STREAK,
-} from "@/lib/feed";
+import { PROFILE, PROFILE_MENU, SCHEDULE, SUBSCRIPTIONS } from "@/lib/feed";
+import { loadProfileSnapshot, type ProfileStatIcon, type ProfileStatTone } from "@/lib/profile";
 
-const statIconMap = {
+const statIconMap: Record<ProfileStatIcon, typeof Flame> = {
   flame: Flame,
   book: Book,
   bookmark: Bookmark,
   crown: Crown,
-} as const;
+};
 
-const statToneClass: Record<"red" | "gold" | "success", string> = {
+const statToneClass: Record<ProfileStatTone, string> = {
   red: "text-red",
   gold: "text-gold",
   success: "text-success",
@@ -85,45 +80,9 @@ export default function ProfilePage() {
         </button>
       </section>
 
-      <section className="grid grid-cols-4 gap-2 p-4">
-        {PROFILE_STATS.map((s) => {
-          const Icon = statIconMap[s.icon];
-          return (
-            <div key={s.v} className="rounded-xl border border-fence bg-card p-3 text-center">
-              <Icon
-                size={16}
-                strokeWidth={1.75}
-                className={cn("mx-auto mb-1.5 block", statToneClass[s.tone])}
-              />
-              <div className="x10-num text-[15px] font-extrabold">{s.k}</div>
-              <div className="mt-0.5 text-[9px] text-haze">{s.v}</div>
-            </div>
-          );
-        })}
-      </section>
-
-      <section className="mx-4 rounded-2xl border border-fence bg-card p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Flame size={16} strokeWidth={1.75} className="text-red" />
-            <span className="text-[13px] font-bold">Стрик чтения · 23 дня</span>
-          </div>
-          <span className="text-[11px] text-mist">До ачивки: 7</span>
-        </div>
-        <div className="grid grid-cols-7 gap-1.5">
-          {WEEK_STREAK.map((d, i) => (
-            <div
-              key={i}
-              className={cn(
-                "aspect-square place-items-center rounded-md text-[10px] font-bold grid",
-                d.on ? "bg-red text-white" : "bg-fence text-haze",
-              )}
-            >
-              {d.d}
-            </div>
-          ))}
-        </div>
-      </section>
+      <Suspense fallback={<StatsSkeleton />}>
+        <StatsAndStreak />
+      </Suspense>
 
       <section className="px-4 pt-6">
         <h3 className="m-0 mb-2.5 font-display text-[15px] font-extrabold">Мои подписки</h3>
@@ -180,6 +139,80 @@ export default function ProfilePage() {
             </button>
           );
         })}
+      </section>
+    </>
+  );
+}
+
+async function StatsAndStreak() {
+  "use cache";
+  const snapshot = await loadProfileSnapshot();
+  const streakValue = snapshot.stats.find((s) => s.icon === "flame")?.k ?? "0";
+
+  return (
+    <>
+      <section className="grid grid-cols-4 gap-2 p-4">
+        {snapshot.stats.map((s) => {
+          const Icon = statIconMap[s.icon];
+          return (
+            <div key={s.v} className="rounded-xl border border-fence bg-card p-3 text-center">
+              <Icon
+                size={16}
+                strokeWidth={1.75}
+                className={cn("mx-auto mb-1.5 block", statToneClass[s.tone])}
+              />
+              <div className="x10-num text-[15px] font-extrabold">{s.k}</div>
+              <div className="mt-0.5 text-[9px] text-haze">{s.v}</div>
+            </div>
+          );
+        })}
+      </section>
+
+      <section className="mx-4 rounded-2xl border border-fence bg-card p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Flame size={16} strokeWidth={1.75} className="text-red" />
+            <span className="text-[13px] font-bold">Стрик чтения · {streakValue} дней</span>
+          </div>
+          <span className="text-[11px] text-mist">До ачивки: {snapshot.daysToAchievement}</span>
+        </div>
+        <div className="grid grid-cols-7 gap-1.5">
+          {snapshot.weekStreak.map((d, i) => (
+            <div
+              key={i}
+              className={cn(
+                "aspect-square place-items-center rounded-md text-[10px] font-bold grid",
+                d.on ? "bg-red text-white" : "bg-fence text-haze",
+              )}
+            >
+              {d.d}
+            </div>
+          ))}
+        </div>
+      </section>
+    </>
+  );
+}
+
+function StatsSkeleton() {
+  return (
+    <>
+      <section className="grid grid-cols-4 gap-2 p-4" aria-busy="true">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-xl border border-fence bg-card p-3 text-center">
+            <div className="mx-auto mb-1.5 h-4 w-4 animate-pulse rounded bg-fence" />
+            <div className="mx-auto h-4 w-8 animate-pulse rounded bg-fence" />
+            <div className="mx-auto mt-1 h-2 w-12 animate-pulse rounded bg-fence" />
+          </div>
+        ))}
+      </section>
+      <section className="mx-4 rounded-2xl border border-fence bg-card p-4" aria-busy="true">
+        <div className="mb-3 h-4 w-40 animate-pulse rounded bg-fence" />
+        <div className="grid grid-cols-7 gap-1.5">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} className="aspect-square animate-pulse rounded-md bg-fence" />
+          ))}
+        </div>
       </section>
     </>
   );

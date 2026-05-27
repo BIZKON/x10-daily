@@ -1,8 +1,18 @@
-import { Bolt, ChevronLeft, Headphones, HeartHandshake, MessageCircle, Play, Share2 } from "lucide-react";
+import {
+  Bolt,
+  BookOpen,
+  ChevronLeft,
+  Headphones,
+  HeartHandshake,
+  MessageCircle,
+  Play,
+  Quote,
+  Share2,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { loadArticle, loadDailyFeed } from "@/lib/feed";
+import { loadArticle, loadDailyFeed, type FeedItem } from "@/lib/feed";
 
 export async function generateStaticParams() {
   const items = await loadDailyFeed();
@@ -17,6 +27,9 @@ export default async function ArticlePage({
   const { slug } = await params;
   const article = await loadArticle(slug);
   if (!article) notFound();
+
+  const isDailyTake = article.template === "daily-take";
+  const isDeepDive = article.template === "deep-dive";
 
   return (
     <main className="mx-auto min-h-dvh max-w-[640px]">
@@ -37,40 +50,54 @@ export default async function ArticlePage({
         </div>
       </header>
 
-      <div className="relative">
-        <Image
-          src={article.imageUrl}
-          alt=""
-          width={1200}
-          height={600}
-          className="h-72 w-full object-cover"
-          unoptimized
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-night/85" />
-        <button
-          type="button"
-          aria-label="Смотреть"
-          className="absolute inset-0 grid place-items-center"
-        >
-          <span className="grid h-16 w-16 place-items-center rounded-full bg-red/90 shadow-[0_8px_32px_rgba(230,57,70,0.4)]">
-            <Play size={28} fill="currentColor" className="text-white" />
-          </span>
-        </button>
-      </div>
+      {isDailyTake ? (
+        <DailyTakeHero article={article} />
+      ) : (
+        <div className="relative">
+          <Image
+            src={article.imageUrl}
+            alt=""
+            width={1200}
+            height={600}
+            className="h-72 w-full object-cover"
+            unoptimized
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-night/85" />
+          {isDeepDive && (
+            <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-pill bg-gold/95 px-3 py-1.5 font-display text-[10px] font-extrabold uppercase tracking-[0.15em] text-steel">
+              <BookOpen size={11} strokeWidth={2.25} />
+              Глубокий разбор · {article.readMinutes} мин
+            </span>
+          )}
+          <button
+            type="button"
+            aria-label="Смотреть"
+            className="absolute inset-0 grid place-items-center"
+          >
+            <span className="grid h-16 w-16 place-items-center rounded-full bg-red/90 shadow-[0_8px_32px_rgba(230,57,70,0.4)]">
+              <Play size={28} fill="currentColor" className="text-white" />
+            </span>
+          </button>
+        </div>
+      )}
 
       <article className="px-5 py-6">
-        <div className="mb-3 flex items-center gap-2">
-          <span className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-red">
-            {article.category}
-          </span>
-          <span className="text-[12px] text-haze">
-            · {article.readMinutes} мин чтения · 26 мая
-          </span>
-        </div>
+        {!isDailyTake && (
+          <>
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-red">
+                {article.category}
+              </span>
+              <span className="text-[12px] text-haze">
+                · {article.readMinutes} мин чтения · 26 мая
+              </span>
+            </div>
 
-        <h1 className="m-0 mb-4 font-display text-[27px] font-extrabold leading-[1.15]">
-          {article.title}
-        </h1>
+            <h1 className="m-0 mb-4 font-display text-[27px] font-extrabold leading-[1.15]">
+              {article.title}
+            </h1>
+          </>
+        )}
 
         <p className="mb-6 text-[14px] leading-[1.6] text-mist">
           Минфин предложил поднять порог УСН с 265 до 350 млн ₽. Разобрали с налоговым адвокатом
@@ -147,5 +174,45 @@ export default async function ArticlePage({
         </div>
       </article>
     </main>
+  );
+}
+
+/**
+ * Hero для daily-take (brief §3.3): без обложки, фокус на авторе и цитате.
+ * Аватарка автора + категория + большой курсивный заголовок-цитата.
+ */
+function DailyTakeHero({ article }: { article: FeedItem }) {
+  const authorName = article.authorName ?? "Редакция";
+  const initial = authorName.charAt(0);
+
+  return (
+    <div className="border-b border-gold/30 bg-card px-5 py-7">
+      <div className="mb-5 flex items-center gap-3">
+        <span
+          className="grid h-14 w-14 place-items-center rounded-full font-display text-xl font-extrabold text-night"
+          style={{ background: "linear-gradient(135deg, var(--color-red), var(--color-gold))" }}
+        >
+          {initial}
+        </span>
+        <div className="flex-1">
+          <div className="font-display text-[15px] font-extrabold text-paper">{authorName}</div>
+          <div className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-gold">
+            {article.category} · реакция дня · {article.readMinutes} мин
+          </div>
+        </div>
+      </div>
+
+      <div className="relative pl-7">
+        <Quote
+          size={28}
+          strokeWidth={1.25}
+          className="absolute left-0 top-0 text-gold/70"
+          aria-hidden
+        />
+        <h1 className="m-0 font-display text-[26px] font-extrabold leading-[1.15] text-paper">
+          {article.title}
+        </h1>
+      </div>
+    </div>
   );
 }

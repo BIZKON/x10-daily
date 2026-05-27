@@ -1,3 +1,5 @@
+import { Filter } from "lucide-react";
+import Link from "next/link";
 import type { AdminCategory } from "@/lib/api";
 
 export const metadata = { title: "Рубрики — X10 Admin" };
@@ -146,6 +148,13 @@ export default function RubricsPage() {
               <code className="rounded-pill border border-fence bg-night px-2 py-0.5 font-mono text-[10px] text-haze">
                 {r.id}
               </code>
+              <Link
+                href={`/?category=${r.id}`}
+                className="ml-auto inline-flex items-center gap-1 rounded-pill border border-fence bg-night px-2 py-0.5 font-display text-[10px] font-semibold uppercase tracking-[0.1em] text-mist transition-colors hover:border-gold/60 hover:text-gold"
+                title={`Очередь · фильтр по ${r.label}`}
+              >
+                <Filter size={9} strokeWidth={2.5} /> Очередь
+              </Link>
             </div>
             <p className="m-0 mb-3 text-[12px] font-semibold uppercase tracking-[0.15em] text-mist">
               {r.short}
@@ -158,9 +167,17 @@ export default function RubricsPage() {
               </div>
               <ul className="m-0 list-none space-y-1 p-0">
                 {r.subcategories.map((s) => (
-                  <li key={s.slug} className="flex items-start gap-2 text-[12.5px]">
-                    <code className="font-mono text-[11px] text-haze">{s.slug}</code>
-                    <span className="text-mist">— {s.label}</span>
+                  <li key={s.slug} className="text-[12.5px]">
+                    <Link
+                      href={`/?category=${r.id}&subcategory=${encodeURIComponent(s.slug)}`}
+                      className="flex items-start gap-2 rounded-md px-1 py-0.5 transition-colors hover:bg-night/40"
+                      title={`Очередь · ${s.slug}`}
+                    >
+                      <code className="font-mono text-[11px] text-haze transition-colors group-hover:text-gold">
+                        {s.slug}
+                      </code>
+                      <span className="text-mist">— {s.label}</span>
+                    </Link>
                   </li>
                 ))}
               </ul>

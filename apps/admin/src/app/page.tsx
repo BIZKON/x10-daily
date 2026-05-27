@@ -1,5 +1,11 @@
+import { X } from "lucide-react";
 import Link from "next/link";
-import { fetchQueue, type AdminCategory, type AdminTemplate, type QueueItem } from "@/lib/api";
+import {
+  fetchQueue,
+  type AdminCategory,
+  type AdminTemplate,
+  type QueueItem,
+} from "@/lib/api";
 
 /** brief §5 — user-facing категории. */
 const CATEGORY_LABELS: Record<AdminCategory, string> = {
@@ -11,6 +17,15 @@ const CATEGORY_LABELS: Record<AdminCategory, string> = {
   rybakov: "Рыбаков",
 };
 
+const CATEGORY_KEYS: ReadonlySet<AdminCategory> = new Set([
+  "taxes",
+  "money",
+  "practice",
+  "power",
+  "tech",
+  "rybakov",
+]);
+
 /** brief §3 — шаблоны. */
 const TEMPLATE_LABELS: Record<AdminTemplate, string> = {
   "card-news": "card-news",
@@ -20,8 +35,28 @@ const TEMPLATE_LABELS: Record<AdminTemplate, string> = {
   digest: "digest",
 };
 
-export default async function QueuePage() {
-  const queue = await fetchQueue(50);
+function parseCategory(raw: string | string[] | undefined): AdminCategory | undefined {
+  if (typeof raw !== "string") return undefined;
+  return CATEGORY_KEYS.has(raw as AdminCategory) ? (raw as AdminCategory) : undefined;
+}
+
+function parseSubcategory(raw: string | string[] | undefined): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const v = raw.trim();
+  if (!v || v.length > 64) return undefined;
+  return v;
+}
+
+export default async function QueuePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string | string[]; subcategory?: string | string[] }>;
+}) {
+  const sp = await searchParams;
+  const category = parseCategory(sp.category);
+  const subcategory = parseSubcategory(sp.subcategory);
+  const queue = await fetchQueue(50, { category, subcategory });
+  const filtered = Boolean(category || subcategory);
 
   return (
     <>
@@ -35,13 +70,60 @@ export default async function QueuePage() {
         </div>
         {queue && (
           <span className="rounded-pill border border-fence bg-card px-3 py-1.5 font-mono text-[12px] text-mist">
-            {queue.count} в очереди
+            {queue.count} {filtered ? "отфильтровано" : "в очереди"}
           </span>
         )}
       </header>
 
-      {!queue ? <ApiUnreachable /> : queue.count === 0 ? <EmptyQueue /> : <QueueList items={queue.items} />}
+      {filtered && (
+        <ActiveFilter
+          category={category}
+          subcategory={subcategory}
+        />
+      )}
+
+      {!queue ? (
+        <ApiUnreachable />
+      ) : queue.count === 0 ? (
+        <EmptyQueue filtered={filtered} />
+      ) : (
+        <QueueList items={queue.items} />
+      )}
     </>
+  );
+}
+
+/**
+ * Чип активного фильтра с кнопкой «Сбросить» (Link к /).
+ * Показываем category-label и/или subcategory-slug в виде кода.
+ */
+function ActiveFilter({
+  category,
+  subcategory,
+}: {
+  category: AdminCategory | undefined;
+  subcategory: string | undefined;
+}) {
+  return (
+    <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-gold/40 bg-gold/[0.06] px-4 py-2.5 text-[13px]">
+      <span className="font-bold text-mist">Фильтр:</span>
+      {category && (
+        <span className="rounded-pill border border-red/40 bg-red/[0.08] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-red">
+          {CATEGORY_LABELS[category]}
+        </span>
+      )}
+      {subcategory && (
+        <code className="rounded-pill border border-fence bg-night px-2.5 py-0.5 font-mono text-[11px] text-haze">
+          {subcategory}
+        </code>
+      )}
+      <Link
+        href="/"
+        className="ml-auto inline-flex items-center gap-1 rounded-pill border border-fence bg-card px-2.5 py-1 text-[11px] font-semibold text-paper transition-colors hover:border-red/60 hover:text-red"
+      >
+        <X size={11} strokeWidth={2.5} /> Сбросить
+      </Link>
+    </div>
   );
 }
 
@@ -69,7 +151,23 @@ function ApiUnreachable() {
   );
 }
 
-function EmptyQueue() {
+function EmptyQueue({ filtered }: { filtered: boolean }) {
+  if (filtered) {
+    return (
+      <div className="rounded-2xl border border-fence bg-card p-10 text-center">
+        <h2 className="m-0 font-display text-lg font-extrabold">Под фильтр ничего нет</h2>
+        <p className="mt-2 text-[13px] text-mist">
+          В очереди нет статей под выбранную рубрику/подкатегорию.
+        </p>
+        <Link
+          href="/"
+          className="mt-4 inline-block rounded-pill border border-fence bg-night px-4 py-1.5 text-[12px] text-paper hover:border-gold/60"
+        >
+          Показать всё
+        </Link>
+      </div>
+    );
+  }
   return (
     <div className="rounded-2xl border border-fence bg-card p-10 text-center">
       <h2 className="m-0 font-display text-lg font-extrabold">Очередь пуста</h2>

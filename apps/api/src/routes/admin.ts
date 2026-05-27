@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { articles, desc, eq, sql } from "@x10/db";
+import { and, articles, desc, eq, sql } from "@x10/db";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../app";
@@ -14,6 +14,10 @@ import { getEnv } from "../env";
 
 const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
+  /** brief §5 — фильтр по user-facing категории. Используется на странице /rubrics. */
+  category: z.enum(["taxes", "money", "practice", "power", "tech", "rybakov"]).optional(),
+  /** Подкатегория второго уровня — "taxes.news" и т.д. brief §1. */
+  subcategory: z.string().max(64).optional(),
 });
 
 const paramsSchema = z.object({
@@ -48,7 +52,13 @@ export const adminRoute = new Hono<AppEnv>()
         metadata: articles.metadata,
       })
       .from(articles)
-      .where(eq(articles.status, "ready"))
+      .where(
+        and(
+          eq(articles.status, "ready"),
+          q.category ? eq(articles.category, q.category) : undefined,
+          q.subcategory ? eq(articles.subcategory, q.subcategory) : undefined,
+        ),
+      )
       .orderBy(desc(articles.createdAt))
       .limit(q.limit);
 

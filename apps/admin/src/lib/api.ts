@@ -121,14 +121,28 @@ export function isDemoMode(): boolean {
   return getBaseUrl() === null;
 }
 
-export async function fetchQueue(limit = 50): Promise<QueueResponse | null> {
+export type QueueFilter = {
+  category?: AdminCategory;
+  subcategory?: string;
+};
+
+export async function fetchQueue(
+  limit = 50,
+  filter: QueueFilter = {},
+): Promise<QueueResponse | null> {
   const base = getBaseUrl();
   if (!base) {
     const { MOCK_QUEUE } = await import("./mocks");
-    return { items: MOCK_QUEUE.items.slice(0, limit), count: Math.min(limit, MOCK_QUEUE.count) };
+    let items = MOCK_QUEUE.items;
+    if (filter.category) items = items.filter((i) => i.category === filter.category);
+    if (filter.subcategory) items = items.filter((i) => i.subcategory === filter.subcategory);
+    return { items: items.slice(0, limit), count: items.length };
   }
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (filter.category) params.set("category", filter.category);
+  if (filter.subcategory) params.set("subcategory", filter.subcategory);
   try {
-    const res = await fetchWithTimeout(`${base}/v1/admin/queue?limit=${limit}`);
+    const res = await fetchWithTimeout(`${base}/v1/admin/queue?${params}`);
     if (!res.ok) return null;
     return (await res.json()) as QueueResponse;
   } catch {

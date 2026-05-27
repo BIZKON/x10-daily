@@ -11,7 +11,7 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../app";
-import { extractUserId } from "../auth";
+import { extractUserId, tryExtractUserId } from "../auth";
 import { getDb } from "../db";
 import { getEnv } from "../env";
 
@@ -57,7 +57,62 @@ async function getCurrentCounters(
   return { reactions: row.reactions, bookmarkCount: row.bookmarkCount };
 }
 
+/** Pure-anonymous snapshot — без БД, для быстрого ответа гостям. */
+const ANONYMOUS_USER_STATE = {
+  userReactions: { fire: false, insight: false, question: false },
+  isBookmarked: false,
+  readPercent: 0,
+} as const;
+
 export const engagementRoute = new Hono<AppEnv>()
+  /**
+   * GET /v1/articles/:id/me
+   * Per-user snapshot: какие реакции этот user поставил, в закладках ли, прогресс чтения.
+   * Anonymous (без X-User-Id) — мгновенно возвращает нули, без обращения к БД.
+   * Используется client-side для initial state в optimistic UI.
+   */
+  .get("/articles/:id/me", zValidator("param", paramsSchema), async (c) => {
+    const userId = tryExtractUserId(c);
+    if (!userId) return c.json(ANONYMOUS_USER_STATE);
+
+    const { id: articleId } = c.req.valid("param");
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+
+    const [myReactions, myBookmark, myProgress] = await Promise.all([
+      db
+        .select({ kind: reactions.kind })
+        .from(reactions)
+        .where(and(eq(reactions.userId, userId), eq(reactions.articleId, articleId))),
+      db
+        .select({ userId: bookmarks.userId })
+        .from(bookmarks)
+        .where(and(eq(bookmarks.userId, userId), eq(bookmarks.articleId, articleId)))
+        .limit(1),
+      db
+        .select({ readPercent: userReadingHistory.readPercent })
+        .from(userReadingHistory)
+        .where(
+          and(
+            eq(userReadingHistory.userId, userId),
+            eq(userReadingHistory.articleId, articleId),
+          ),
+        )
+        .limit(1),
+    ]);
+
+    const kinds = new Set(myReactions.map((r) => r.kind));
+    return c.json({
+      userReactions: {
+        fire: kinds.has("fire"),
+        insight: kinds.has("insight"),
+        question: kinds.has("question"),
+      },
+      isBookmarked: myBookmark.length > 0,
+      readPercent: myProgress[0]?.readPercent ?? 0,
+    });
+  })
+
   /**
    * POST /v1/articles/:id/reactions
    * Body: { kind: "fire" | "insight" | "question" }

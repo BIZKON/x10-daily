@@ -1,7 +1,10 @@
 import { Hono } from "hono";
 import { serve } from "inngest/cloudflare";
 import { createPipelineInngest } from "./inngest/client";
+import { createAssembleNewsletterFunction } from "./inngest/functions/assemble-newsletter";
 import { createDraftArticleFunction } from "./inngest/functions/draft-article";
+import { createProcessSourceItemFunction } from "./inngest/functions/process-source-item";
+import { createRunWeeklyScoreFunction } from "./inngest/functions/run-weekly-score";
 
 type Env = { Bindings: CloudflareBindings };
 
@@ -24,7 +27,12 @@ app.all("/inngest", async (c) => {
   const client = createPipelineInngest(c.env);
   const handler = serve({
     client,
-    functions: [createDraftArticleFunction(client, c.env)],
+    functions: [
+      createDraftArticleFunction(client, c.env),
+      createProcessSourceItemFunction(client, c.env),
+      createAssembleNewsletterFunction(client, c.env),
+      createRunWeeklyScoreFunction(client, c.env),
+    ],
   }) as unknown as (
     req: Request,
     env: Record<string, string | undefined>,

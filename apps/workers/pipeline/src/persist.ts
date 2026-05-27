@@ -61,18 +61,82 @@ export function serializeDraftForNumbers(draft: DraftShape): string {
   return lines.join("\n");
 }
 
+/**
+ * Метаданные pipeline в articles.metadata (jsonb).
+ * UI админки читает это для отрисовки scorecard / hooks / social preview / factcheck.
+ */
+export type PipelineMetadata = {
+  brevity?: {
+    beforeWords: number;
+    afterWords: number;
+    cuts: string[];
+  };
+  score?: {
+    total: number;
+    verdict: string;
+    breakdown: {
+      hookStrength: number;
+      voiceMatch: number;
+      valueDensity: number;
+      structureFormat: number;
+      publishReadiness: number;
+    };
+    fixes: Array<{ criterion: string; issue: string; suggestion: string }>;
+  };
+  hooks?: Array<{ pattern: string; text: string; reasoning: string }>;
+  social?: {
+    channel: string;
+    framework: string;
+    post: string;
+    hookLine: string;
+    twistLine: string | null;
+    wordCount: number;
+    lineCount: number;
+  };
+  factcheck?: {
+    status: "passed" | "review-needed" | "halt";
+    haltReason: string | null;
+    claims: Array<{
+      claim: string;
+      location: string;
+      verdict: string;
+      confidence: string;
+      supportingSourceUrls: string[];
+      contradictingSourceUrls: string[];
+      rationale: string;
+    }>;
+  } | null;
+  totalCostUsd?: number;
+};
+
 export type PersistInput = {
   revised: DraftShape;
+  /** Pipeline-internal section (наследие). */
   section: "main" | "numbers" | "people" | "playbook" | "weekend" | "longread";
+  /** brief §5 — user-facing category. По умолчанию 'practice'. */
+  category?: "taxes" | "money" | "practice" | "power" | "tech" | "rybakov";
+  /** brief §1 — "taxes.news", "practice.stories" и т.д. */
+  subcategory?: string;
+  /** brief §3 — шаблон материала. По умолчанию 'card-news'. */
+  template?: "card-news" | "deep-dive" | "daily-take" | "guide" | "digest";
+  /** brief §5 — теги. По умолчанию []. */
+  tags?: string[];
   sources: Array<{ url: string; title: string; publisher: string; publishedAt?: string }>;
   databaseUrl: string;
+  /** Опциональные pipeline-результаты — сохраняются в articles.metadata. */
+  pipelineMetadata?: PipelineMetadata;
 };
 
 export async function persistArticle({
   revised,
   section,
+  category,
+  subcategory,
+  template,
+  tags,
   sources,
   databaseUrl,
+  pipelineMetadata,
 }: PersistInput): Promise<{ id: string; slug: string }> {
   const db = createDb(databaseUrl);
   const baseSlug = slugify(revised.tease);
@@ -94,6 +158,10 @@ export async function persistArticle({
     .values({
       slug: finalSlug,
       section,
+      category: category ?? "practice",
+      subcategory: subcategory ?? null,
+      template: template ?? "card-news",
+      tags: tags ?? [],
       status: "ready",
       tease: revised.tease,
       lede: revised.lede,
@@ -102,6 +170,7 @@ export async function persistArticle({
       wordCount,
       readSeconds,
       citations: sources,
+      metadata: pipelineMetadata ?? null,
     })
     .returning({ id: articles.id, slug: articles.slug });
 

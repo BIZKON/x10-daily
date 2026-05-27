@@ -15,11 +15,24 @@ enabled = true
 # binding = "HYPERDRIVE"
 # id = "REPLACE_AFTER_HYPERDRIVE_CREATE"
 
+# R2 — bucket для аватаров (authors.avatarUrl) и обложек (events/articles coverImageUrl).
+# Setup:
+#   1. wrangler r2 bucket create x10-images
+#   2. wrangler r2 bucket create x10-images-preview     # для local dev
+#   3. (опц.) wrangler r2 bucket domain add x10-images images.x10daily.com
+#      Тогда X10_IMAGES_PUBLIC_BASE = "https://images.x10daily.com"
+#      Без custom domain — используем R2 .dev URL.
+# [[r2_buckets]]
+# binding = "X10_IMAGES"
+# bucket_name = "x10-images"
+# preview_bucket_name = "x10-images-preview"
+
 # Secrets ставятся через `wrangler secret put`:
 #   DATABASE_URL, ANTHROPIC_API_KEY, MASKER_BASE_URL, MASKER_API_KEY
 [vars]
 NODE_ENV = "production"
 NEXT_PUBLIC_POSTHOG_HOST = "https://eu.posthog.com"
+# X10_IMAGES_PUBLIC_BASE = "https://images.x10daily.com"
 
 [env.staging]
 name = "x10-api-staging"

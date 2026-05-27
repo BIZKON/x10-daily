@@ -1,0 +1,20 @@
+# X10 API — local Worker env (wrangler dev).
+# Скопируй в `.dev.vars` (gitignored). Wrangler сам подхватит.
+
+# Neon Postgres
+DATABASE_URL="postgresql://user:pass@host/db?sslmode=require"
+
+# Anthropic (pipeline) — для admin API не обязательно, но если поднимаешь полный стек
+ANTHROPIC_API_KEY=""
+
+# Masker (152-ФЗ compliance) — required в prod, в dev можно пропустить
+MASKER_BASE_URL=""
+MASKER_API_KEY=""
+
+# Inngest — для триггеров pipeline worker
+INNGEST_EVENT_KEY=""
+
+# R2 images (Этап 3g) — публичная база для отдачи изображений.
+# С custom domain (рекомендуется):    https://images.x10daily.com
+# Без — R2 .dev URL (только для тестов): https://pub-XXXX.r2.dev
+X10_IMAGES_PUBLIC_BASE=""

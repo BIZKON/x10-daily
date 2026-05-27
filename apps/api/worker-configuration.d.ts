@@ -16,6 +16,12 @@ interface CloudflareBindings {
   // ---- Inngest (отправка событий в pipeline worker) ----
   INNGEST_EVENT_KEY?: string;
 
+  // ---- R2 Images bucket (Этап 3g) ----
+  // Раскомментировать в wrangler.toml после `wrangler r2 bucket create x10-images`.
+  // Public URLs строятся через X10_IMAGES_PUBLIC_BASE (custom domain или R2 .dev).
+  X10_IMAGES?: R2Bucket;
+  X10_IMAGES_PUBLIC_BASE?: string;
+
   // ---- Bindings (раскомментировать после `wrangler hyperdrive create`) ----
   // HYPERDRIVE: Hyperdrive;
 }

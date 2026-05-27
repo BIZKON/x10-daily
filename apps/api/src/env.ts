@@ -23,3 +23,20 @@ export function getEnv(bindings: CloudflareBindings): BaseEnv {
 }
 
 export type ApiEnv = BaseEnv;
+
+/**
+ * R2 binding выделен отдельно — runtime CF object, не строка.
+ * Возвращаем null если binding или public base URL не настроены —
+ * upload endpoint вернёт 503 с осмысленным сообщением.
+ */
+export type ImagesConfig = {
+  bucket: R2Bucket;
+  publicBase: string;
+};
+
+export function getImagesConfig(bindings: CloudflareBindings): ImagesConfig | null {
+  if (!bindings.X10_IMAGES) return null;
+  const publicBase = (bindings.X10_IMAGES_PUBLIC_BASE ?? "").trim();
+  if (!publicBase) return null;
+  return { bucket: bindings.X10_IMAGES, publicBase: publicBase.replace(/\/+$/, "") };
+}

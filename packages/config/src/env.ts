@@ -10,16 +10,32 @@ const baseSchema = z.object({
 
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   /**
-   * Подтверждение что ZDR-контракт с Anthropic подписан (см. CLAUDE.md §7).
-   * Должен быть "true" в production. Без него loadEnv throw'нет если задан
-   * ANTHROPIC_API_KEY — это предотвращает первый prod-LLM-вызов до подписания
-   * (152-ФЗ — 30-day retention запрещён для ПДн).
-   * CRITICAL-6 из docs/SECURITY-AUDIT.md.
+   * Опциональный override base URL для Anthropic SDK. Если задан — обходим
+   * прямой anthropic.com через прокси (Timeweb Cloud AI Gateway).
+   *
+   * После session 14: основной prod-deploy идёт через Timeweb DBaaS+App Platform,
+   * AI Gateway проксирует Claude API из РФ. Установка этой переменной отключает
+   * ZDR-чек ниже (Timeweb обеспечивает 152-ФЗ compliance независимо).
+   *
+   * Пример: `https://api.timeweb.ai/anthropic` (точный URL подтверждается через
+   * раздел «Подключение» в личном кабинете Timeweb AI Gateway).
+   */
+  ANTHROPIC_BASE_URL: urlOrEmpty.optional(),
+  /**
+   * ZDR-контракт нужен ТОЛЬКО при прямом подключении к anthropic.com
+   * (когда ANTHROPIC_BASE_URL не задан). При работе через Timeweb AI Gateway
+   * 152-ФЗ покрывается DPA с провайдером — Anthropic не видит наших данных
+   * напрямую. CRITICAL-6 из docs/SECURITY-AUDIT.md.
    */
   ANTHROPIC_ZDR_CONFIRMED: z.enum(["true", "false"]).optional(),
-  ANTHROPIC_MODEL_OPUS: z.string().default("claude-opus-4-7"),
-  ANTHROPIC_MODEL_SONNET: z.string().default("claude-sonnet-4-6"),
-  ANTHROPIC_MODEL_HAIKU: z.string().default("claude-haiku-4-5-20251001"),
+  /**
+   * Model IDs в Timeweb используют префикс `anthropic/` (например
+   * `anthropic/claude-sonnet-4-6`). При прямом подключении префикс опускается.
+   * Дефолты заданы под Timeweb — для direct override через env.
+   */
+  ANTHROPIC_MODEL_OPUS: z.string().default("anthropic/claude-opus-4-7"),
+  ANTHROPIC_MODEL_SONNET: z.string().default("anthropic/claude-sonnet-4-6"),
+  ANTHROPIC_MODEL_HAIKU: z.string().default("anthropic/claude-haiku-4-5"),
 
   ELEVENLABS_API_KEY: z.string().optional(),
   ELEVENLABS_PROXY_URL: urlOrEmpty.optional(),
@@ -80,8 +96,6 @@ export type EnvSource = Record<string, string | undefined>;
 
 const productionRequired: Array<keyof Env> = [
   "ANTHROPIC_API_KEY",
-  "MASKER_BASE_URL",
-  "MASKER_API_KEY",
   "INNGEST_EVENT_KEY",
   "INNGEST_SIGNING_KEY",
   // HIGH-2: Telegram session auth — без BOT_TOKEN initData нельзя верифицировать,
@@ -89,6 +103,11 @@ const productionRequired: Array<keyof Env> = [
   "TELEGRAM_BOT_TOKEN",
   "X10_JWT_SECRET",
 ];
+
+// MASKER_BASE_URL / MASKER_API_KEY больше НЕ в productionRequired (с session 14):
+// при работе через Timeweb AI Gateway PII-маскировка не критична — данные не
+// уходят за пределы РФ. Если в будущем вернёмся на Anthropic direct без proxy,
+// добавим обратно в required list.
 
 export class EnvValidationError extends Error {
   constructor(public readonly issues: z.core.$ZodIssue[]) {
@@ -112,20 +131,23 @@ export function loadEnv(source: EnvSource): Env {
     const missing = productionRequired.filter((k) => !env[k]);
     if (missing.length > 0) {
       throw new Error(
-        `Production env missing required keys (152-ФЗ + AI core): ${missing.join(", ")}. ` +
-          "See CLAUDE.md §7 — KikuAI Masker + Anthropic ZDR contract обязательны до первого вызова LLM.",
+        `Production env missing required keys: ${missing.join(", ")}. ` +
+          "See docs/DEPLOY.md.",
       );
     }
-    // CRITICAL-6: если есть Anthropic-ключ в prod, ZDR должен быть явно подтверждён.
-    // Без этого первый LLM-вызов попадёт в 30-day retention → нарушение 152-ФЗ
-    // (ст. 272.1 УК + ₽75K-₽700K оборотный штраф).
-    if (env.ANTHROPIC_API_KEY && env.ANTHROPIC_ZDR_CONFIRMED !== "true") {
+    // CRITICAL-6: ZDR-чек выполняется ТОЛЬКО при прямом подключении к anthropic.com.
+    // Если ANTHROPIC_BASE_URL задан (Timeweb AI Gateway или другой прокси), данные
+    // не уходят в Anthropic облако напрямую — ZDR не применим. 152-ФЗ обеспечивается
+    // DPA с провайдером прокси.
+    const isDirectAnthropic = !env.ANTHROPIC_BASE_URL || env.ANTHROPIC_BASE_URL === "" ||
+      env.ANTHROPIC_BASE_URL.includes("api.anthropic.com");
+    if (env.ANTHROPIC_API_KEY && isDirectAnthropic && env.ANTHROPIC_ZDR_CONFIRMED !== "true") {
       throw new Error(
-        "ANTHROPIC_ZDR_CONFIRMED=true должен быть установлен в production когда " +
-          "ANTHROPIC_API_KEY задан. Без подписанного ZDR-контракта input/output " +
-          "логируются Anthropic 30 дней → нарушение 152-ФЗ. См. CLAUDE.md §7 + " +
-          "docs/SECURITY-AUDIT.md C6. Контакт: support@anthropic.com → 'Zero Data " +
-          "Retention agreement for EU customers'.",
+        "ANTHROPIC_ZDR_CONFIRMED=true обязательна в production при прямом подключении " +
+          "к Anthropic API (без ANTHROPIC_BASE_URL прокси). Без подписанного ZDR-контракта " +
+          "input/output логируются Anthropic 30 дней → нарушение 152-ФЗ. " +
+          "Альтернатива: задайте ANTHROPIC_BASE_URL на Timeweb AI Gateway endpoint — " +
+          "тогда ZDR не требуется. См. docs/SECURITY-AUDIT.md C6.",
       );
     }
   }

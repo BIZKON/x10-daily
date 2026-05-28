@@ -1,21 +1,28 @@
-import type Anthropic from "@anthropic-ai/sdk";
 import { MODELS, type ModelTier } from "@x10/config";
+import type OpenAI from "openai";
 import type { z } from "zod";
-import { getAnthropicClient } from "./anthropic";
 import { calculateCostUsd, type TokenUsage } from "./cost";
 import type { Masker } from "./masker";
+import { getOpenAIClient } from "./openai-client";
 import { zodToToolSchema } from "./zod-to-tool-schema";
 
 export type AgentContext = {
+  /** API key для Timeweb AI Gateway (или Anthropic direct если baseURL не задан). */
   apiKey: string;
+  /** Base URL — по умолчанию читается из OPENAI_BASE_URL env. */
+  baseURL?: string;
   masker?: Masker;
-  /** Override клиента — для тестов. Если задан, getAnthropicClient игнорируется. */
-  client?: Anthropic;
+  /** Override клиента — для тестов. Если задан, getOpenAIClient игнорируется. */
+  client?: OpenAI;
 };
 
 export type AgentResult<O> = {
   output: O;
   usage: TokenUsage;
+  /**
+   * Стоимость в USD-эквиваленте (по курсу 80 ₽/$1 при работе через Timeweb).
+   * См. COST_PER_MTOK в @x10/config/constants.ts.
+   */
   costUsd: number;
   modelUsed: string;
 };
@@ -24,7 +31,7 @@ export type AgentDefinition<I, O> = {
   name: string;
   /** Один из CLAUDE.md §2 тиров — выбирает модель через MODELS[tier]. */
   tier: ModelTier;
-  /** Система. Длинный статичный текст — будет в prompt-cache (ephemeral). */
+  /** Система. Длинный статичный текст (раньше был в prompt-cache, через AI Gateway — обычный system message). */
   system: string | (() => string);
   inputSchema: z.ZodType<I>;
   outputSchema: z.ZodType<O>;
@@ -42,6 +49,19 @@ export type Agent<I, O> = {
 
 const TOOL_NAME_PREFIX = "x10_emit_";
 
+/**
+ * defineAgent — фабрика декларативных LLM-агентов через function calling.
+ *
+ * Архитектура (после session 17 — OpenAI Chat Completions API через Timeweb):
+ *   1. system prompt + user input → /v1/chat/completions с tools[].
+ *   2. tool_choice пинит модель на единственную функцию x10_emit_<name>.
+ *   3. JSON Schema из outputSchema (Zod) служит structured-output контрактом.
+ *   4. Распарсенный tool_calls[0].function.arguments → output через outputSchema.parse.
+ *
+ * Anthropic prompt caching (cache_control: ephemeral) не поддерживается через
+ * OpenAI-compat API. Timeweb может применять prefix caching автоматически
+ * на стороне прокси — но это не публичный контракт.
+ */
 export function defineAgent<I, O>(def: AgentDefinition<I, O>): Agent<I, O> {
   const toolName = `${TOOL_NAME_PREFIX}${def.name}`;
   const outputJsonSchema = zodToToolSchema(def.outputSchema);
@@ -54,7 +74,7 @@ export function defineAgent<I, O>(def: AgentDefinition<I, O>): Agent<I, O> {
 
     async run(input: I, ctx: AgentContext): Promise<AgentResult<O>> {
       const validated = def.inputSchema.parse(input);
-      const client = ctx.client ?? getAnthropicClient(ctx.apiKey);
+      const client = ctx.client ?? getOpenAIClient({ apiKey: ctx.apiKey, baseURL: ctx.baseURL });
       const systemText = typeof def.system === "function" ? def.system() : def.system;
       const model = MODELS[def.tier];
 
@@ -67,33 +87,44 @@ export function defineAgent<I, O>(def: AgentDefinition<I, O>): Agent<I, O> {
         session = masked.session;
       }
 
-      const response = await client.messages.create({
+      const response = await client.chat.completions.create({
         model,
         max_tokens: maxTokens,
-        system: [
-          {
-            type: "text",
-            text: systemText,
-            cache_control: { type: "ephemeral" },
-          },
+        messages: [
+          { role: "system", content: systemText },
+          { role: "user", content: userText },
         ],
         tools: [
           {
-            name: toolName,
-            description: `Emit the structured ${def.name} output.`,
-            input_schema: outputJsonSchema as Anthropic.Tool.InputSchema,
+            type: "function",
+            function: {
+              name: toolName,
+              description: `Emit the structured ${def.name} output.`,
+              parameters: outputJsonSchema as Record<string, unknown>,
+            },
           },
         ],
-        tool_choice: { type: "tool", name: toolName },
-        messages: [{ role: "user", content: userText }],
+        tool_choice: {
+          type: "function",
+          function: { name: toolName },
+        },
       });
 
-      const block = response.content.find((b) => b.type === "tool_use");
-      if (!block || block.type !== "tool_use") {
-        throw new Error(`Agent ${def.name}: модель не вернула tool_use блок`);
+      const choice = response.choices[0];
+      const toolCall = choice?.message?.tool_calls?.[0];
+      if (!toolCall || toolCall.type !== "function") {
+        throw new Error(`Agent ${def.name}: модель не вернула function tool_call`);
       }
 
-      let payload = block.input as unknown;
+      let payload: unknown;
+      try {
+        payload = JSON.parse(toolCall.function.arguments);
+      } catch (err) {
+        throw new Error(
+          `Agent ${def.name}: tool_call.function.arguments не JSON: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+
       if (ctx.masker && session) {
         const json = JSON.stringify(payload);
         const restored = await ctx.masker.unmask(json, session);
@@ -102,11 +133,16 @@ export function defineAgent<I, O>(def: AgentDefinition<I, O>): Agent<I, O> {
 
       const output = def.outputSchema.parse(payload);
 
+      const u = response.usage;
+      // OpenAI v3+ API экспонирует cached_tokens в prompt_tokens_details. Это
+      // unstable field — некоторые прокси не передают, поэтому fallback 0.
+      const cachedInputTokens =
+        (u as { prompt_tokens_details?: { cached_tokens?: number } } | undefined)
+          ?.prompt_tokens_details?.cached_tokens ?? 0;
       const usage: TokenUsage = {
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-        cachedInputTokens:
-          (response.usage as { cache_read_input_tokens?: number }).cache_read_input_tokens ?? 0,
+        inputTokens: u?.prompt_tokens ?? 0,
+        outputTokens: u?.completion_tokens ?? 0,
+        cachedInputTokens,
       };
 
       return {

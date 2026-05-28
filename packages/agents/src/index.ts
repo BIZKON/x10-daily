@@ -8,11 +8,12 @@ export {
   type MaskResult,
 } from "./masker";
 export {
-  getAnthropicClient,
-  setAnthropicClient,
-  resetAnthropicCache,
-  type AnthropicClient,
-} from "./anthropic";
+  getOpenAIClient,
+  setOpenAIClient,
+  resetOpenAIClientCache,
+  type OpenAIClient,
+  type OpenAIClientOptions,
+} from "./openai-client";
 export { zodToToolSchema } from "./zod-to-tool-schema";
 
 export {

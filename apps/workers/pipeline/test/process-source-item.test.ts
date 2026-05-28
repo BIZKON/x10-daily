@@ -60,7 +60,7 @@ describe("process-source-item", () => {
       },
       usage: { inputTokens: 300, outputTokens: 100, cachedInputTokens: 0 },
       costUsd: 0.001,
-      modelUsed: "claude-haiku-4-5-20251001",
+      modelUsed: "anthropic/claude-haiku-4-5",
     });
 
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
@@ -122,7 +122,7 @@ describe("process-source-item", () => {
       },
       usage: { inputTokens: 300, outputTokens: 50, cachedInputTokens: 0 },
       costUsd: 0.0005,
-      modelUsed: "claude-haiku-4-5-20251001",
+      modelUsed: "anthropic/claude-haiku-4-5",
     });
 
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
@@ -162,7 +162,7 @@ describe("process-source-item", () => {
       },
       usage: { inputTokens: 300, outputTokens: 50, cachedInputTokens: 0 },
       costUsd: 0.0005,
-      modelUsed: "claude-haiku-4-5-20251001",
+      modelUsed: "anthropic/claude-haiku-4-5",
     });
 
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });

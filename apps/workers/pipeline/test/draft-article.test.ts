@@ -35,7 +35,7 @@ vi.mock("@x10/agents", async () => {
         },
         usage: { inputTokens: 1000, outputTokens: 500, cachedInputTokens: 0 },
         costUsd: 0.01,
-        modelUsed: "claude-sonnet-4-6",
+        modelUsed: "anthropic/claude-sonnet-4-6",
       }),
     },
     NumbersAgent: {
@@ -48,7 +48,7 @@ vi.mock("@x10/agents", async () => {
         },
         usage: { inputTokens: 300, outputTokens: 100, cachedInputTokens: 0 },
         costUsd: 0.001,
-        modelUsed: "claude-haiku-4-5-20251001",
+        modelUsed: "anthropic/claude-haiku-4-5",
       }),
     },
     ToVAgent: {
@@ -68,7 +68,7 @@ vi.mock("@x10/agents", async () => {
         },
         usage: { inputTokens: 800, outputTokens: 400, cachedInputTokens: 0 },
         costUsd: 0.008,
-        modelUsed: "claude-sonnet-4-6",
+        modelUsed: "anthropic/claude-sonnet-4-6",
       }),
     },
     BrevityAgent: {
@@ -83,7 +83,7 @@ vi.mock("@x10/agents", async () => {
         },
         usage: { inputTokens: 700, outputTokens: 350, cachedInputTokens: 0 },
         costUsd: 0.007,
-        modelUsed: "claude-sonnet-4-6",
+        modelUsed: "anthropic/claude-sonnet-4-6",
       }),
     },
     HookGenAgent: {
@@ -102,7 +102,7 @@ vi.mock("@x10/agents", async () => {
         },
         usage: { inputTokens: 400, outputTokens: 200, cachedInputTokens: 0 },
         costUsd: 0.0015,
-        modelUsed: "claude-haiku-4-5-20251001",
+        modelUsed: "anthropic/claude-haiku-4-5",
       }),
     },
     SocialAmplifyAgent: {
@@ -125,7 +125,7 @@ vi.mock("@x10/agents", async () => {
         },
         usage: { inputTokens: 900, outputTokens: 450, cachedInputTokens: 0 },
         costUsd: 0.009,
-        modelUsed: "claude-sonnet-4-6",
+        modelUsed: "anthropic/claude-sonnet-4-6",
       }),
     },
     PreviewScoreAgent: {
@@ -151,7 +151,7 @@ vi.mock("@x10/agents", async () => {
         },
         usage: { inputTokens: 600, outputTokens: 300, cachedInputTokens: 0 },
         costUsd: 0.006,
-        modelUsed: "claude-sonnet-4-6",
+        modelUsed: "anthropic/claude-sonnet-4-6",
       }),
     },
     FactCheckAgent: {
@@ -175,7 +175,7 @@ vi.mock("@x10/agents", async () => {
         },
         usage: { inputTokens: 1500, outputTokens: 500, cachedInputTokens: 0 },
         costUsd: 0.02,
-        modelUsed: "claude-opus-4-7",
+        modelUsed: "anthropic/claude-opus-4-7",
       }),
     },
   };
@@ -385,7 +385,7 @@ describe("draft-article pipeline", () => {
       },
       usage: { inputTokens: 1500, outputTokens: 500, cachedInputTokens: 0 },
       costUsd: 0.02,
-      modelUsed: "claude-opus-4-7",
+      modelUsed: "anthropic/claude-opus-4-7",
     });
 
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });

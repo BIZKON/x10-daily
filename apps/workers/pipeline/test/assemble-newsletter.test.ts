@@ -31,7 +31,7 @@ vi.mock("@x10/agents", async () => {
         },
         usage: { inputTokens: 1500, outputTokens: 800, cachedInputTokens: 0 },
         costUsd: 0.015,
-        modelUsed: "claude-sonnet-4-6",
+        modelUsed: "anthropic/claude-sonnet-4-6",
       }),
     },
   };

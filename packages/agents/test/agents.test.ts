@@ -14,7 +14,12 @@ import {
   ToVAgent,
   createMasker,
 } from "../src";
-import { mockAnthropic } from "./mock-anthropic";
+import { mockOpenAI } from "./mock-openai";
+
+/** Helper для извлечения system prompt из OpenAI chat-completion call args. */
+function getSystemText(call: { messages: Array<{ role: string; content: string }> }): string {
+  return call.messages.find((m) => m.role === "system")?.content ?? "";
+}
 
 const SOURCES = [
   {
@@ -26,8 +31,8 @@ const SOURCES = [
 ];
 
 describe("DraftAgent", () => {
-  it("использует Sonnet, шлёт system с cache_control, парсит tool_use в DraftShape", async () => {
-    const { client, spy } = mockAnthropic({
+  it("использует Sonnet, шлёт system message, парсит tool_call в DraftShape", async () => {
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_draft",
       toolInput: {
         tease: "ЦБ держит ставку 17% — четвёртое заседание",
@@ -67,21 +72,23 @@ describe("DraftAgent", () => {
 
     expect(spy).toHaveBeenCalledOnce();
     const call = spy.mock.calls[0]![0];
-    expect(call.model).toBe("claude-sonnet-4-6");
-    expect(call.system[0].cache_control).toEqual({ type: "ephemeral" });
+    expect(call.model).toBe("anthropic/claude-sonnet-4-6");
     // Default template = card-news → system содержит card-news гайдлайн.
-    expect(call.system[0].text).toMatch(/card-news/);
-    expect(call.tool_choice).toEqual({ type: "tool", name: "x10_emit_draft" });
-    expect(call.tools[0].name).toBe("x10_emit_draft");
+    expect(getSystemText(call)).toMatch(/card-news/);
+    expect(call.tool_choice).toEqual({
+      type: "function",
+      function: { name: "x10_emit_draft" },
+    });
+    expect(call.tools[0].function.name).toBe("x10_emit_draft");
 
-    expect(result.modelUsed).toBe("claude-sonnet-4-6");
+    expect(result.modelUsed).toBe("anthropic/claude-sonnet-4-6");
     expect(result.output.tease).toContain("17%");
     expect(result.usage.inputTokens).toBe(2000);
     expect(result.costUsd).toBeGreaterThan(0);
   });
 
   it("template=deep-dive — система содержит deep-dive гайдлайн и Lenny's подход", async () => {
-    const { client, spy } = mockAnthropic({
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_draft",
       toolInput: {
         tease: "Wildberries собирает логистическую империю",
@@ -100,13 +107,13 @@ describe("DraftAgent", () => {
       },
       { apiKey: "test", client },
     );
-    const systemText = spy.mock.calls[0]![0].system[0].text;
+    const systemText = getSystemText(spy.mock.calls[0]![0]);
     expect(systemText).toMatch(/deep-dive/);
     expect(systemText).toMatch(/Lenny|3-5 ключевых уроков|разбор/i);
   });
 
   it("template=daily-take — система требует первого лица и Cite→Opinion→Implication", async () => {
-    const { client, spy } = mockAnthropic({
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_draft",
       toolInput: {
         tease: "ЦБ снова держит",
@@ -125,7 +132,7 @@ describe("DraftAgent", () => {
       },
       { apiKey: "test", client },
     );
-    const systemText = spy.mock.calls[0]![0].system[0].text;
+    const systemText = getSystemText(spy.mock.calls[0]![0]);
     expect(systemText).toMatch(/daily-take/);
     expect(systemText).toMatch(/Cite|Opinion|Implication/i);
     expect(systemText).toMatch(/первого лица|авторский голос/i);
@@ -134,7 +141,7 @@ describe("DraftAgent", () => {
 
 describe("NumbersAgent", () => {
   it("использует Haiku (дешёвый тир)", async () => {
-    const { client, spy } = mockAnthropic({
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_numbers",
       toolInput: {
         items: [
@@ -154,7 +161,7 @@ describe("NumbersAgent", () => {
       { apiKey: "test", client },
     );
 
-    expect(spy.mock.calls[0]![0].model).toBe("claude-haiku-4-5-20251001");
+    expect(spy.mock.calls[0]![0].model).toBe("anthropic/claude-haiku-4-5");
     expect(result.output.items).toHaveLength(1);
     expect(result.output.items[0]?.value).toBe("17%");
     expect(result.output.hasUnsourcedNumbers).toBe(false);
@@ -163,7 +170,7 @@ describe("NumbersAgent", () => {
 
 describe("ToVAgent", () => {
   it("инжектит voice.md в system и возвращает changes", async () => {
-    const { client, spy } = mockAnthropic({
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_tov",
       toolInput: {
         revised: {
@@ -198,7 +205,7 @@ describe("ToVAgent", () => {
       { apiKey: "test", client },
     );
 
-    const systemText = spy.mock.calls[0]![0].system[0].text;
+    const systemText = getSystemText(spy.mock.calls[0]![0]);
     expect(systemText).toContain("VOICE RULES");
     expect(systemText).toContain("беспрецедентный");
     expect(result.output.changes).toHaveLength(1);
@@ -231,7 +238,7 @@ describe("BrevityAgent", () => {
       ],
     };
 
-    const { client, spy } = mockAnthropic({
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_brevity",
       toolInput: {
         compressed,
@@ -274,8 +281,11 @@ describe("BrevityAgent", () => {
     );
 
     const call = spy.mock.calls[0]![0];
-    expect(call.model).toBe("claude-sonnet-4-6");
-    expect(call.tool_choice).toEqual({ type: "tool", name: "x10_emit_brevity" });
+    expect(call.model).toBe("anthropic/claude-sonnet-4-6");
+    expect(call.tool_choice).toEqual({
+      type: "function",
+      function: { name: "x10_emit_brevity" },
+    });
     expect(result.output.compressed.body[0]).toEqual({
       type: "numbers",
       items: [
@@ -291,7 +301,7 @@ describe("BrevityAgent", () => {
   });
 
   it("template=deep-dive — лимиты в system 800-2000 слов, режет мягко", async () => {
-    const { client, spy } = mockAnthropic({
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_brevity",
       toolInput: {
         compressed: {
@@ -313,13 +323,13 @@ describe("BrevityAgent", () => {
       },
       { apiKey: "test", client },
     );
-    const systemText = spy.mock.calls[0]![0].system[0].text;
+    const systemText = getSystemText(spy.mock.calls[0]![0]);
     expect(systemText).toMatch(/≤ 2000 слов/);
     expect(systemText).toMatch(/МЯГКО|уроки/i);
   });
 
   it("template=daily-take — лимиты 50-200 слов, жёсткое сжатие", async () => {
-    const { client, spy } = mockAnthropic({
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_brevity",
       toolInput: {
         compressed: {
@@ -341,7 +351,7 @@ describe("BrevityAgent", () => {
       },
       { apiKey: "test", client },
     );
-    const systemText = spy.mock.calls[0]![0].system[0].text;
+    const systemText = getSystemText(spy.mock.calls[0]![0]);
     expect(systemText).toMatch(/≤ 200 слов/);
     expect(systemText).toMatch(/жёстко|Cite→Opinion→Implication/i);
   });
@@ -355,7 +365,7 @@ describe("HookGenAgent", () => {
       reasoning: "Паттерн подходит для tg-x10",
     }));
 
-    const { client, spy } = mockAnthropic({
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_hookgen",
       toolInput: { hooks },
     });
@@ -373,14 +383,14 @@ describe("HookGenAgent", () => {
       { apiKey: "test", client },
     );
 
-    expect(spy.mock.calls[0]![0].model).toBe("claude-haiku-4-5-20251001");
+    expect(spy.mock.calls[0]![0].model).toBe("anthropic/claude-haiku-4-5");
     expect(result.output.hooks).toHaveLength(6);
     const patterns = result.output.hooks.map((h) => h.pattern).sort();
     expect(patterns).toEqual([...HOOK_PATTERNS].sort());
   });
 
   it("channel default = tg-x10 если не передан", async () => {
-    const { client } = mockAnthropic({
+    const { client } = mockOpenAI({
       toolName: "x10_emit_hookgen",
       toolInput: { hooks: [] },
     });
@@ -402,7 +412,7 @@ describe("HookGenAgent", () => {
   });
 
   it("system-prompt содержит правила от hook-generator (no questions, no em-dash, digits)", async () => {
-    const { client, spy } = mockAnthropic({
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_hookgen",
       toolInput: { hooks: [] },
     });
@@ -416,7 +426,7 @@ describe("HookGenAgent", () => {
       },
       { apiKey: "test", client },
     );
-    const systemText = spy.mock.calls[0]![0].system[0].text;
+    const systemText = getSystemText(spy.mock.calls[0]![0]);
     expect(systemText).toMatch(/НЕ начинай открывающую строку с вопроса/);
     expect(systemText).toMatch(/em-dash|длинное тире/);
     expect(systemText).toMatch(/арабскими/);
@@ -426,7 +436,7 @@ describe("HookGenAgent", () => {
 
 describe("SocialAmplifyAgent", () => {
   it("использует Sonnet, прокидывает channel rules + framework default в user-message", async () => {
-    const { client, spy } = mockAnthropic({
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_social",
       toolInput: {
         channel: "tg-x10",
@@ -460,13 +470,16 @@ describe("SocialAmplifyAgent", () => {
     );
 
     const call = spy.mock.calls[0]![0];
-    expect(call.model).toBe("claude-sonnet-4-6");
-    expect(call.tool_choice).toEqual({ type: "tool", name: "x10_emit_social" });
-    expect(call.system[0].text).toContain("VOICE RULES");
-    expect(call.system[0].text).toContain("FRAMEWORKS");
+    expect(call.model).toBe("anthropic/claude-sonnet-4-6");
+    expect(call.tool_choice).toEqual({
+      type: "function",
+      function: { name: "x10_emit_social" },
+    });
+    expect(getSystemText(call)).toContain("VOICE RULES");
+    expect(getSystemText(call)).toContain("FRAMEWORKS");
 
     // user-message содержит правила для tg-x10 и выбранный framework
-    const userMsg = call.messages[0].content as string;
+    const userMsg = call.messages.find((m: { role: string }) => m.role === "user")!.content as string;
     expect(userMsg).toContain("Channel: tg-x10");
     expect(userMsg).toContain("Деловой, сухой");
     expect(userMsg).toContain("Framework (выбрано): BAB");
@@ -477,7 +490,7 @@ describe("SocialAmplifyAgent", () => {
   });
 
   it("linkedin → дефолтный framework PAS, в user-message правила LinkedIn", async () => {
-    const { client, spy } = mockAnthropic({
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_social",
       toolInput: {
         channel: "linkedin",
@@ -506,7 +519,7 @@ describe("SocialAmplifyAgent", () => {
       { apiKey: "test", client },
     );
 
-    const userMsg = spy.mock.calls[0]![0].messages[0].content as string;
+    const userMsg = spy.mock.calls[0]![0].messages.find((m: { role: string }) => m.role === "user")!.content as string;
     expect(userMsg).toContain("Channel: linkedin");
     expect(userMsg).toContain("Framework (выбрано): PAS");
     expect(userMsg).toMatch(/Hook ≤ 50|≤ 20 строк/);
@@ -515,7 +528,7 @@ describe("SocialAmplifyAgent", () => {
 
 describe("PreviewScoreAgent", () => {
   it("возвращает 5 оценок, total в диапазоне 5-50, fixes привязаны к criteria", async () => {
-    const { client, spy } = mockAnthropic({
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_score",
       toolInput: {
         hookStrength: 8,
@@ -549,7 +562,7 @@ describe("PreviewScoreAgent", () => {
       { apiKey: "test", client },
     );
 
-    expect(spy.mock.calls[0]![0].model).toBe("claude-sonnet-4-6");
+    expect(spy.mock.calls[0]![0].model).toBe("anthropic/claude-sonnet-4-6");
     expect(result.output.total).toBe(39);
     expect(result.output.fixes).toHaveLength(1);
     expect(result.output.fixes[0]?.criterion).toBe("hookStrength");
@@ -557,7 +570,7 @@ describe("PreviewScoreAgent", () => {
   });
 
   it("отвергает оценку > 10 через Zod schema", async () => {
-    const { client } = mockAnthropic({
+    const { client } = mockOpenAI({
       toolName: "x10_emit_score",
       toolInput: {
         hookStrength: 11, // невалидно
@@ -588,7 +601,7 @@ describe("PreviewScoreAgent", () => {
 
 describe("FactCheckAgent", () => {
   it("использует Opus и возвращает claims с verdicts + status", async () => {
-    const { client, spy } = mockAnthropic({
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_factcheck",
       toolInput: {
         claims: [
@@ -622,14 +635,14 @@ describe("FactCheckAgent", () => {
       { apiKey: "test", client },
     );
 
-    expect(spy.mock.calls[0]![0].model).toBe("claude-opus-4-7");
+    expect(spy.mock.calls[0]![0].model).toBe("anthropic/claude-opus-4-7");
     expect(result.output.status).toBe("passed");
     expect(result.output.claims).toHaveLength(1);
     expect(result.output.claims[0]?.verdict).toBe("supported");
   });
 
   it("halt: модель не использует внешние знания (проверка в system)", async () => {
-    const { client, spy } = mockAnthropic({
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_factcheck",
       toolInput: { claims: [], status: "passed", haltReason: null },
     });
@@ -643,7 +656,7 @@ describe("FactCheckAgent", () => {
       },
       { apiKey: "test", client },
     );
-    const systemText = spy.mock.calls[0]![0].system[0].text;
+    const systemText = getSystemText(spy.mock.calls[0]![0]);
     expect(systemText).toMatch(/НЕ используй внешние знания/);
     expect(systemText).toMatch(/halt/);
   });
@@ -651,7 +664,7 @@ describe("FactCheckAgent", () => {
 
 describe("IngestAgent", () => {
   it("использует Haiku, заполняет decision/category/template/political", async () => {
-    const { client, spy } = mockAnthropic({
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_ingest",
       toolInput: {
         decision: "accept",
@@ -677,7 +690,7 @@ describe("IngestAgent", () => {
       { apiKey: "test", client },
     );
 
-    expect(spy.mock.calls[0]![0].model).toBe("claude-haiku-4-5-20251001");
+    expect(spy.mock.calls[0]![0].model).toBe("anthropic/claude-haiku-4-5");
     expect(result.output.decision).toBe("accept");
     expect(result.output.category).toBe("money");
     expect(result.output.subcategory).toBe("money.cbr");
@@ -688,7 +701,7 @@ describe("IngestAgent", () => {
   });
 
   it("rejects infobiz контент: category/template=null, tags=[]", async () => {
-    const { client } = mockAnthropic({
+    const { client } = mockOpenAI({
       toolName: "x10_emit_ingest",
       toolInput: {
         decision: "reject",
@@ -722,7 +735,7 @@ describe("IngestAgent", () => {
   });
 
   it("system-prompt описывает 6 категорий и 4 шаблона из brief'a", async () => {
-    const { client, spy } = mockAnthropic({
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_ingest",
       toolInput: {
         decision: "accept",
@@ -746,7 +759,7 @@ describe("IngestAgent", () => {
       },
       { apiKey: "test", client },
     );
-    const systemText = spy.mock.calls[0]![0].system[0].text;
+    const systemText = getSystemText(spy.mock.calls[0]![0]);
     expect(systemText).toMatch(/taxes\s+—/);
     expect(systemText).toMatch(/money\s+—/);
     expect(systemText).toMatch(/practice\s+—/);
@@ -760,7 +773,7 @@ describe("IngestAgent", () => {
 
 describe("ScoreWeeklyAgent", () => {
   it("использует Sonnet, возвращает ranking + recommendations + correlation", async () => {
-    const { client, spy } = mockAnthropic({
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_score_weekly",
       toolInput: {
         weekSummary: "9 статей опубликовано, среднее composite 1240.",
@@ -807,7 +820,7 @@ describe("ScoreWeeklyAgent", () => {
       { apiKey: "test", client },
     );
 
-    expect(spy.mock.calls[0]![0].model).toBe("claude-sonnet-4-6");
+    expect(spy.mock.calls[0]![0].model).toBe("anthropic/claude-sonnet-4-6");
     expect(result.output.recommendations).toHaveLength(1);
     expect(result.output.previewScoreCorrelation).toBeCloseTo(0.62, 2);
     expect(result.output.hookPatternRanking[0]?.pattern).toBe("contrarian");
@@ -816,7 +829,7 @@ describe("ScoreWeeklyAgent", () => {
 
 describe("NewsletterAssembleAgent", () => {
   it("использует Sonnet, возвращает subject + 7 секций + variants", async () => {
-    const { client, spy } = mockAnthropic({
+    const { client, spy } = mockOpenAI({
       toolName: "x10_emit_newsletter",
       toolInput: {
         subject: "ЦБ держит 17% — четвёртое заседание",
@@ -863,7 +876,7 @@ describe("NewsletterAssembleAgent", () => {
       { apiKey: "test", client },
     );
 
-    expect(spy.mock.calls[0]![0].model).toBe("claude-sonnet-4-6");
+    expect(spy.mock.calls[0]![0].model).toBe("anthropic/claude-sonnet-4-6");
     expect(result.output.sections).toHaveLength(7);
     expect(result.output.subjectVariants.length).toBeGreaterThanOrEqual(2);
     expect(result.output.meta.totalArticles).toBe(1);
@@ -880,7 +893,7 @@ describe("masker × agent integration", () => {
       text.replaceAll("[NAME_1]", "Иванов"),
     );
 
-    const { client } = mockAnthropic({
+    const { client } = mockOpenAI({
       toolName: "x10_emit_numbers",
       toolInput: {
         items: [
@@ -910,7 +923,7 @@ describe("masker × agent integration", () => {
 
   it("passthrough masker не меняет текст", async () => {
     const masker = createMasker({ NODE_ENV: "development" });
-    const { client } = mockAnthropic({
+    const { client } = mockOpenAI({
       toolName: "x10_emit_numbers",
       toolInput: { items: [], hasUnsourcedNumbers: false },
     });

@@ -1,15 +1,32 @@
+/**
+ * Model IDs для Timeweb AI Gateway. Префикс `anthropic/` обязательный —
+ * см. ЛК → AI-агенты → Модели. При прямом подключении к Anthropic API
+ * (без AI Gateway) префикс опускается.
+ */
 export const MODELS = {
-  OPUS: "claude-opus-4-7",
-  SONNET: "claude-sonnet-4-6",
-  HAIKU: "claude-haiku-4-5-20251001",
+  OPUS: "anthropic/claude-opus-4-7",
+  SONNET: "anthropic/claude-sonnet-4-6",
+  HAIKU: "anthropic/claude-haiku-4-5",
 } as const;
 
 export type ModelTier = keyof typeof MODELS;
 
+/**
+ * Стоимость через Timeweb AI Gateway (USD-эквивалент по фиксированному курсу
+ * 80 ₽/$1 для совместимости с существующей DB schema `cost_usd numeric`).
+ *
+ * Real Timeweb pricing (₽ / 1 млн токенов):
+ *   OPUS:   675 input / 3375 output
+ *   SONNET: 405 input / 2025 output
+ *   HAIKU:  135 input / 1080 output
+ *
+ * Прирост ~+70% vs Anthropic direct — плата за РФ-локализацию + 152-ФЗ.
+ * При смене курса/тарифа обновлять здесь.
+ */
 export const COST_PER_MTOK = {
-  OPUS: { input: 5, output: 25 },
-  SONNET: { input: 3, output: 15 },
-  HAIKU: { input: 1, output: 5 },
+  OPUS: { input: 8.44, output: 42.19 },
+  SONNET: { input: 5.06, output: 25.31 },
+  HAIKU: { input: 1.69, output: 13.5 },
 } as const;
 
 export const PERF_BUDGETS = {

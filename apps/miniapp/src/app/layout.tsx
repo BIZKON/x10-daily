@@ -28,6 +28,9 @@ export default function RootLayout({
     <html
       lang="ru"
       className={`${fontSans.variable} ${fontDisplay.variable} ${fontMono.variable}`}
+      // TG WebApp SDK инжектит --tg-viewport-height / --tg-viewport-stable-height
+      // CSS-переменные после SSR. Ожидаемо, не баг — глушим hydration warning.
+      suppressHydrationWarning
     >
       <body>
         {/* TG WebApp SDK — injects window.Telegram.WebApp при загрузке внутри

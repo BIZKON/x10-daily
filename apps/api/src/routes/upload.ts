@@ -3,6 +3,12 @@ import type { AppEnv } from "../app";
 import { EDITOR_ROLES, requireRole } from "../auth";
 import { getDb } from "../db";
 import { getEnv, getImagesConfig } from "../env";
+import {
+  QUOTA_BYTES_PER_DAY,
+  QUOTA_FILES_PER_DAY,
+  checkUploadQuota,
+  recordUpload,
+} from "../upload-quota";
 
 /**
  * Upload endpoints — brief §6 Author.avatar / Article.coverImage / Event.coverImage.
@@ -132,6 +138,25 @@ export const uploadRoute = new Hono<AppEnv>().post("/", async (c) => {
   const env = getEnv(c.env);
   const db = getDb(env.DATABASE_URL);
   const { userId } = await requireRole(c, db, EDITOR_ROLES);
+
+  // HIGH-7: pre-check quota по count. Полная проверка с учётом bytes делается
+  // после того как узнаем file.size — но если уже исчерпан file count, нет
+  // смысла читать formData. Это короткий ранний exit (≤10ms).
+  const quotaPreCheck = await checkUploadQuota(db, userId, 0);
+  if (!quotaPreCheck.allowed && quotaPreCheck.reason === "files_exceeded") {
+    return c.json(
+      {
+        error: "upload_quota_exceeded",
+        reason: "files_exceeded",
+        message: `Лимит ${QUOTA_FILES_PER_DAY} файлов / 24h исчерпан. Попробуйте позже.`,
+        current: quotaPreCheck.current,
+        limits: { files: QUOTA_FILES_PER_DAY, bytes: QUOTA_BYTES_PER_DAY },
+      },
+      429,
+      { "Retry-After": String(quotaPreCheck.resetSeconds) },
+    );
+  }
+
   const images = getImagesConfig(c.env);
   if (!images) {
     return c.json(
@@ -186,6 +211,26 @@ export const uploadRoute = new Hono<AppEnv>().post("/", async (c) => {
     );
   }
 
+  // HIGH-7: финальная quota check с учётом file.size. Count уже OK из preCheck,
+  // тут проверяем bytes.
+  const quotaCheck = await checkUploadQuota(db, userId, file.size);
+  if (!quotaCheck.allowed) {
+    return c.json(
+      {
+        error: "upload_quota_exceeded",
+        reason: quotaCheck.reason,
+        message:
+          quotaCheck.reason === "bytes_exceeded"
+            ? `Лимит ${Math.round(QUOTA_BYTES_PER_DAY / 1024 / 1024)} MB / 24h будет превышен этой загрузкой.`
+            : `Лимит ${QUOTA_FILES_PER_DAY} файлов / 24h исчерпан.`,
+        current: quotaCheck.current,
+        limits: { files: QUOTA_FILES_PER_DAY, bytes: QUOTA_BYTES_PER_DAY },
+      },
+      429,
+      { "Retry-After": String(quotaCheck.resetSeconds) },
+    );
+  }
+
   const mime = file.type.toLowerCase();
   const declaredExt = ALLOWED_MIME[mime];
   if (!declaredExt) {
@@ -237,8 +282,27 @@ export const uploadRoute = new Hono<AppEnv>().post("/", async (c) => {
     );
   }
 
+  const publicUrl = `${images.publicBase}/${key}`;
+
+  // HIGH-7: записываем audit row после успешного R2 put. Если INSERT упадёт —
+  // R2 объект остался, но quota не учтена. Acceptable: лучше один лишний
+  // файл, чем потерянный audit-row.
+  try {
+    await recordUpload(db, {
+      userId,
+      filename: file.name,
+      contentType: mime,
+      sizeBytes: file.size,
+      r2Key: key,
+      publicUrl,
+    });
+  } catch (e) {
+    console.error("[upload] audit log INSERT failed", e instanceof Error ? e.message : e);
+    // Не возвращаем 500 — пользователь получил URL, файл реально загружен.
+  }
+
   return c.json({
-    url: `${images.publicBase}/${key}`,
+    url: publicUrl,
     key,
     contentType: mime,
     size: file.size,

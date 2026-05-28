@@ -1,17 +1,20 @@
 import { loadEnv, type Env as BaseEnv } from "@x10/config";
+import type { AppBindings, ObjectStorage } from "./bindings";
 
 /**
- * Cloudflare Workers env → @x10/config Zod-валидация.
- * Кэшируется на инстанс воркера (исолят), так что повторные парсы дёшевы.
+ * Bindings (env vars + runtime objects) → @x10/config Zod-валидация.
+ * Кэшируется per process — повторные парсы дешёвы.
  */
 let cached: BaseEnv | undefined;
 
-export function getEnv(bindings: CloudflareBindings): BaseEnv {
+export function getEnv(bindings: AppBindings): BaseEnv {
   if (cached) return cached;
   const source: Record<string, string | undefined> = {
     NODE_ENV: bindings.NODE_ENV,
     DATABASE_URL: bindings.DATABASE_URL,
     DIRECT_DATABASE_URL: bindings.DIRECT_DATABASE_URL,
+    AI_GATEWAY_URL: bindings.AI_GATEWAY_URL,
+    AI_GATEWAY_API_KEY: bindings.AI_GATEWAY_API_KEY,
     ANTHROPIC_API_KEY: bindings.ANTHROPIC_API_KEY,
     ANTHROPIC_ZDR_CONFIRMED: bindings.ANTHROPIC_ZDR_CONFIRMED,
     MASKER_BASE_URL: bindings.MASKER_BASE_URL,
@@ -29,16 +32,16 @@ export function getEnv(bindings: CloudflareBindings): BaseEnv {
 export type ApiEnv = BaseEnv;
 
 /**
- * R2 binding выделен отдельно — runtime CF object, не строка.
- * Возвращаем null если binding или public base URL не настроены —
+ * Object storage binding выделен отдельно — runtime объект, не строка.
+ * Возвращает null если binding или public base URL не настроены —
  * upload endpoint вернёт 503 с осмысленным сообщением.
  */
 export type ImagesConfig = {
-  bucket: R2Bucket;
+  bucket: ObjectStorage;
   publicBase: string;
 };
 
-export function getImagesConfig(bindings: CloudflareBindings): ImagesConfig | null {
+export function getImagesConfig(bindings: AppBindings): ImagesConfig | null {
   if (!bindings.X10_IMAGES) return null;
   const publicBase = (bindings.X10_IMAGES_PUBLIC_BASE ?? "").trim();
   if (!publicBase) return null;

@@ -4,14 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
-    "build": "wrangler deploy --dry-run --outdir=dist",
-    "deploy": "wrangler deploy",
-    "deploy:staging": "wrangler deploy --env staging",
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
+    "@hono/node-server": "^2.0.4",
     "@hono/zod-validator": "^0.8.0",
     "@x10/agents": "workspace:*",
     "@x10/config": "workspace:*",
@@ -22,9 +21,9 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.16.9",
-    "@cloudflare/workers-types": "^4.20260526.1",
-    "vitest": "^4.1.7",
-    "wrangler": "^4.94.0"
+    "@types/node": "^25.9.1",
+    "tsx": "^4.22.3",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.7"
   }
 }

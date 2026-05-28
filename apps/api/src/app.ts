@@ -3,6 +3,7 @@ import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
+import type { AppBindings } from "./bindings";
 import { adminRoute } from "./routes/admin";
 import { adminContentRoute } from "./routes/admin-content";
 import { uploadRoute } from "./routes/upload";
@@ -19,7 +20,7 @@ import { pipelineRoute } from "./routes/pipeline";
 import { profileRoute } from "./routes/profile";
 
 export type AppEnv = {
-  Bindings: CloudflareBindings;
+  Bindings: AppBindings;
 };
 
 /**
@@ -30,7 +31,7 @@ export type AppEnv = {
  * В dev (NODE_ENV != 'production') — permissive fallback "*" + credentials off
  * иначе spec-нарушение `*` + credentials.
  */
-function buildCorsOrigin(bindings: CloudflareBindings) {
+function buildCorsOrigin(bindings: AppBindings) {
   const raw = (bindings.X10_ALLOWED_ORIGINS ?? "").trim();
   const isProd = bindings.NODE_ENV === "production";
   const list = raw

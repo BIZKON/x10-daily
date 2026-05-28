@@ -15,6 +15,13 @@ export const VOICE_RULES: string = read("voice.md");
 /** about-me.md — кто мы как редакция, для system-prompt инжекции. */
 export const ABOUT_ME: string = read("about-me.md");
 
+/**
+ * visual.md — operational rules для VisualAgent (NB2) и шаблонизатора карточек.
+ * Брат voice.md. Прямая инжекция в system-prompt VisualAgent + чтение шаблонизатором
+ * карточек для палитры/типографики/whitelist/off-limits.
+ */
+export const VISUAL_RULES: string = read("visual.md");
+
 /** Чёрный список ~30 слов из ToV Guidelines v1.0 — никогда не используем. */
 export const BLACKLIST: readonly string[] = [
   "соборное мышление",

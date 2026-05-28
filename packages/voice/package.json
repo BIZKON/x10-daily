@@ -6,7 +6,7 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "files": ["src", "voice.md", "about-me.md", "about-author-*.md"],
+  "files": ["src", "voice.md", "about-me.md", "visual.md", "about-author-*.md"],
   "scripts": {
     "typecheck": "tsc --noEmit"
   }

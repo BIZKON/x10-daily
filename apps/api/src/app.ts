@@ -7,6 +7,7 @@ import { adminRoute } from "./routes/admin";
 import { adminContentRoute } from "./routes/admin-content";
 import { uploadRoute } from "./routes/upload";
 import { articlesRoute } from "./routes/articles";
+import { authRoute } from "./routes/auth";
 import { authorsRoute } from "./routes/authors";
 import { communityRoute } from "./routes/community";
 import { digestsRoute } from "./routes/digests";
@@ -109,6 +110,7 @@ export function createApp() {
   });
 
   app.route("/health", healthRoute);
+  app.route("/v1/auth", authRoute);
   app.route("/v1/feed", feedRoute);
   app.route("/v1/articles", articlesRoute);
   app.route("/v1/pipeline", pipelineRoute);

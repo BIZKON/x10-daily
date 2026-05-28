@@ -50,7 +50,7 @@ export default async function LoginPage({
             <p className="font-medium">Telegram Login Widget не настроен</p>
             <p className="mt-2 text-xs text-muted-foreground">
               Задайте <code className="rounded bg-background px-1">NEXT_PUBLIC_TELEGRAM_BOT_USERNAME</code>
-              {" "}и зарегистрируйте домен в @BotFather (см. DEPLOY.md §8.3).
+              {" "}и зарегистрируйте домен в @BotFather (см. DEPLOY.md §6.4).
             </p>
           </div>
         )}

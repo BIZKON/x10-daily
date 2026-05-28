@@ -58,8 +58,14 @@
 - [x] **H1** · `apps/api/src/app.ts` — CORS `origin: (origin) => origin ?? "*"` + `credentials:true`
   - **Fix:** ✅ closed — `buildCorsOrigin(bindings)` парсит `X10_ALLOWED_ORIGINS` env (comma-separated, wildcards `https://*.vercel.app`). В prod без env — closed-by-default. В dev — permissive для localhost.
 
-- [ ] **H2** · `apps/api/src/auth.ts:15-27` — X-User-Id это просто UUID без подписи
-  - **Fix:** Telegram initData verification до prod (большая задача, см. handoff). Не в этом коммит-фесте.
+- [x] **H2** · `apps/api/src/auth.ts:15-27` — X-User-Id это просто UUID без подписи
+  - **Fix:** ✅ closed (session 11) — full Telegram session auth.
+    - Backend: `apps/api/src/lib/initdata.ts` (Mini App, HMAC через `WebAppData` secret) + `telegram-widget.ts` (admin Login Widget, SHA256 secret) + `jwt.ts` (jose HS256). `POST /v1/auth/telegram` upserts user + signJWT; `POST /v1/auth/telegram-widget` role-gates editor|admin. `extractSession` / `requireRole` теперь читают Authorization Bearer, всё `extractUserId` удалено.
+    - Miniapp: `TelegramProvider` авто-логинит через `window.Telegram.WebApp.initData` → Server Action → HttpOnly cookie `x10_session`. `fetchAuthed`/`postAuthed` → Bearer.
+    - Admin: `/login` page с TG Login Widget (`telegram-widget.js` script, `data-onauth` callback). `middleware.ts` redirect на `/login` если cookie нет. Demo mode bypass.
+    - Dev escape: `POST /v1/auth/dev-login` (NODE_ENV !== production) принимает userId → JWT. Server Action в miniapp/admin использует `X10_DEV_USER_ID` / `X10_ADMIN_USER_ID` для local dev без TG WebView.
+    - Env: `TELEGRAM_BOT_TOKEN` + `X10_JWT_SECRET` (min 32 байта) + `X10_JWT_TTL_SECONDS` (default 86400) добавлены в productionRequired.
+    - X-User-Id удалён из CORS allowHeaders.
 
 - [x] **H3** · `apps/api/src/routes/engagement.ts` + `pipeline.ts` — Нет rate limit
   - **Fix:** ✅ closed — CF Workers Rate Limit binding (`ENGAGEMENT_LIMITER` 30/мин, `PIPELINE_LIMITER` 10/мин). `applyRateLimit(c, limiter, scope, userId)` helper в `apps/api/src/rate-limit.ts`. Ключ = `scope:userId:IP`.
@@ -137,10 +143,10 @@
 
 ### До open beta (1 сессия)
 
-- **H2** Telegram initData auth + JWT sessions (большая задача, отдельная сессия — отдельная архитектура).
-- **H4** Prompt-injection wrapper для IngestAgent.
-- **H6** Paywall enforcement для `isPaid`.
-- **H7** Upload quota.
+- ✅ **H2** Telegram initData auth + JWT sessions — закрыт session 11 (см. выше).
+- ✅ **H4** Prompt-injection wrapper для IngestAgent — закрыт.
+- ✅ **H6** Paywall enforcement для `isPaid` — закрыт.
+- [ ] **H7** Upload quota — открыт.
 
 ### Backlog (по мере роста)
 

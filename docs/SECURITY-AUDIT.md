@@ -87,7 +87,7 @@
 - [x] **M4** · `draft-article.ts` — cost-runaway. ✅ closed: `rateLimit: {limit: 50, period: "1h"}` в Inngest function config. Потолок ~$22.50/час даже при auth bypass. Полное daily $ accounting — отдельная задача (метрика, не security).
 - [x] **M5** · `upload.ts` — 5MB cap после буферизации. ✅ closed: pre-check `Content-Length` header (6 MB cap, multipart overhead+) до `c.req.formData()`. Раннее 413 без bandwidth abuse.
 - [x] **M6** · `engagement.ts` — reactions на draft статьи. ✅ closed: `eq(articles.status, "published")` добавлен в existence check для reactions, bookmark, progress.
-- [ ] **M7** · `pipeline_config.agent` — нет unique index. Отложено — отдельный коммит с миграцией 0004.
+- [x] **M7** · `pipeline_config.agent` — нет unique index. ✅ closed: migration 0004 + `uniqueIndex` в schema. PUT handler упрощён на single `INSERT ... ON CONFLICT DO UPDATE` (atomic). Заодно исправлен `_journal.json` — entries для 0001-0003 были потеряны, без них `db:migrate` пропускал бы их.
 - [x] **M8** · Нет Hono `bodyLimit()` middleware. ✅ closed: `bodyLimit({maxSize: 1MB})` global, override 6MB для `/v1/admin/upload`. JSON DoS закрыт.
 - [x] **M9** · `engagement.ts` toggle race. ✅ closed: `.onConflictDoNothing()` на INSERT branch — concurrent racer получает no-op вместо PK violation, оба клиента видят корректную "added" (row exists). Без транзакции (neon-http one-shot), но PK constraint обеспечивает консистентность.
 

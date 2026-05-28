@@ -8,6 +8,34 @@
       "when": 1779801372448,
       "tag": "0000_core",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779887772448,
+      "tag": "0001_content_architecture",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779974172448,
+      "tag": "0002_community_engagement",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780060572448,
+      "tag": "0003_engagement_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780146972448,
+      "tag": "0004_pipeline_config_unique_agent",
+      "breakpoints": true
     }
   ]
 }

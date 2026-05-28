@@ -465,30 +465,8 @@ export const adminContentRoute = new Hono<AppEnv>()
       const data = c.req.valid("json");
       const thresholdStr = data.confidenceThreshold.toFixed(3);
 
-      const [existing] = await db
-        .select({ id: pipelineConfig.id })
-        .from(pipelineConfig)
-        .where(eq(pipelineConfig.agent, agent))
-        .limit(1);
-
-      if (existing) {
-        const [row] = await db
-          .update(pipelineConfig)
-          .set({
-            enabled: data.enabled,
-            modelOverride: data.modelOverride,
-            confidenceThreshold: thresholdStr,
-            updatedAt: sql`now()`,
-          })
-          .where(eq(pipelineConfig.id, existing.id))
-          .returning({
-            enabled: pipelineConfig.enabled,
-            modelOverride: pipelineConfig.modelOverride,
-            confidenceThreshold: pipelineConfig.confidenceThreshold,
-          });
-        return c.json(toView(agent, row));
-      }
-
+      // MEDIUM-7 closed: migration 0004 добавила unique index на agent.
+      // Один atomic UPSERT вместо SELECT+UPDATE/INSERT — race-safe и проще.
       const [row] = await db
         .insert(pipelineConfig)
         .values({
@@ -497,11 +475,20 @@ export const adminContentRoute = new Hono<AppEnv>()
           modelOverride: data.modelOverride,
           confidenceThreshold: thresholdStr,
         })
+        .onConflictDoUpdate({
+          target: pipelineConfig.agent,
+          set: {
+            enabled: data.enabled,
+            modelOverride: data.modelOverride,
+            confidenceThreshold: thresholdStr,
+            updatedAt: sql`now()`,
+          },
+        })
         .returning({
           enabled: pipelineConfig.enabled,
           modelOverride: pipelineConfig.modelOverride,
           confidenceThreshold: pipelineConfig.confidenceThreshold,
         });
-      return c.json(toView(agent, row), 201);
+      return c.json(toView(agent, row));
     },
   );

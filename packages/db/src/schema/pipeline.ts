@@ -9,6 +9,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -65,20 +66,29 @@ export const pipelineRuns = pgTable(
   ],
 );
 
-export const pipelineConfig = pgTable("pipeline_config", {
-  id: id(),
-  agent: agentKind("agent").notNull(),
-  enabled: boolean("enabled").notNull().default(true),
-  modelOverride: varchar("model_override", { length: 64 }),
-  confidenceThreshold: numeric("confidence_threshold", { precision: 4, scale: 3 })
-    .notNull()
-    .default("0.700"),
-  params: jsonb("params")
-    .$type<Record<string, unknown>>()
-    .notNull()
-    .default(sql`'{}'::jsonb`),
-  ...timestamps,
-});
+export const pipelineConfig = pgTable(
+  "pipeline_config",
+  {
+    id: id(),
+    agent: agentKind("agent").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    modelOverride: varchar("model_override", { length: 64 }),
+    confidenceThreshold: numeric("confidence_threshold", { precision: 4, scale: 3 })
+      .notNull()
+      .default("0.700"),
+    params: jsonb("params")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    ...timestamps,
+  },
+  /**
+   * MEDIUM-7: один effective row на agent. Закрывает race при concurrent PUT
+   * /v1/admin/pipeline-config/:agent — теперь второй PUT попадёт в
+   * onConflictDoUpdate вместо создания дубликата.
+   */
+  (t) => [uniqueIndex("pipeline_config_agent_uidx").on(t.agent)],
+);
 
 export type PipelineRun = typeof pipelineRuns.$inferSelect;
 export type NewPipelineRun = typeof pipelineRuns.$inferInsert;

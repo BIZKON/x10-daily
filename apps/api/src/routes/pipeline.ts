@@ -7,6 +7,7 @@ import type { AppEnv } from "../app";
 import { EDITOR_ROLES, requireRole } from "../auth";
 import { getDb } from "../db";
 import { getEnv } from "../env";
+import { applyRateLimit } from "../rate-limit";
 
 const TOPIC_INGESTED = "article/topic.ingested" as const;
 
@@ -37,9 +38,11 @@ export const pipelineRoute = new Hono<AppEnv>().post(
   async (c) => {
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
-    // CRITICAL-2 — без role check любой клиент мог триггерить pipeline и
-    // сжигать Anthropic budget. До prod дополнительно нужен rate limit (HIGH-3).
-    await requireRole(c, db, EDITOR_ROLES);
+    // CRITICAL-2 closed: editor-role обязателен.
+    const { userId } = await requireRole(c, db, EDITOR_ROLES);
+    // HIGH-3: 10 runs/мин per editor — даже скомпрометированный аккаунт
+    // не сможет залить Anthropic спам со скоростью больше $4.50/мин.
+    await applyRateLimit(c, c.env.PIPELINE_LIMITER, "pipeline-run", userId);
     const inngest = getInngest(env);
     const body = c.req.valid("json");
 

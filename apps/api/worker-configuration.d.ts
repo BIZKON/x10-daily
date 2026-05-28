@@ -5,6 +5,12 @@ interface CloudflareBindings {
   // ---- Vars ----
   NODE_ENV: "development" | "staging" | "production";
   NEXT_PUBLIC_POSTHOG_HOST?: string;
+  /**
+   * Comma-separated origins для CORS (HIGH-1). Wildcards вида
+   * `https://*.vercel.app` поддерживаются. Пусто в prod = closed-by-default.
+   * Пример: "https://x10daily.com,https://admin.x10daily.com,https://web.telegram.org"
+   */
+  X10_ALLOWED_ORIGINS?: string;
 
   // ---- Secrets (`wrangler secret put`) ----
   DATABASE_URL: string;
@@ -23,6 +29,10 @@ interface CloudflareBindings {
   // Public URLs строятся через X10_IMAGES_PUBLIC_BASE (custom domain или R2 .dev).
   X10_IMAGES?: R2Bucket;
   X10_IMAGES_PUBLIC_BASE?: string;
+
+  // ---- Rate limiters (HIGH-3, CF Workers ratelimit bindings) ----
+  ENGAGEMENT_LIMITER: RateLimit;
+  PIPELINE_LIMITER: RateLimit;
 
   // ---- Bindings (раскомментировать после `wrangler hyperdrive create`) ----
   // HYPERDRIVE: Hyperdrive;

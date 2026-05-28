@@ -14,6 +14,7 @@ import type { AppEnv } from "../app";
 import { extractUserId, tryExtractUserId } from "../auth";
 import { getDb } from "../db";
 import { getEnv } from "../env";
+import { applyRateLimit } from "../rate-limit";
 
 /**
  * Engagement endpoints — brief §6 reactions/bookmarks/UserProgress.
@@ -125,6 +126,8 @@ export const engagementRoute = new Hono<AppEnv>()
     zValidator("json", reactionBodySchema),
     async (c) => {
       const userId = extractUserId(c);
+      // HIGH-3: 30 req/мин per (userId+IP). Защищает Neon pool и engagement-сигнал.
+      await applyRateLimit(c, c.env.ENGAGEMENT_LIMITER, "reactions", userId);
       const { id: articleId } = c.req.valid("param");
       const { kind } = c.req.valid("json");
       const env = getEnv(c.env);
@@ -172,6 +175,7 @@ export const engagementRoute = new Hono<AppEnv>()
    */
   .post("/articles/:id/bookmark", zValidator("param", paramsSchema), async (c) => {
     const userId = extractUserId(c);
+    await applyRateLimit(c, c.env.ENGAGEMENT_LIMITER, "bookmark", userId);
     const { id: articleId } = c.req.valid("param");
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
@@ -213,6 +217,9 @@ export const engagementRoute = new Hono<AppEnv>()
     zValidator("json", progressBodySchema),
     async (c) => {
       const userId = extractUserId(c);
+      // Progress шлётся каждые 5с при чтении — лимит чуть выше, но всё равно
+      // защищаем общий counter shared с reactions/bookmark.
+      await applyRateLimit(c, c.env.ENGAGEMENT_LIMITER, "progress", userId);
       const { id: articleId } = c.req.valid("param");
       const { readPercent, readSeconds } = c.req.valid("json");
       const env = getEnv(c.env);

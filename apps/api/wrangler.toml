@@ -27,8 +27,27 @@ enabled = true
 # bucket_name = "x10-images"
 # preview_bucket_name = "x10-images-preview"
 
+# HIGH-3 — Rate limiting (CF Workers Rate Limiting binding, GA с 2024, free-tier).
+# Защищает engagement endpoints (reactions/bookmarks/progress) и pipeline.run
+# от спама / abuse через подделанный X-User-Id. Limit per (userId+IP) ключ.
+#
+# Namespace ID — любое уникальное число (per-account). Counts persist across isolates.
+[[unsafe.bindings]]
+name = "ENGAGEMENT_LIMITER"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }   # 30 запросов / 60 сек per ключ — для reactions/bookmark/progress
+
+[[unsafe.bindings]]
+name = "PIPELINE_LIMITER"
+type = "ratelimit"
+namespace_id = "1002"
+simple = { limit = 10, period = 60 }   # 10 запусков / 60 сек — pipeline.run дорогой (Anthropic $$)
+
 # Secrets ставятся через `wrangler secret put`:
-#   DATABASE_URL, ANTHROPIC_API_KEY, MASKER_BASE_URL, MASKER_API_KEY
+#   DATABASE_URL, ANTHROPIC_API_KEY, ANTHROPIC_ZDR_CONFIRMED,
+#   MASKER_BASE_URL, MASKER_API_KEY, INNGEST_EVENT_KEY,
+#   X10_ALLOWED_ORIGINS  (CORS allowlist, HIGH-1)
 [vars]
 NODE_ENV = "production"
 NEXT_PUBLIC_POSTHOG_HOST = "https://eu.posthog.com"

@@ -99,7 +99,18 @@ export type ArticleDetail = {
 
 function getBaseUrl(): string | null {
   const url = process.env.X10_API_BASE_URL;
-  if (!url || url.trim() === "") return null;
+  if (!url || url.trim() === "") {
+    // HIGH-5: hard-fail в prod если URL не задан — иначе admin молча
+    // включает demo mode, редактор видит mock data, mutations silently fail.
+    // В dev/preview/test возвращаем null → demo fallback.
+    if (process.env.NODE_ENV === "production" && process.env.X10_DEMO !== "1") {
+      throw new Error(
+        "X10_API_BASE_URL is required in production. Set it in Vercel env. " +
+          "Чтобы явно включить demo mode в prod (для preview-deploy без backend) — задай X10_DEMO=1.",
+      );
+    }
+    return null;
+  }
   return url.replace(/\/+$/, "");
 }
 

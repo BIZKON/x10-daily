@@ -57,7 +57,18 @@ export type ApiArticle = ApiFeedItem & {
 
 function getBaseUrl(): string | null {
   const url = process.env.X10_API_BASE_URL;
-  if (!url || url.trim() === "") return null;
+  if (!url || url.trim() === "") {
+    // HIGH-5: hard-fail в prod — иначе miniapp молча работает на mock-данных
+    // из feed.ts, пользователи видят 4 фейковых статьи как реальные.
+    // В dev/preview без env остаётся mock fallback (для dev UI без backend).
+    if (process.env.NODE_ENV === "production" && process.env.X10_DEMO !== "1") {
+      throw new Error(
+        "X10_API_BASE_URL is required in production. Set it in Vercel env. " +
+          "Чтобы явно включить demo mode в prod (preview-deploy без backend) — задай X10_DEMO=1.",
+      );
+    }
+    return null;
+  }
   return url.replace(/\/+$/, "");
 }
 

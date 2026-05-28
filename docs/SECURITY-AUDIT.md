@@ -29,29 +29,29 @@
 
 ### CRITICAL — must-fix до любого production deploy
 
-- [ ] **C1** · `apps/api/src/routes/admin.ts:118-155` — `POST /v1/admin/publish/:id` БЕЗ auth вообще
+- [x] **C1** · `apps/api/src/routes/admin.ts:118-155` — `POST /v1/admin/publish/:id` БЕЗ auth вообще
   - **Атака:** `curl -X POST $API/v1/admin/publish/<uuid>` → любой draft переходит в published
-  - **Fix:** добавить `extractUserId` + `requireEditor` middleware
+  - **Fix:** ✅ closed — `await requireRole(c, db, EDITOR_ROLES)` на всех 3 handlers (queue/article/publish)
 
-- [ ] **C2** · `apps/api/src/routes/pipeline.ts:32-56` — `POST /v1/pipeline/run` без auth/rate limit
-  - **Атака:** loop с произвольным topic+context → сжигаемая Anthropic budget ($0.45/article × ∞) + content injection в queue
-  - **Fix:** auth + role check + CF RateLimiter binding (10/min/user)
+- [x] **C2** · `apps/api/src/routes/pipeline.ts:32-56` — `POST /v1/pipeline/run` без auth/rate limit
+  - **Атака:** loop с произвольным topic+context → сжигаемая Anthropic budget ($0.45/article × ∞)
+  - **Fix:** ✅ closed (auth+role); rate limit отложен на HIGH-3
 
-- [ ] **C3** · `apps/api/src/routes/admin-content.ts:217-507` — `extractUserId` есть, **role check отсутствует**
-  - **Атака:** любой reader с валидным UUID может DELETE author / PUT pipeline-config (выключить весь pipeline)
-  - **Fix:** `requireEditor(c)` middleware с JOIN на `users.role`
+- [x] **C3** · `apps/api/src/routes/admin-content.ts:217-507` — `extractUserId` есть, **role check отсутствует**
+  - **Атака:** любой reader с валидным UUID может DELETE author / PUT pipeline-config
+  - **Fix:** ✅ closed — `requireRole(c, db, EDITOR_ROLES)` на всех 16 handlers (CRUD + pipeline-config + upload)
 
-- [ ] **C4** · `apps/workers/pipeline/src/index.ts:26-41` — Inngest webhook без явной verification signing-key
+- [x] **C4** · `apps/workers/pipeline/src/index.ts:26-41` — Inngest webhook без явной verification signing-key
   - **Атака:** спуфнутый POST на `/inngest` → unlimited pipeline runs → unlimited LLM spend
-  - **Fix:** assert `env.INNGEST_SIGNING_KEY`, передать в `serve({client, functions, signingKey})`, `isDev:false` в prod
+  - **Fix:** ✅ closed — `getPipelineEnv` через `loadEnv` enforces `INNGEST_SIGNING_KEY` в prod (productionRequired list). `createPipelineInngest` уже передавал `signingKey`/`isDev:false` — теперь подтверждено fail-fast на boot
 
-- [ ] **C5** · `packages/agents/src/masker.ts` (через `process-source-item.ts:34`) — Masker fail-open
-  - **Атака:** при пустом `MASKER_BASE_URL` `createMasker` молча возвращает no-op → сырые ПДн клампов уходят в Anthropic logs
-  - **Fix:** `createMasker` MUST throw в prod если `MASKER_BASE_URL` empty
+- [x] **C5** · `packages/agents/src/masker.ts` — Masker fail-open
+  - **Атака:** при пустом `MASKER_BASE_URL` сырые ПДн уходят в Anthropic logs
+  - **Fix:** ✅ **уже было закрыто** в `masker.ts:91-93` — `createMasker` throws `MaskerUnconfiguredError` если `NODE_ENV='production' && !MASKER_BASE_URL`. Аудит-агент 3 ошибся, не прочитав реализацию. Также `loadEnv` enforces `MASKER_BASE_URL`/`MASKER_API_KEY` в productionRequired
 
-- [ ] **C6** · `draft-article.ts:41-46` + CLAUDE.md §7 — ZDR-контракт не проверяется на boot
+- [x] **C6** · `packages/config/src/env.ts` — ZDR-контракт не проверяется на boot
   - **Атака:** первый LLM-вызов отправит данные в 30-day retention → штраф ₽75K-₽700K (152-ФЗ ст.272.1)
-  - **Fix:** boot check `if NODE_ENV==='production' && env.ANTHROPIC_ZDR_CONFIRMED !== 'true' throw`
+  - **Fix:** ✅ closed — добавлен `ANTHROPIC_ZDR_CONFIRMED` enum в schema + boot check в `loadEnv`: если `NODE_ENV='production' && ANTHROPIC_API_KEY && ZDR !== "true"` → throw. Документировано в DEPLOY.md §8.
 
 ### HIGH — до open beta
 

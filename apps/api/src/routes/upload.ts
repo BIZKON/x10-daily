@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../app";
-import { extractUserId } from "../auth";
-import { getImagesConfig } from "../env";
+import { EDITOR_ROLES, requireRole } from "../auth";
+import { getDb } from "../db";
+import { getEnv, getImagesConfig } from "../env";
 
 /**
  * Upload endpoints — brief §6 Author.avatar / Article.coverImage / Event.coverImage.
@@ -49,7 +50,9 @@ function buildKey(userId: string, ext: string): string {
 }
 
 export const uploadRoute = new Hono<AppEnv>().post("/", async (c) => {
-  const userId = extractUserId(c); // 401 если нет header
+  const env = getEnv(c.env);
+  const db = getDb(env.DATABASE_URL);
+  const { userId } = await requireRole(c, db, EDITOR_ROLES);
   const images = getImagesConfig(c.env);
   if (!images) {
     return c.json(

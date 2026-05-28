@@ -4,6 +4,8 @@ import { Hono } from "hono";
 import { Inngest } from "inngest";
 import { z } from "zod";
 import type { AppEnv } from "../app";
+import { EDITOR_ROLES, requireRole } from "../auth";
+import { getDb } from "../db";
 import { getEnv } from "../env";
 
 const TOPIC_INGESTED = "article/topic.ingested" as const;
@@ -34,6 +36,10 @@ export const pipelineRoute = new Hono<AppEnv>().post(
   zValidator("json", runSchema),
   async (c) => {
     const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    // CRITICAL-2 — без role check любой клиент мог триггерить pipeline и
+    // сжигать Anthropic budget. До prod дополнительно нужен rate limit (HIGH-3).
+    await requireRole(c, db, EDITOR_ROLES);
     const inngest = getInngest(env);
     const body = c.req.valid("json");
 

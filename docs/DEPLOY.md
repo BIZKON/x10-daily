@@ -354,15 +354,21 @@ pnpm dlx vercel --prod
 
 ### Чек-лист (НЕ запускайте LLM-агентов в prod без всех ✓):
 
-- [ ] **Anthropic ZDR-контракт** подписан. Без него input/output логируются 30 дней → штраф ₽75K-₽700K за инцидент. Контакт: support@anthropic.com → "Zero Data Retention agreement for EU customers".
-- [ ] **KikuAI Masker** развёрнут на Render.com (self-hosted Docker). См. skill `anthropic-skills:masker-pii-redaction`. URL → `MASKER_BASE_URL` secret в pipeline worker.
+- [ ] **Anthropic ZDR-контракт** подписан. Контакт: support@anthropic.com → "Zero Data Retention agreement for EU customers". Без него input/output логируются 30 дней → штраф ₽75K-₽700K за инцидент.
+- [ ] **`ANTHROPIC_ZDR_CONFIRMED=true`** установлен через `wrangler secret put` для **обоих** workers (apps/api + apps/workers/pipeline). Без этого `loadEnv` в prod выбросит ошибку при наличии `ANTHROPIC_API_KEY` — boot fails. Это **enforced защита** от случайного prod-LLM-вызова до подписания ZDR (CRITICAL-6 из docs/SECURITY-AUDIT.md).
+  ```bash
+  cd apps/api && pnpm exec wrangler secret put ANTHROPIC_ZDR_CONFIRMED  # ввести: true
+  cd apps/workers/pipeline && pnpm exec wrangler secret put ANTHROPIC_ZDR_CONFIRMED  # ввести: true
+  ```
+- [ ] **KikuAI Masker** развёрнут на Render.com (self-hosted Docker). См. skill `anthropic-skills:masker-pii-redaction`. URL + key → `MASKER_BASE_URL`/`MASKER_API_KEY` secrets в pipeline worker. **Enforced:** `loadEnv` требует обе переменные в prod (CRITICAL-5 уже закрыт в `packages/agents/src/masker.ts`).
+- [ ] **Inngest signing key** установлен через `wrangler secret put INNGEST_SIGNING_KEY` в **pipeline worker**. Без него webhook принимает спуфнутые events (CRITICAL-4). `loadEnv` enforces в prod.
 - [ ] **PostHog region:** EU (`https://eu.posthog.com`), не US. Проверить в дашборде PostHog.
 - [ ] **Privacy policy** + согласия (`docs/strategy/` — ещё нужно подготовить, см. handoff session 9).
 - [ ] **Resend domain** verified с EU-friendly SPF/DKIM.
 
 ### Архитектурное правило
 
-Любой LLM-вызов в pipeline workers: **mask → LLM call → unmask на ответе**. См. реализацию в `packages/agents/src/agents/*` — все агенты используют helper `withMasker(...)`.
+Любой LLM-вызов в pipeline workers: **mask → LLM call → unmask на ответе**. См. реализацию в `packages/agents/src/agents/*` — все агенты используют helper `withMasker(...)`. `createMasker` в `packages/agents/src/masker.ts` **fail-closed** в prod — выбросит `MaskerUnconfiguredError` если `MASKER_BASE_URL`/`MASKER_API_KEY` пусты.
 
 ---
 

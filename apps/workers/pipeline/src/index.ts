@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { serve } from "inngest/cloudflare";
+import { getPipelineEnv } from "./env";
 import { createPipelineInngest } from "./inngest/client";
 import { createAssembleNewsletterFunction } from "./inngest/functions/assemble-newsletter";
 import { createDraftArticleFunction } from "./inngest/functions/draft-article";
@@ -22,8 +23,19 @@ app.get("/health", (c) =>
 /**
  * Inngest webhook endpoint. Inngest cloud (или dev-server) шлёт сюда вызовы
  * шагов с подписью X-Inngest-Signature; signingKey берётся из binding NODE_ENV/secrets.
+ *
+ * CRITICAL-4 из docs/SECURITY-AUDIT.md:
+ * - getPipelineEnv() через loadEnv enforces что INNGEST_SIGNING_KEY +
+ *   MASKER_* + ANTHROPIC_* присутствуют в production. Без них boot падает.
+ * - Inngest SDK с заданным signingKey верифицирует X-Inngest-Signature на каждом
+ *   вебхуке (см. inngest/client.ts) → спуфнутые POST'ы отклоняются.
+ * - isDev: false в production отключает dev-fallback signing skip.
  */
 app.all("/inngest", async (c) => {
+  // Fail-fast если env не сконфигурирован — лучше 500 на boot, чем silent
+  // signing bypass в проде. В dev/test loadEnv пропускает (NODE_ENV checks).
+  getPipelineEnv(c.env);
+
   const client = createPipelineInngest(c.env);
   const handler = serve({
     client,

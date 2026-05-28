@@ -6,6 +6,9 @@ DATABASE_URL="postgresql://user:pass@host/db?sslmode=require"
 
 # Anthropic (pipeline) — для admin API не обязательно, но если поднимаешь полный стек
 ANTHROPIC_API_KEY=""
+# В prod должно быть "true" после подписания ZDR-контракта (CRITICAL-6, 152-ФЗ).
+# В dev оставляем "false" — pipeline-вызовы LLM из workers, не из api worker'a.
+ANTHROPIC_ZDR_CONFIRMED="false"
 
 # Masker (152-ФЗ compliance) — required в prod, в dev можно пропустить
 MASKER_BASE_URL=""

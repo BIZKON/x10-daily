@@ -11,7 +11,7 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../app";
-import { extractUserId } from "../auth";
+import { EDITOR_ROLES, requireRole } from "../auth";
 import { getDb } from "../db";
 import { getEnv } from "../env";
 
@@ -215,9 +215,9 @@ function toView(
 export const adminContentRoute = new Hono<AppEnv>()
   /* ===== AUTHORS ===== */
   .post("/authors", zValidator("json", authorCreateSchema), async (c) => {
-    extractUserId(c); // 401 if missing
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
     const data = c.req.valid("json");
     const [row] = await db.insert(authors).values(data).returning();
     return c.json(row, 201);
@@ -227,9 +227,9 @@ export const adminContentRoute = new Hono<AppEnv>()
     zValidator("param", idParam),
     zValidator("json", authorUpdateSchema),
     async (c) => {
-      extractUserId(c);
       const env = getEnv(c.env);
       const db = getDb(env.DATABASE_URL);
+      await requireRole(c, db, EDITOR_ROLES);
       const { id } = c.req.valid("param");
       const patch = c.req.valid("json");
       const [row] = await db
@@ -242,9 +242,9 @@ export const adminContentRoute = new Hono<AppEnv>()
     },
   )
   .delete("/authors/:id", zValidator("param", idParam), async (c) => {
-    extractUserId(c);
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
     const { id } = c.req.valid("param");
     const [row] = await db.delete(authors).where(eq(authors.id, id)).returning({ id: authors.id });
     if (!row) return c.json({ error: "not_found", id }, 404);
@@ -253,9 +253,9 @@ export const adminContentRoute = new Hono<AppEnv>()
 
   /* ===== KLAMPS ===== */
   .post("/klamps", zValidator("json", klampCreateSchema), async (c) => {
-    extractUserId(c);
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
     const data = c.req.valid("json");
     const [row] = await db.insert(klamps).values(data).returning();
     return c.json(row, 201);
@@ -265,9 +265,9 @@ export const adminContentRoute = new Hono<AppEnv>()
     zValidator("param", idParam),
     zValidator("json", klampUpdateSchema),
     async (c) => {
-      extractUserId(c);
       const env = getEnv(c.env);
       const db = getDb(env.DATABASE_URL);
+      await requireRole(c, db, EDITOR_ROLES);
       const { id } = c.req.valid("param");
       const patch = c.req.valid("json");
       const [row] = await db
@@ -280,9 +280,9 @@ export const adminContentRoute = new Hono<AppEnv>()
     },
   )
   .delete("/klamps/:id", zValidator("param", idParam), async (c) => {
-    extractUserId(c);
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
     const { id } = c.req.valid("param");
     const [row] = await db.delete(klamps).where(eq(klamps.id, id)).returning({ id: klamps.id });
     if (!row) return c.json({ error: "not_found", id }, 404);
@@ -291,9 +291,9 @@ export const adminContentRoute = new Hono<AppEnv>()
 
   /* ===== EVENTS ===== */
   .post("/events", zValidator("json", eventCreateSchema), async (c) => {
-    extractUserId(c);
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
     const data = c.req.valid("json");
     const [row] = await db
       .insert(events)
@@ -310,9 +310,9 @@ export const adminContentRoute = new Hono<AppEnv>()
     zValidator("param", idParam),
     zValidator("json", eventUpdateSchema),
     async (c) => {
-      extractUserId(c);
       const env = getEnv(c.env);
       const db = getDb(env.DATABASE_URL);
+      await requireRole(c, db, EDITOR_ROLES);
       const { id } = c.req.valid("param");
       const patch = c.req.valid("json");
       const [row] = await db
@@ -335,9 +335,9 @@ export const adminContentRoute = new Hono<AppEnv>()
     },
   )
   .delete("/events/:id", zValidator("param", idParam), async (c) => {
-    extractUserId(c);
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
     const { id } = c.req.valid("param");
     const [row] = await db.delete(events).where(eq(events.id, id)).returning({ id: events.id });
     if (!row) return c.json({ error: "not_found", id }, 404);
@@ -346,9 +346,9 @@ export const adminContentRoute = new Hono<AppEnv>()
 
   /* ===== DIGESTS ===== */
   .post("/digests", zValidator("json", digestCreateSchema), async (c) => {
-    extractUserId(c);
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
     const data = c.req.valid("json");
     const [row] = await db.insert(digests).values(data).returning();
     return c.json(row, 201);
@@ -358,9 +358,9 @@ export const adminContentRoute = new Hono<AppEnv>()
     zValidator("param", idParam),
     zValidator("json", digestUpdateSchema),
     async (c) => {
-      extractUserId(c);
       const env = getEnv(c.env);
       const db = getDb(env.DATABASE_URL);
+      await requireRole(c, db, EDITOR_ROLES);
       const { id } = c.req.valid("param");
       const patch = c.req.valid("json");
       const [row] = await db
@@ -373,9 +373,9 @@ export const adminContentRoute = new Hono<AppEnv>()
     },
   )
   .delete("/digests/:id", zValidator("param", idParam), async (c) => {
-    extractUserId(c);
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
     const { id } = c.req.valid("param");
     const [row] = await db.delete(digests).where(eq(digests.id, id)).returning({ id: digests.id });
     if (!row) return c.json({ error: "not_found", id }, 404);
@@ -386,9 +386,9 @@ export const adminContentRoute = new Hono<AppEnv>()
    * Ставит sent_at = now() — отдельный action для удобства редактора.
    */
   .post("/digests/:id/mark-sent", zValidator("param", idParam), async (c) => {
-    extractUserId(c);
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
     const { id } = c.req.valid("param");
     const [row] = await db
       .update(digests)
@@ -405,9 +405,9 @@ export const adminContentRoute = new Hono<AppEnv>()
    * Все 12 агентов с эффективными значениями (stored row или defaults).
    */
   .get("/pipeline-config", async (c) => {
-    extractUserId(c);
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
     const rows = await db
       .select({
         agent: pipelineConfig.agent,
@@ -431,9 +431,9 @@ export const adminContentRoute = new Hono<AppEnv>()
     "/pipeline-config/:agent",
     zValidator("param", pipelineAgentParam),
     async (c) => {
-      extractUserId(c);
       const env = getEnv(c.env);
       const db = getDb(env.DATABASE_URL);
+      await requireRole(c, db, EDITOR_ROLES);
       const { agent } = c.req.valid("param");
       const [row] = await db
         .select({
@@ -458,9 +458,9 @@ export const adminContentRoute = new Hono<AppEnv>()
     zValidator("param", pipelineAgentParam),
     zValidator("json", pipelineConfigUpsertSchema),
     async (c) => {
-      extractUserId(c);
       const env = getEnv(c.env);
       const db = getDb(env.DATABASE_URL);
+      await requireRole(c, db, EDITOR_ROLES);
       const { agent } = c.req.valid("param");
       const data = c.req.valid("json");
       const thresholdStr = data.confidenceThreshold.toFixed(3);

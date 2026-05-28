@@ -3,13 +3,17 @@ import { and, articles, desc, eq, sql } from "@x10/db";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../app";
+import { EDITOR_ROLES, requireRole } from "../auth";
 import { getDb } from "../db";
 import { getEnv } from "../env";
 
 /**
  * Admin endpoints для HumanGate.
- * TODO(auth): добавить проверку editor-token / Telegram-auth.
- * Сейчас открытый доступ — для prod НЕ деплоим без auth-middleware.
+ *
+ * Все endpoints закрыты `requireRole(["editor","admin"])` (см. auth.ts).
+ * Закрывает CRITICAL-1 из docs/SECURITY-AUDIT.md — `/publish` ранее был без auth.
+ * До перехода на Telegram session auth (HIGH-2) X-User-Id остаётся spoof-able —
+ * это известный ограничение MVP.
  */
 
 const querySchema = z.object({
@@ -33,6 +37,7 @@ export const adminRoute = new Hono<AppEnv>()
   .get("/queue", zValidator("query", querySchema), async (c) => {
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
     const q = c.req.valid("query");
 
     const rows = await db
@@ -98,6 +103,7 @@ export const adminRoute = new Hono<AppEnv>()
   .get("/article/:id", zValidator("param", paramsSchema), async (c) => {
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
     const { id } = c.req.valid("param");
 
     const [row] = await db
@@ -118,6 +124,7 @@ export const adminRoute = new Hono<AppEnv>()
   .post("/publish/:id", zValidator("param", paramsSchema), async (c) => {
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
     const { id } = c.req.valid("param");
 
     const [existing] = await db

@@ -9,6 +9,14 @@ const baseSchema = z.object({
   DIRECT_DATABASE_URL: z.string().optional(),
 
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  /**
+   * Подтверждение что ZDR-контракт с Anthropic подписан (см. CLAUDE.md §7).
+   * Должен быть "true" в production. Без него loadEnv throw'нет если задан
+   * ANTHROPIC_API_KEY — это предотвращает первый prod-LLM-вызов до подписания
+   * (152-ФЗ — 30-day retention запрещён для ПДн).
+   * CRITICAL-6 из docs/SECURITY-AUDIT.md.
+   */
+  ANTHROPIC_ZDR_CONFIRMED: z.enum(["true", "false"]).optional(),
   ANTHROPIC_MODEL_OPUS: z.string().default("claude-opus-4-7"),
   ANTHROPIC_MODEL_SONNET: z.string().default("claude-sonnet-4-6"),
   ANTHROPIC_MODEL_HAIKU: z.string().default("claude-haiku-4-5-20251001"),
@@ -77,6 +85,18 @@ export function loadEnv(source: EnvSource): Env {
       throw new Error(
         `Production env missing required keys (152-ФЗ + AI core): ${missing.join(", ")}. ` +
           "See CLAUDE.md §7 — KikuAI Masker + Anthropic ZDR contract обязательны до первого вызова LLM.",
+      );
+    }
+    // CRITICAL-6: если есть Anthropic-ключ в prod, ZDR должен быть явно подтверждён.
+    // Без этого первый LLM-вызов попадёт в 30-day retention → нарушение 152-ФЗ
+    // (ст. 272.1 УК + ₽75K-₽700K оборотный штраф).
+    if (env.ANTHROPIC_API_KEY && env.ANTHROPIC_ZDR_CONFIRMED !== "true") {
+      throw new Error(
+        "ANTHROPIC_ZDR_CONFIRMED=true должен быть установлен в production когда " +
+          "ANTHROPIC_API_KEY задан. Без подписанного ZDR-контракта input/output " +
+          "логируются Anthropic 30 дней → нарушение 152-ФЗ. См. CLAUDE.md §7 + " +
+          "docs/SECURITY-AUDIT.md C6. Контакт: support@anthropic.com → 'Zero Data " +
+          "Retention agreement for EU customers'.",
       );
     }
   }

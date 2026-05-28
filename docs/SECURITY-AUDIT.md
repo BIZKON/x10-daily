@@ -79,8 +79,8 @@
 - [x] **H6** · `apps/api/src/routes/articles.ts` — `isPaid` paywall enforcement
   - **Fix:** ✅ closed — `hasPaidSubscription(db, userId)` JOIN на `subscriptions` (status='active' + tier IN paid/premium). `stripPaidContent(row, hasAccess)` strip'ит body/citations/audioUrl + добавляет `paywalled: true` flag. Тизер (tease/lede/whyItMatters) остаётся для рендера превью.
 
-- [ ] **H7** · `apps/api/src/routes/upload.ts:24` — Нет per-user upload quota
-  - **Fix:** требует либо CF KV для счётчиков, либо новой таблицы `uploads_log` (миграция 0004). Отложено — отдельный коммит с инфра-изменением.
+- [x] **H7** · `apps/api/src/routes/upload.ts:24` — Нет per-user upload quota
+  - **Fix:** ✅ closed (session 13) — migration 0005 + `uploads_log` table (audit trail + counter), `apps/api/src/upload-quota.ts` helpers (checkUploadQuota + recordUpload). Cap: **100 файлов / 500 MB rolling 24h**. Pre-check на count после requireRole (short-circuit без formData), final check с file.size. 429 + `Retry-After: 86400` при превышении. Audit row пишется после R2 put — INSERT failure не блокирует загрузку (acceptable trade-off).
 
 - [x] **H8** · `apps/api/src/app.ts` — `onError` возвращает `err.message` verbatim
   - **Fix:** ✅ closed — `HTTPException` пропускается (controlled message). Остальные → generic `{error:"internal"}` в prod, full err в `console.error` (CF dashboard logs / Sentry потом). В dev оставлен `message` для удобства отладки.
@@ -146,7 +146,7 @@
 - ✅ **H2** Telegram initData auth + JWT sessions — закрыт session 11 (см. выше).
 - ✅ **H4** Prompt-injection wrapper для IngestAgent — закрыт.
 - ✅ **H6** Paywall enforcement для `isPaid` — закрыт.
-- [ ] **H7** Upload quota — открыт.
+- ✅ **H7** Upload quota — закрыт session 13 (см. выше).
 
 ### Backlog (по мере роста)
 

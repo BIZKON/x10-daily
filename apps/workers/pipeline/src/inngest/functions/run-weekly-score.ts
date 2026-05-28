@@ -2,6 +2,7 @@ import { ScoreWeeklyAgent, createMasker, type AgentContext } from "@x10/agents";
 import { loadEnv } from "@x10/config";
 import { scoreWeeklyRequestedEvent } from "../../events";
 import type { PipelineInngest } from "../client";
+import type { PipelineBindings } from "../../bindings";
 
 /**
  * Еженедельный анализ engagement. Триггер:
@@ -13,7 +14,7 @@ import type { PipelineInngest } from "../client";
  */
 export function createRunWeeklyScoreFunction(
   inngest: PipelineInngest,
-  bindings: CloudflareBindings,
+  bindings: PipelineBindings,
 ) {
   return inngest.createFunction(
     {

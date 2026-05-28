@@ -1,0 +1,42 @@
+# syntax=docker/dockerfile:1.7
+
+# Multi-stage build для apps/workers/pipeline (Hono on Node + Inngest functions).
+# Деплоится через Timeweb App Platform с указанием context = root монорепо,
+# Dockerfile path = apps/workers/pipeline/Dockerfile.
+
+FROM node:22-alpine AS base
+RUN corepack enable
+WORKDIR /app
+
+FROM base AS deps
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/admin/package.json ./apps/admin/
+COPY apps/miniapp/package.json ./apps/miniapp/
+COPY apps/workers/pipeline/package.json ./apps/workers/pipeline/
+COPY packages/agents/package.json ./packages/agents/
+COPY packages/config/package.json ./packages/config/
+COPY packages/db/package.json ./packages/db/
+COPY packages/ui/package.json ./packages/ui/
+COPY packages/voice/package.json ./packages/voice/
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --filter @x10/worker-pipeline...
+
+FROM base AS runner
+ENV NODE_ENV=production
+ENV PORT=8787
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/workers/pipeline/node_modules ./apps/workers/pipeline/node_modules
+COPY --from=deps /app/packages ./packages
+COPY apps/workers/pipeline ./apps/workers/pipeline
+
+COPY packages/config/src ./packages/config/src
+COPY packages/db/src ./packages/db/src
+COPY packages/agents/src ./packages/agents/src
+COPY packages/voice ./packages/voice
+
+EXPOSE 8787
+
+WORKDIR /app/apps/workers/pipeline
+CMD ["pnpm", "start"]

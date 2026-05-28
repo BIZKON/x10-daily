@@ -8,6 +8,7 @@ import {
   topicIngestedEvent,
 } from "../../events";
 import type { PipelineInngest } from "../client";
+import type { PipelineBindings } from "../../bindings";
 
 /**
  * IngestAgent gate: получает сырой RSS/API item, решает брать или нет.
@@ -16,7 +17,7 @@ import type { PipelineInngest } from "../client";
  */
 export function createProcessSourceItemFunction(
   inngest: PipelineInngest,
-  bindings: CloudflareBindings,
+  bindings: PipelineBindings,
 ) {
   return inngest.createFunction(
     {

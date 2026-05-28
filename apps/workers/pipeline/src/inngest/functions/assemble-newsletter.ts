@@ -6,6 +6,7 @@ import {
 import { loadEnv } from "@x10/config";
 import { newsletterAssembleRequestedEvent } from "../../events";
 import type { PipelineInngest } from "../client";
+import type { PipelineBindings } from "../../bindings";
 
 /**
  * Собирает daily newsletter из готовых статей. Триггерится:
@@ -17,7 +18,7 @@ import type { PipelineInngest } from "../client";
  */
 export function createAssembleNewsletterFunction(
   inngest: PipelineInngest,
-  bindings: CloudflareBindings,
+  bindings: PipelineBindings,
 ) {
   return inngest.createFunction(
     {

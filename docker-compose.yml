@@ -1,0 +1,118 @@
+# docker-compose для local dev стека x10-daily.
+#
+# Запуск:
+#   cp .env.example .env  # заполнить минимум AI_GATEWAY_API_KEY + TELEGRAM_BOT_TOKEN
+#   docker compose up --build
+#
+# Сервисы:
+#   postgres   :5432  — Timeweb-эквивалент DBaaS Postgres
+#   redis      :6379  — rate limit + (в будущем) кэш
+#   inngest    :8288  — self-host Inngest server (UI на :8288, прокси на :8288/e/<env>)
+#   api        :8080  — apps/api (Hono on Node)
+#   pipeline   :8787  — apps/workers/pipeline (Inngest webhook на /inngest)
+#
+# Не запускается в этом compose:
+#   - miniapp / admin (Next.js) — обычно запускаются через `pnpm dev` локально
+#   - KikuAI Masker — не нужен при работе через Timeweb AI Gateway
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: x10
+      POSTGRES_PASSWORD: x10dev
+      POSTGRES_DB: x10
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U x10"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  inngest:
+    # Self-host Inngest server для local dev. В prod (Timeweb) подобный setup
+    # на отдельном Облачном сервере или через managed dev-cli.
+    image: inngest/inngest:latest
+    restart: unless-stopped
+    command: inngest start
+    environment:
+      INNGEST_DEV: "1"
+      INNGEST_SDK_URL: "http://pipeline:8787/inngest"
+    ports:
+      - "8288:8288"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: "8080"
+      DATABASE_URL: "postgresql://x10:x10dev@postgres:5432/x10"
+      REDIS_URL: "redis://redis:6379"
+      INNGEST_EVENT_KEY: "${INNGEST_EVENT_KEY:-}"
+      AI_GATEWAY_URL: "${AI_GATEWAY_URL:-https://api.timeweb.ai/v1}"
+      AI_GATEWAY_API_KEY: "${AI_GATEWAY_API_KEY:-}"
+      TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:-}"
+      X10_JWT_SECRET: "${X10_JWT_SECRET:-dev-secret-min-32-bytes-yes-it-is-long}"
+      X10_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:3001"
+      # S3 для upload — опционально в local. Без credentials upload → 503.
+      S3_ENDPOINT: "${S3_ENDPOINT:-}"
+      S3_REGION: "${S3_REGION:-ru-1}"
+      S3_ACCESS_KEY_ID: "${S3_ACCESS_KEY_ID:-}"
+      S3_SECRET_ACCESS_KEY: "${S3_SECRET_ACCESS_KEY:-}"
+      S3_BUCKET: "${S3_BUCKET:-}"
+      X10_IMAGES_PUBLIC_BASE: "${X10_IMAGES_PUBLIC_BASE:-}"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  pipeline:
+    build:
+      context: .
+      dockerfile: apps/workers/pipeline/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: "8787"
+      DATABASE_URL: "postgresql://x10:x10dev@postgres:5432/x10"
+      INNGEST_EVENT_KEY: "${INNGEST_EVENT_KEY:-}"
+      INNGEST_SIGNING_KEY: "${INNGEST_SIGNING_KEY:-}"
+      AI_GATEWAY_URL: "${AI_GATEWAY_URL:-https://api.timeweb.ai/v1}"
+      AI_GATEWAY_API_KEY: "${AI_GATEWAY_API_KEY:-}"
+    ports:
+      - "8787:8787"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      inngest:
+        condition: service_started
+
+volumes:
+  postgres-data:
+  redis-data:

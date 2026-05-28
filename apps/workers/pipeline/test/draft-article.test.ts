@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { PipelineBindings } from "../src/bindings";
 
 /**
  * Оркестрация: DRAFT → (NUMBERS ∥ TOV) → BREVITY → (HOOKGEN ∥ SOCIAL ∥ SCORE ∥ PERSIST).
@@ -238,7 +239,7 @@ describe("draft-article pipeline", () => {
 
   it("вызывает 7 агентов и возвращает articleId, hooks, social, score", async () => {
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
-    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as CloudflareBindings);
+    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
     const step = makeStep();
 
     const handler = (fn as unknown as {
@@ -298,7 +299,7 @@ describe("draft-article pipeline", () => {
 
   it("Social и Score получают compressed от Brevity, persist тоже", async () => {
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
-    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as CloudflareBindings);
+    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
     const step = makeStep();
     const handler = (fn as unknown as {
       fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
@@ -330,7 +331,7 @@ describe("draft-article pipeline", () => {
 
   it("political=true: добавляется FactCheck шаг между brevity и hookgen", async () => {
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
-    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as CloudflareBindings);
+    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
     const step = makeStep();
     const handler = (fn as unknown as {
       fn: (args: { event: { data: typeof EVENT.data & { political: boolean } }; step: typeof step }) => Promise<unknown>;
@@ -389,7 +390,7 @@ describe("draft-article pipeline", () => {
     });
 
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
-    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as CloudflareBindings);
+    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
     const step = makeStep();
     const handler = (fn as unknown as {
       fn: (args: { event: { data: typeof EVENT.data & { political: boolean } }; step: typeof step }) => Promise<unknown>;
@@ -406,7 +407,7 @@ describe("draft-article pipeline", () => {
 
   it("political=false (default): FactCheck НЕ запускается, шагов 8", async () => {
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
-    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as CloudflareBindings);
+    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
     const step = makeStep();
     const handler = (fn as unknown as {
       fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
@@ -425,7 +426,7 @@ describe("draft-article pipeline", () => {
     const inngest = createPipelineInngest({ NODE_ENV: bindingsNoKey.NODE_ENV });
     const fn = createDraftArticleFunction(
       inngest,
-      bindingsNoKey as unknown as CloudflareBindings,
+      bindingsNoKey as unknown as PipelineBindings,
     );
     const step = makeStep();
     const handler = (fn as unknown as {

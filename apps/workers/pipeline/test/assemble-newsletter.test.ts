@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { PipelineBindings } from "../src/bindings";
 
 vi.mock("@x10/agents", async () => {
   const actual = await vi.importActual<typeof import("@x10/agents")>("@x10/agents");
@@ -78,7 +79,7 @@ describe("assemble-newsletter", () => {
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
     const fn = createAssembleNewsletterFunction(
       inngest,
-      BINDINGS as unknown as CloudflareBindings,
+      BINDINGS as unknown as PipelineBindings,
     );
     const step = makeStep();
     const handler = (fn as unknown as {

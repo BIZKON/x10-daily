@@ -18,6 +18,7 @@ import {
   topicIngestedEvent,
 } from "../../events";
 import type { PipelineInngest } from "../client";
+import type { PipelineBindings } from "../../bindings";
 
 /**
  * Pipeline DRAFT → (NUMBERS ∥ TOV) → BREVITY → [FACTCHECK if political] → (HOOKGEN ∥ SOCIAL ∥ SCORE ∥ PERSIST).
@@ -26,7 +27,7 @@ import type { PipelineInngest } from "../client";
  */
 export function createDraftArticleFunction(
   inngest: PipelineInngest,
-  bindings: CloudflareBindings,
+  bindings: PipelineBindings,
 ) {
   return inngest.createFunction(
     {

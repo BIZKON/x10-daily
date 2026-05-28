@@ -1,21 +1,24 @@
 "use server";
 
 /**
- * Server action: проксирует upload в /v1/admin/upload с X-User-Id header.
+ * Server action: проксирует upload в /v1/admin/upload с session Bearer (HIGH-2).
  *
- * Зачем proxy? Client component не имеет доступа к `process.env.X10_ADMIN_USER_ID`
- * (он серверный). Делать NEXT_PUBLIC_ нельзя — header утечёт в браузер.
+ * Client component не имеет доступа к cookie напрямую (HttpOnly) и не должен
+ * иметь — иначе уязвимости. Server Action читает session cookie + шлёт Bearer.
  *
  * Action принимает FormData с полем "file", возвращает {url} | {error}.
  */
+
+import { getSessionToken } from "@/lib/session";
 
 export type UploadResult = { ok: true; url: string } | { ok: false; error: string };
 
 export async function uploadImage(form: FormData): Promise<UploadResult> {
   const base = process.env.X10_API_BASE_URL?.trim();
-  const userId = process.env.X10_ADMIN_USER_ID?.trim();
   if (!base) return { ok: false, error: "X10_API_BASE_URL не задан" };
-  if (!userId) return { ok: false, error: "X10_ADMIN_USER_ID не задан" };
+
+  const token = await getSessionToken();
+  if (!token) return { ok: false, error: "Сессия не установлена. Войдите через /login." };
 
   const file = form.get("file");
   if (!(file instanceof File)) return { ok: false, error: "Файл не выбран" };
@@ -27,7 +30,7 @@ export async function uploadImage(form: FormData): Promise<UploadResult> {
   try {
     const res = await fetch(`${base.replace(/\/+$/, "")}/v1/admin/upload`, {
       method: "POST",
-      headers: { "X-User-Id": userId },
+      headers: { Authorization: `Bearer ${token}` },
       body: outgoing,
     });
     const data = (await res.json()) as { url?: string; error?: string; message?: string };

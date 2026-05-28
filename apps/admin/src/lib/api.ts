@@ -349,13 +349,11 @@ export async function fetchAdminLatestDigest(): Promise<AdminDigest | null> {
 
 /* ----------------------------------------------------------------
  * Mutations (Этап 3f) — generic helper для POST/PATCH/DELETE.
- * Все require X10_ADMIN_USER_ID env (передаётся как X-User-Id header).
+ * Auth: session cookie x10_session → Authorization Bearer (HIGH-2).
+ * Cookie выставляется через /login (TG Widget или dev-login).
  * ---------------------------------------------------------------- */
 
-function getAdminUserId(): string | null {
-  const v = process.env.X10_ADMIN_USER_ID;
-  return v && v.trim() !== "" ? v : null;
-}
+import { getSessionToken } from "./session";
 
 export type MutationResult<T = unknown> =
   | { ok: true; data: T }
@@ -368,14 +366,14 @@ export async function adminMutate<T = unknown>(
 ): Promise<MutationResult<T>> {
   const base = getBaseUrl();
   if (!base) return { ok: false, error: "X10_API_BASE_URL не задан" };
-  const userId = getAdminUserId();
-  if (!userId) return { ok: false, error: "X10_ADMIN_USER_ID не задан" };
+  const token = await getSessionToken();
+  if (!token) return { ok: false, error: "Сессия не установлена. Войдите через /login." };
   try {
     const res = await fetchWithTimeout(`${base}${path}`, {
       method,
       headers: {
         "Content-Type": "application/json",
-        "X-User-Id": userId,
+        Authorization: `Bearer ${token}`,
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });

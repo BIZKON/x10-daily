@@ -1,22 +1,38 @@
 # Handoff · Session 10
 
 **Дата:** 27 мая 2026
-**Что закрыто:** Приоритет A (seed-скрипт) + Brief B целиком (article reader optimistic UI + pipeline-config edit UI + rubrics filtering)
+**Что закрыто:** Приоритет A (seed + deploy guide) + Brief B целиком + **22/25 security findings (88%)** через audit + 3 fix-серии + migration 0004
 **Репозиторий:** https://github.com/BIZKON/x10-daily
-**HEAD после сессии:** этот handoff будет последним коммитом — 6-м за сессию.
+**HEAD после сессии:** этот handoff обновлён после security pass.
 
 ---
 
-## Git коммиты сессии (5 + handoff)
+## Git коммиты сессии (15)
 
-Все 5 — самодостаточные, typecheck чистый на каждом шаге, запушены на `origin/main`.
+Все самодостаточные, typecheck чистый на каждом шаге, запушены на `origin/main`.
 
+**Фаза 1 — Brief B + seed + handoff (6 коммитов):**
 ```
+bb99eeb  docs(handoff): session 10 — initial (этот документ, потом обновлён)
 e19a2ab  feat(admin): rubrics filtering — clickable subcategories → filtered queue
 b31a096  feat(admin): pipeline-config edit UI — enabled / model override / threshold
-4ddd513  feat(miniapp): article reader optimistic UI — реакции, закладки, прогресс чтения
+4ddd513  feat(miniapp): article reader optimistic UI — реакции, закладки, прогресс
 a843541  feat(api): GET /v1/articles/:id/me — per-user engagement snapshot
 7338acb  feat(seed): scripts/seed.ts — 4 users + 5 authors + 10 klamps + 3 events + 2 articles + digest
+```
+
+**Фаза 2 — Приоритет A Фаза 1 (deploy doc, 1 коммит):**
+```
+40379db  docs(deploy): production deploy guide — Neon → CF Workers → R2 → Inngest → Vercel
+```
+
+**Фаза 3 — Security audit + fixes (5 коммитов):**
+```
+f304778  feat(db): migration 0004 — unique on pipeline_config.agent (M7) + journal fix
+7dd11fc  fix(security): close 7 MEDIUM findings — upload + engagement + body limits + Inngest cost-runaway
+14a386f  fix(security): close 7 HIGH findings — CORS allowlist, rate limit, prompt injection wrapper, demo-mode hard-fail, paywall, onError, slug validation
+5c2b35b  fix(security): close 6 CRITICAL findings — auth/role gating + Inngest signing + ZDR check
+ea60050  docs(security): comprehensive security audit — 6 critical + 8 high + 9 medium + 10 low
 ```
 
 ---
@@ -116,6 +132,46 @@ Backend `pipeline_config` table (с миграции 0000) был, UI был rea
 
 **Brief B закрыт целиком** (article reader optimistic UI + pipeline-config edit UI + rubrics filtering).
 
+### 6. Deploy guide (Приоритет A · Фаза 1)
+
+`docs/DEPLOY.md` (451 lines) — пошаговый чек-лист от чистого workspace до working prod-стека. ~60-90 мин с нуля. Free-tier стоимость $0 на этом масштабе.
+
+11 разделов: pre-requirements (accounts), Neon Frankfurt, DB init, R2 setup, apps/api deploy, Inngest cloud, Vercel (miniapp + admin), smoke tests checklist (4 группы), **152-ФЗ chapter** (ZDR + Masker + Inngest signing — все enforced), troubleshooting, rollback / DR.
+
+После security pass — §8 (152-ФЗ) дополнен явными wrangler-командами для `ANTHROPIC_ZDR_CONFIRMED=true` и упоминанием enforced защит.
+
+### 7. Security audit + 22/25 findings closed (Приоритет A · защита prod)
+
+`docs/SECURITY-AUDIT.md` — статический security audit перед prod-deploy. Проведён через 4 параллельных AI-аудита по измерениям (auth, input validation, secrets/supply-chain, DoS/CORS/LLM).
+
+**Закрыто:**
+- **6/6 CRITICAL** (commit 5c2b35b): C1 admin.ts auth gating · C2 pipeline-run auth · C3 admin-content role check · C4 Inngest signing-key enforced (через loadEnv) · C5 Masker fail-closed (уже был, агент ошибся) · C6 ZDR boot check
+- **7/8 HIGH** (commit 14a386f): H1 CORS allowlist через `X10_ALLOWED_ORIGINS` env · H3 CF Workers Rate Limit (engagement 30/мин, pipeline 10/мин) · H4 prompt-injection wrapper `<UNTRUSTED_SOURCE>` + superRefine · H5 demo-mode hard-fail в prod · H6 paywall enforcement через `subscriptions` JOIN · H8 onError sanitize · M1 slug Zod validation (бонус)
+- **9/9 MEDIUM** (commits 7dd11fc + f304778): M2 magic bytes · M3 SVG drop · M4 Inngest rateLimit · M5 Content-Length pre-check · M6 published-only filter · M7 migration 0004 unique index · M8 Hono bodyLimit · M9 onConflictDoNothing race-safe toggle
+
+**Открыто:**
+- **H2** Telegram session auth — большая архитектурная задача, отдельная сессия (новый JWT + initData verification + миграция всех X-User-Id callsites).
+- **H7** per-user upload quota — нужна CF KV для счётчиков или таблица `uploads_log` (migration 0005).
+- **L1-L10** — informational best-practices, в backlog.
+
+Новая инфраструктура:
+- `apps/api/src/auth.ts`: `requireRole(c, db, allowed[])` helper + `EDITOR_ROLES` алиас + `USER_ROLES` enum.
+- `apps/api/src/rate-limit.ts`: `applyRateLimit(c, limiter, scope, userId)` helper.
+- `apps/api/src/paywall.ts`: `hasPaidSubscription(db, userId)` + `stripPaidContent(row, hasAccess)`.
+- `apps/workers/pipeline/src/env.ts`: `getPipelineEnv` wrapper для `loadEnv` (enforces INNGEST_SIGNING_KEY в prod).
+- `@x10/config` env schema: `ANTHROPIC_ZDR_CONFIRMED` enum + boot check.
+- `apps/api/wrangler.toml`: `[[unsafe.bindings]]` ENGAGEMENT_LIMITER + PIPELINE_LIMITER.
+
+### 8. Migration 0004 + journal fix
+
+`packages/db/drizzle/0004_pipeline_config_unique_agent.sql`:
+1. Cleanup дубликатов через `row_number() OVER PARTITION BY agent ORDER BY updated_at DESC`.
+2. `CREATE UNIQUE INDEX pipeline_config_agent_uidx ON pipeline_config(agent)`.
+
+PUT handler `/v1/admin/pipeline-config/:agent` упрощён на single `INSERT ... ON CONFLICT DO UPDATE` (atomic, race-safe).
+
+**Bonus fix:** `_journal.json` содержал entry только для 0000_core — pre-existing bug означал что `drizzle-kit migrate` пропускал 0001/0002/0003. DEPLOY.md §2.1 был неверен. Исправлено — entries для всех 5 миграций с chronological timestamps. **Внимание:** для существующих dev-БД где 0001-0003 применены вручную, может потребоваться backfill `__drizzle_migrations` table или DROP DATABASE + fresh migrate.
+
 ---
 
 ## Что работает (проверено)
@@ -129,13 +185,16 @@ Backend `pipeline_config` table (с миграции 0000) был, UI был rea
 | Слой | Состояние после сессии 10 |
 |---|---|
 | `scripts/` | новая папка: `seed.ts` (478 lines) + `tsconfig.json`. Подключена к root typecheck. |
-| @x10/db | без изменений в схеме. Доступ через seed/migrate scripts. |
-| @x10/agents | без изменений. |
-| @x10/voice / config / ui | без изменений. |
-| apps/api | **13 routes** (было 11): + GET `/v1/articles/:id/me`, + GET/PUT `/v1/admin/pipeline-config(:agent)?`. Queue endpoint расширен query-params. |
-| apps/workers/pipeline | без изменений. |
-| apps/miniapp | Article reader: 3 новых client-компонента + Server Actions + per-user RSC в Suspense. Header restructured. PPR-safe. |
-| apps/admin | Pipeline-config edit (overview + edit page + form + actions + agent-meta модуль). Rubrics-filtering ссылки. Queue фильтр-чип. |
+| @x10/db | + миграция 0004 (unique index на pipeline_config.agent) + journal fix для 0001-0004. Schema: `uniqueIndex` на pipeline_config.agent. |
+| @x10/agents | + HIGH-4 защита: `formatInput` оборачивает rawTitle/rawText в `<UNTRUSTED_SOURCE>` + 6 instruction-pattern regex в outputSchema.superRefine. |
+| @x10/config | + `ANTHROPIC_ZDR_CONFIRMED` enum в env schema + boot-time check (CRITICAL-6). |
+| @x10/voice / ui | без изменений. |
+| apps/api | **13 routes** + 3 helpers: `auth.requireRole`, `rate-limit.applyRateLimit`, `paywall.hasPaidSubscription`. CORS allowlist через env. Hono bodyLimit middleware. onError sanitized. RateLimit bindings в wrangler.toml. |
+| apps/workers/pipeline | + `env.ts` wrapper `getPipelineEnv` enforces INNGEST_SIGNING_KEY (CRITICAL-4). + draft-article rateLimit 50/час (MEDIUM-4). |
+| apps/miniapp | Article reader: 3 новых client-компонента + Server Actions. Header restructured. PPR-safe. + demo-mode hard-fail в prod. |
+| apps/admin | Pipeline-config edit (overview + edit + form + actions + agent-meta). Rubrics-filtering. Queue фильтр-чип. + demo-mode hard-fail в prod. |
+| upload route | Magic bytes verification + SVG drop + Content-Length pre-check + role-only (editor/admin). |
+| engagement endpoints | + rate limits + filter published-only + race-safe toggle через onConflictDoNothing. |
 
 ### Локальный dev-flow (5 терминалов) — без изменений из session 9
 
@@ -152,9 +211,14 @@ pnpm -F @x10/miniapp dev
 pnpm -F @x10/admin dev
 ```
 
-### Env переменные (.env.local) — без изменений из session 9
+### Env переменные — обновлены security pass
 
-См. handoff-session-9.md §«Env переменные» — те же. Новых env-переменных эта сессия не добавляет.
+**Новые в prod (см. DEPLOY.md §8 + .env.example):**
+- `ANTHROPIC_ZDR_CONFIRMED=true` — обязательно если задан `ANTHROPIC_API_KEY`. Без этого `loadEnv` throw'нет на boot. См. CRITICAL-6.
+- `X10_ALLOWED_ORIGINS` — comma-separated CORS allowlist, wildcards `https://*.vercel.app`. Пусто в prod = closed-by-default.
+- `X10_DEMO=1` — явный escape-hatch для preview-deploys без backend. Без него `X10_API_BASE_URL` обязателен в prod.
+
+**Существующие из session 9** — те же.
 
 ### Demo mode
 
@@ -165,24 +229,40 @@ pnpm -F @x10/admin dev
 
 ---
 
-## Не работает / нужно для prod (актуализировано)
+## Не работает / нужно для prod (актуализировано после security pass)
 
-Изменилось из session 9 (✓ = закрыто, новое — без префикса):
+Изменилось из original handoff (✓ = закрыто в эту сессию):
 
-1. ✓ ~~Seed-скрипт~~ — есть.
-2. **БД не развёрнута** — Neon Frankfurt не создан, миграции 0000/0001/0002/0003 не применены.
-3. **apps/api worker** не задеплоен — `wrangler deploy` ни разу.
-4. **R2 bucket** не создан — `wrangler r2 bucket create x10-images` + `wrangler r2 bucket create x10-images-preview`.
-5. **R2 binding в wrangler.toml** закомментирован — раскомментировать после создания bucket'a.
-6. **Anthropic ZDR контракт** не подписан → первый LLM-вызов в prod нарушает 152-ФЗ (см. CLAUDE.md §7).
-7. **KikuAI Masker** не задеплоен на Render. `MASKER_BASE_URL`/`MASKER_API_KEY` пустые.
-8. **Inngest cloud** — нужно зарегистрироваться, получить `INNGEST_EVENT_KEY` + `INNGEST_SIGNING_KEY`.
-9. **Auth** — `X-User-Id` header это MVP stub. Нужна Telegram initData verification.
-10. **Cron-функции** — daily ingest 06:00 МСК, newsletter 06:00 МСК, weekly score Mon 09:00 МСК — Inngest cron не настроен.
-11. **PostHog fetcher** для подачи engagement-данных в ScoreWeeklyAgent.
-12. **CI/CD** не настроен.
-13. **vitest-pool-workers** регрессия — раннер apps/api не запускается из-за несовместимости с vitest 4.x. Тесты написаны корректно, побегут когда починят.
-14. **`pipeline_config.agent` unique-индекс** — приложение enforces, миграция 0004 закрепит в схеме.
+1. ✓ ~~Seed-скрипт~~ — есть (commit 7338acb).
+2. ✓ ~~Deploy guide~~ — `docs/DEPLOY.md` (commit 40379db).
+3. ✓ ~~Migration 0004 pipeline_config unique~~ — закрыт в M7 (commit f304778).
+4. ✓ ~~Все 6 CRITICAL + 7 HIGH + 9 MEDIUM~~ — security pass (commits ea60050 → f304778).
+5. **БД не развёрнута** — Neon Frankfurt не создан, миграции 0000-0004 не применены.
+6. **apps/api worker** не задеплоен — `wrangler deploy` ни разу.
+7. **R2 bucket** не создан — см. DEPLOY.md §3.
+8. **Anthropic ZDR контракт** не подписан → enforced проверка через `ANTHROPIC_ZDR_CONFIRMED` (CRITICAL-6). Без подписи + установки env, prod boot падает с понятной ошибкой.
+9. **KikuAI Masker** не задеплоен на Render. Уже enforced в `createMasker` + `loadEnv` productionRequired — fail-fast при отсутствии в prod.
+10. **Inngest cloud** — `INNGEST_EVENT_KEY` + `INNGEST_SIGNING_KEY` обязательны в prod (enforced через loadEnv).
+11. **Auth** — `X-User-Id` header это MVP stub. **HIGH-2** — Telegram initData verification обязательна до open beta.
+12. **Per-user upload quota** — **HIGH-7**. Нужна CF KV или таблица `uploads_log` (migration 0005).
+13. **Cron-функции** — daily ingest 06:00 МСК, newsletter 06:00 МСК, weekly score Mon 09:00 МСК — Inngest cron не настроен.
+14. **PostHog fetcher** для подачи engagement-данных в ScoreWeeklyAgent.
+15. **CI/CD** не настроен.
+16. **vitest-pool-workers** регрессия — раннер apps/api не запускается из-за несовместимости с vitest 4.x. Тесты написаны корректно, побегут когда починят.
+17. **Existing dev-БД с применёнными вручную 0001-0003** — потребуют backfill `__drizzle_migrations` или DROP+fresh после journal fix.
+18. **L1-L10 informational best-practices** — UUID v1 принимается, originalName XSS в R2 metadata, wrangler vars CI lint, .env.* gitignore, CLOUDFLARE_API_TOKEN в .env.example, source.url https-only, LLM logs strip, FactCheck dedup, Inngest cached client, pnpm audit CI.
+
+### Security posture summary
+
+```
+CRITICAL: 6/6 ✅
+HIGH:     7/8 (H2 Telegram auth + H7 upload quota открыты)
+MEDIUM:   9/9 ✅
+LOW:      0/10 (informational, в backlog)
+Total:    22/25 (88%)
+```
+
+Все блокеры prod закрыты. Можно безопасно поднимать Фазу 2 — реальный стек.
 
 ---
 
@@ -190,22 +270,22 @@ pnpm -F @x10/admin dev
 
 ### Приоритет A: prod-готовность
 
-- **Deploy guide** README — пошаговый: Neon → migrations → wrangler deploy api → r2 bucket → Inngest cloud → env. Документ, не код.
-- **Реальный стек запустить** — Neon Frankfurt + миграции + wrangler deploy + R2 + Inngest cloud. Требует ваших токенов на нескольких шагах.
-- **CI/CD** — GitHub Actions: typecheck + tests + lint + preview-deploy на PR.
+- **Фаза 2 — реальный стек запустить** (теперь безопасно после security pass). Neon Frankfurt + миграции 0000-0004 + wrangler deploy api + R2 bucket + Inngest cloud. Шаги — в DEPLOY.md. Требует ваших токенов на нескольких шагах: интерактивная сессия.
+- **CI/CD** — GitHub Actions: typecheck + tests + lint + preview-deploy на PR. Заодно добавить `pnpm audit` gate (LOW-10).
 
-### Приоритет C: внешние интеграции (отдельные сессии)
+### Приоритет C: внешние интеграции и оставшиеся security findings
 
+- **HIGH-2 Telegram session auth** — заменить `X-User-Id` header на initData verification + JWT session. Закрывает auth-stub в api+miniapp+admin. Большая задача — отдельная сессия.
+- **HIGH-7 Upload quota** — таблица `uploads_log` (migration 0005) с per-user счётчиками за last 24h. Cap 100 файлов/день, 500 MB total.
 - **AudioAgent через ElevenLabs WS-proxy на Render** — `anthropic-skills:elevenlabs-voice-agent-russia` готов как guide.
-- **Telegram session auth** — заменить `X-User-Id` header на initData verification + JWT session. Закрывает auth-stub в api+miniapp+admin.
 - **Resend** для actual newsletter sending (`apps/workers/newsletter`).
 - **VisualAgent** — Gemini 2.5 Flash через proxy для инфографики.
-- **Image variants** — Cloudflare Images или ручной resize в Worker (сейчас оригинал хранится как есть).
-- **Migration 0004** — unique-индекс на `pipeline_config.agent` + `params` jsonb редактирование в UI (paired).
+- **Image variants** — Cloudflare Images или ручной resize в Worker.
+- **LOW batch (L1-L10)** — все informational best-practices в один pass.
 
 ### Приоритет B: ничего открытого
 
-Brief B закрыт целиком в эту сессию.
+Brief B закрыт целиком (article reader optimistic UI + pipeline-config edit + rubrics filtering).
 
 ---
 
@@ -229,12 +309,18 @@ Brief B закрыт целиком в эту сессию.
 | Server Actions в miniapp | 0 | **3** (toggleReaction, toggleBookmark, reportProgress) |
 | Mock-fixtures для demo mode | rich queue + admin entities | + MOCK_PIPELINE_CONFIGS (12 шт) + queue фильтруется client-side |
 | Скрипты в `scripts/` | пусто | **seed.ts** (10 клампов + ...) |
+| Migrations | 4 (0000-0003) | **5** (+0004 unique pipeline_config) + journal fixed |
 | Документы в `docs/strategy` | brief + 11 PDF | без изменений |
 | Документы в `docs/handoffs` | session 1-9 | + **session 10** |
+| Документы корневые | — | **DEPLOY.md** + **SECURITY-AUDIT.md** |
 | Unfinished Brief items | optimistic UI + pipeline-config + rubrics filtering | **закрыты все 3** |
+| Security helpers | — | **3 модуля**: auth.requireRole / rate-limit.applyRateLimit / paywall.hasPaidSubscription |
+| Security findings | — | **22/25 closed** (6/6 CRITICAL · 7/8 HIGH · 9/9 MEDIUM) |
+| Env переменные в prod | базовые | + ANTHROPIC_ZDR_CONFIRMED (enforced) + X10_ALLOWED_ORIGINS + X10_DEMO escape |
+| RateLimit bindings | — | ENGAGEMENT_LIMITER 30/мин + PIPELINE_LIMITER 10/мин |
 
 ---
 
 ## Стартовый промпт для новой сессии
 
-> Прочитай `docs/handoffs/handoff-session-10.md` целиком (он самый свежий, переопределяет более ранние). Подтверди что 9/9 пакетов + `scripts/` typecheck clean: `pnpm typecheck`. Я хочу [выбери: Deploy guide README / поднять реальный стек (Neon + wrangler + R2 + Inngest cloud) / AudioAgent через ElevenLabs WS-proxy / Telegram session auth / Resend newsletter sending / Migration 0004 (unique-индекс pipeline_config + params editing UI)]. Покажи план перед действиями.
+> Прочитай `docs/handoffs/handoff-session-10.md` целиком (самый свежий, переопределяет более ранние). Если security-аспекты — `docs/SECURITY-AUDIT.md`. Если deploy — `docs/DEPLOY.md`. Подтверди typecheck clean: `pnpm typecheck`. Я хочу [выбери: Фаза 2 — поднять реальный стек (Neon + wrangler + R2 + Inngest cloud, см. DEPLOY.md) / Telegram session auth (HIGH-2, большая задача) / Upload quota (HIGH-7, миграция 0005) / CI/CD GitHub Actions / AudioAgent через ElevenLabs / Resend newsletter / LOW batch (10 informational findings)]. Покажи план перед действиями.

@@ -18,6 +18,9 @@ export function getEnv(bindings: CloudflareBindings): BaseEnv {
     MASKER_API_KEY: bindings.MASKER_API_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: bindings.NEXT_PUBLIC_POSTHOG_HOST,
     INNGEST_EVENT_KEY: bindings.INNGEST_EVENT_KEY,
+    TELEGRAM_BOT_TOKEN: bindings.TELEGRAM_BOT_TOKEN,
+    X10_JWT_SECRET: bindings.X10_JWT_SECRET,
+    X10_JWT_TTL_SECONDS: bindings.X10_JWT_TTL_SECONDS,
   };
   cached = loadEnv(source);
   return cached;

@@ -24,6 +24,14 @@ interface CloudflareBindings {
   // ---- Inngest (отправка событий в pipeline worker) ----
   INNGEST_EVENT_KEY?: string;
 
+  // ---- Telegram session auth (HIGH-2) ----
+  /** Bot token `<id>:<secret>` — корень доверия для initData / Login Widget. */
+  TELEGRAM_BOT_TOKEN?: string;
+  /** HMAC secret для подписи JWT-сессий (HS256, min 32 байта). */
+  X10_JWT_SECRET?: string;
+  /** TTL сессии в секундах, default 86400 (24h). */
+  X10_JWT_TTL_SECONDS?: string;
+
   // ---- R2 Images bucket (Этап 3g) ----
   // Раскомментировать в wrangler.toml после `wrangler r2 bucket create x10-images`.
   // Public URLs строятся через X10_IMAGES_PUBLIC_BASE (custom domain или R2 .dev).

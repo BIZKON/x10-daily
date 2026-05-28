@@ -27,8 +27,33 @@ const baseSchema = z.object({
   MASKER_BASE_URL: urlOrEmpty.optional(),
   MASKER_API_KEY: z.string().optional(),
 
-  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  /**
+   * Telegram bot token (формат `<id>:<secret>`) — корень доверия для
+   * initData / Login Widget verification (HIGH-2 из docs/SECURITY-AUDIT.md).
+   * Required в production: без него Telegram-сессии не выпускаются.
+   */
+  TELEGRAM_BOT_TOKEN: z
+    .string()
+    .regex(/^\d+:[A-Za-z0-9_-]+$/, "TELEGRAM_BOT_TOKEN должен быть формата `<id>:<secret>`")
+    .optional(),
   TELEGRAM_WEBAPP_URL: urlOrEmpty.optional(),
+
+  /**
+   * HMAC-secret для подписи JWT-сессий (HS256). Минимум 32 байта.
+   * Required в production. Утечка → атакующий выпускает токены от имени любого
+   * пользователя; ротация → инвалидация всех активных сессий (юзеры перелогинятся
+   * через initData без боли). См. apps/api/src/lib/jwt.ts.
+   */
+  X10_JWT_SECRET: z
+    .string()
+    .min(32, "X10_JWT_SECRET минимум 32 символа (HS256 security)")
+    .optional(),
+
+  /**
+   * TTL сессии в секундах. Default 24h. Перелогин дешёвый (TG initData
+   * бесплатный), поэтому короткий TTL ОК.
+   */
+  X10_JWT_TTL_SECONDS: z.coerce.number().int().positive().default(86400),
 
   MAX_BOT_TOKEN: z.string().optional(),
   MAX_WEBAPP_URL: urlOrEmpty.optional(),
@@ -59,6 +84,10 @@ const productionRequired: Array<keyof Env> = [
   "MASKER_API_KEY",
   "INNGEST_EVENT_KEY",
   "INNGEST_SIGNING_KEY",
+  // HIGH-2: Telegram session auth — без BOT_TOKEN initData нельзя верифицировать,
+  // без JWT_SECRET — нельзя выпустить сессию. Fail-fast при отсутствии.
+  "TELEGRAM_BOT_TOKEN",
+  "X10_JWT_SECRET",
 ];
 
 export class EnvValidationError extends Error {

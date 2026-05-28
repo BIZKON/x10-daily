@@ -48,6 +48,9 @@ simple = { limit = 10, period = 60 }   # 10 запусков / 60 сек — pip
 #   DATABASE_URL, ANTHROPIC_API_KEY, ANTHROPIC_ZDR_CONFIRMED,
 #   MASKER_BASE_URL, MASKER_API_KEY, INNGEST_EVENT_KEY,
 #   X10_ALLOWED_ORIGINS  (CORS allowlist, HIGH-1)
+#   TELEGRAM_BOT_TOKEN   (HIGH-2 session auth — required в prod)
+#   X10_JWT_SECRET       (HIGH-2 HS256 secret — required в prod, min 32 байта)
+#   X10_JWT_TTL_SECONDS  (optional, default 86400)
 [vars]
 NODE_ENV = "production"
 NEXT_PUBLIC_POSTHOG_HOST = "https://eu.posthog.com"

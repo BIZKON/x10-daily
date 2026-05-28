@@ -17,13 +17,13 @@ const baseSchema = z.object({
    *   models:   "anthropic/claude-opus-4-7", "anthropic/claude-sonnet-4-6", ...
    *
    * Используется как primary в production. Schema fields:
-   *  - AI_GATEWAY_URL — base URL OpenAI-compat endpoint
+   *  - AI_GATEWAY_BASE_URL — base URL OpenAI-compat endpoint
    *  - AI_GATEWAY_API_KEY — Timeweb proxy key
    *
    * Старые ANTHROPIC_API_KEY / ANTHROPIC_ZDR_CONFIRMED сохранены как fallback
    * для прямого подключения к anthropic.com (если когда-нибудь понадобится).
    */
-  AI_GATEWAY_URL: urlOrEmpty.default("https://api.timeweb.ai/v1"),
+  AI_GATEWAY_BASE_URL: urlOrEmpty.default("https://api.timeweb.ai/v1"),
   AI_GATEWAY_API_KEY: z.string().min(1).optional(),
 
   /** Legacy: direct Anthropic API (без proxy). Сейчас не используется в prod. */

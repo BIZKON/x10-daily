@@ -26,13 +26,14 @@ export function createRunWeeklyScoreFunction(
     },
     async ({ event, step }) => {
       const env = loadEnv(bindings as unknown as Record<string, string | undefined>);
-      if (!env.ANTHROPIC_API_KEY) {
+      const apiKey = env.AI_GATEWAY_API_KEY ?? env.ANTHROPIC_API_KEY;
+      if (!apiKey) {
         throw new Error(
-          "ANTHROPIC_API_KEY не задан — ScoreWeeklyAgent не запустится.",
+          "Ни AI_GATEWAY_API_KEY (Timeweb primary), ни ANTHROPIC_API_KEY (legacy direct) не задан — ScoreWeeklyAgent не запустится.",
         );
       }
       const masker = createMasker(env);
-      const ctx: AgentContext = { apiKey: env.ANTHROPIC_API_KEY, masker };
+      const ctx: AgentContext = { apiKey, baseURL: env.AI_GATEWAY_BASE_URL, masker };
 
       const scored = await step.run("score-weekly", () =>
         ScoreWeeklyAgent.run(

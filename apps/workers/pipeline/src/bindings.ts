@@ -15,7 +15,7 @@ export interface PipelineBindings {
   DIRECT_DATABASE_URL?: string;
 
   // ---- AI (Timeweb AI Gateway primary, ANTHROPIC_* как legacy fallback) ----
-  AI_GATEWAY_URL?: string;
+  AI_GATEWAY_BASE_URL?: string;
   AI_GATEWAY_API_KEY?: string;
   ANTHROPIC_API_KEY?: string;
   ANTHROPIC_ZDR_CONFIRMED?: "true" | "false";

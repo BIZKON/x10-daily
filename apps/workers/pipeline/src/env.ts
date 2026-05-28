@@ -19,7 +19,7 @@ export function getPipelineEnv(bindings: PipelineBindings): BaseEnv {
     NODE_ENV: bindings.NODE_ENV,
     DATABASE_URL: bindings.DATABASE_URL,
     DIRECT_DATABASE_URL: bindings.DIRECT_DATABASE_URL,
-    AI_GATEWAY_URL: bindings.AI_GATEWAY_URL,
+    AI_GATEWAY_BASE_URL: bindings.AI_GATEWAY_BASE_URL,
     AI_GATEWAY_API_KEY: bindings.AI_GATEWAY_API_KEY,
     ANTHROPIC_API_KEY: bindings.ANTHROPIC_API_KEY,
     ANTHROPIC_ZDR_CONFIRMED: bindings.ANTHROPIC_ZDR_CONFIRMED,

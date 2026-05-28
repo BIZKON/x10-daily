@@ -9,6 +9,9 @@ const workspaceRoot = fileURLToPath(new URL("../..", import.meta.url));
  * reactCompiler: автомемоизация (требует babel-plugin-react-compiler).
  */
 const nextConfig: NextConfig = {
+  // Standalone output для prod Docker-образа (минимальный server.js +
+  // node_modules только нужные). См. apps/miniapp/Dockerfile + ТЗ M0.
+  output: "standalone",
   cacheComponents: true,
   reactCompiler: true,
   transpilePackages: ["@x10/ui", "@x10/config", "@x10/db"],

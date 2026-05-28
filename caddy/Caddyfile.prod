@@ -1,0 +1,50 @@
+# Caddy v2 — reverse proxy + auto-TLS Let's Encrypt для x10-daily M0.
+#
+# Запускается из docker-compose.prod.yml. Caddy listen :80/:443, апстримы —
+# внутренние Docker DNS-имена сервисов (api, admin, miniapp).
+#
+# Домены берутся из env var X10_BASE_DOMAIN — на VM выставляется в
+# .env.production (см. .env.example). Дефолт x10.media.
+
+{
+	# Email для Let's Encrypt acme (обязательно для prod, иначе LE откажет).
+	email {$CADDY_ACME_EMAIL:admin@x10.media}
+	# auto_https default — HTTP-01 challenge, redirect HTTP→HTTPS.
+}
+
+# ===== Public miniapp =====
+# app.<domain> — Telegram Mini App, публичный.
+app.{$X10_BASE_DOMAIN:x10.media} {
+	encode gzip zstd
+	reverse_proxy miniapp:3000 {
+		header_up Host {host}
+		header_up X-Forwarded-Proto {scheme}
+		health_uri /
+		health_interval 30s
+	}
+}
+
+# ===== API =====
+# api.<domain> — Hono on Node, нужен HTTPS для Telegram bot webhooks.
+api.{$X10_BASE_DOMAIN:x10.media} {
+	encode gzip zstd
+	reverse_proxy api:8080 {
+		header_up Host {host}
+		header_up X-Forwarded-Proto {scheme}
+		health_uri /health
+		health_interval 30s
+	}
+}
+
+# ===== Admin =====
+# admin.<domain> — закрытый editorial UI.
+# post-M0: добавить IP-allowlist или basic_auth перед TG-login,
+# сейчас защита на уровне приложения (HIGH-2 Telegram session).
+admin.{$X10_BASE_DOMAIN:x10.media} {
+	encode gzip zstd
+	reverse_proxy admin:3001 {
+		header_up Host {host}
+		header_up X-Forwarded-Proto {scheme}
+		health_interval 30s
+	}
+}

@@ -72,7 +72,7 @@ services:
       DATABASE_URL: "postgresql://x10:x10dev@postgres:5432/x10"
       REDIS_URL: "redis://redis:6379"
       INNGEST_EVENT_KEY: "${INNGEST_EVENT_KEY:-}"
-      AI_GATEWAY_URL: "${AI_GATEWAY_URL:-https://api.timeweb.ai/v1}"
+      AI_GATEWAY_BASE_URL: "${AI_GATEWAY_BASE_URL:-https://api.timeweb.ai/v1}"
       AI_GATEWAY_API_KEY: "${AI_GATEWAY_API_KEY:-}"
       TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:-}"
       X10_JWT_SECRET: "${X10_JWT_SECRET:-dev-secret-min-32-bytes-yes-it-is-long}"
@@ -103,7 +103,7 @@ services:
       DATABASE_URL: "postgresql://x10:x10dev@postgres:5432/x10"
       INNGEST_EVENT_KEY: "${INNGEST_EVENT_KEY:-}"
       INNGEST_SIGNING_KEY: "${INNGEST_SIGNING_KEY:-}"
-      AI_GATEWAY_URL: "${AI_GATEWAY_URL:-https://api.timeweb.ai/v1}"
+      AI_GATEWAY_BASE_URL: "${AI_GATEWAY_BASE_URL:-https://api.timeweb.ai/v1}"
       AI_GATEWAY_API_KEY: "${AI_GATEWAY_API_KEY:-}"
       # Walking Skeleton (ТЗ #1): автономный постинг vc.ru → тестовый TG-канал.
       TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:-}"

@@ -45,14 +45,15 @@ export function createDraftArticleFunction(
     },
     async ({ event, step }) => {
       const env = loadEnv(bindings as unknown as Record<string, string | undefined>);
-      if (!env.ANTHROPIC_API_KEY) {
+      const apiKey = env.AI_GATEWAY_API_KEY ?? env.ANTHROPIC_API_KEY;
+      if (!apiKey) {
         throw new Error(
-          "ANTHROPIC_API_KEY не задан — невозможно вызвать pipeline. " +
-            "См. CLAUDE.md §7 (ZDR-контракт обязателен в prod).",
+          "Ни AI_GATEWAY_API_KEY (Timeweb primary), ни ANTHROPIC_API_KEY (legacy direct) не задан — pipeline не запустится. " +
+            "См. CLAUDE.md §7.",
         );
       }
       const masker = createMasker(env);
-      const ctx: AgentContext = { apiKey: env.ANTHROPIC_API_KEY, masker };
+      const ctx: AgentContext = { apiKey, baseURL: env.AI_GATEWAY_BASE_URL, masker };
 
       const draft = await step.run("draft", () =>
         DraftAgent.run(

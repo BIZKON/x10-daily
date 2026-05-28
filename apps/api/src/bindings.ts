@@ -46,7 +46,7 @@ export interface AppBindings {
   DIRECT_DATABASE_URL?: string;
 
   // ---- AI Gateway (Timeweb OpenAI-compat) ----
-  AI_GATEWAY_URL?: string;
+  AI_GATEWAY_BASE_URL?: string;
   AI_GATEWAY_API_KEY?: string;
 
   // ---- Legacy direct Anthropic (fallback) ----

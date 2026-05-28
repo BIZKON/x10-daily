@@ -82,7 +82,7 @@ function readBindings(): AppBindings {
     DATABASE_URL: databaseUrl,
     DIRECT_DATABASE_URL: process.env.DIRECT_DATABASE_URL,
 
-    AI_GATEWAY_URL: process.env.AI_GATEWAY_URL,
+    AI_GATEWAY_BASE_URL: process.env.AI_GATEWAY_BASE_URL,
     AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
 
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,

@@ -15,18 +15,53 @@
 import { serve } from "@hono/node-server";
 import { createApp } from "./app";
 import type { AppBindings, ObjectStorage, RateLimiter } from "./bindings";
+import { disconnectRedis, getRedis } from "./services/redis";
+import { RedisRateLimiter } from "./services/rate-limiter-redis";
+import { S3Storage, createS3Client } from "./services/s3-storage";
 
-/** Заглушка RateLimiter — всегда allow. S16 заменит на Redis sliding window. */
+/** Заглушка RateLimiter — всегда allow. Используется когда REDIS_URL не задан. */
 const noopLimiter: RateLimiter = {
   async limit() {
     return { success: true };
   },
 };
 
-/** Заглушка ObjectStorage — undefined. S16 даст AWS SDK S3 client. */
-function buildObjectStorage(_bindings: Pick<AppBindings, "S3_ENDPOINT" | "S3_BUCKET">): ObjectStorage | undefined {
-  // TODO(S16): построить AWS SDK S3 client если все S3_* env заданы.
-  return undefined;
+function buildRateLimiters(
+  redisUrl: string | undefined,
+): { engagement: RateLimiter; pipeline: RateLimiter } {
+  if (!redisUrl) {
+    console.warn("[server] REDIS_URL не задан — rate limit disabled (noop)");
+    return { engagement: noopLimiter, pipeline: noopLimiter };
+  }
+  const redis = getRedis(redisUrl);
+  return {
+    // Limits из docs/SECURITY-AUDIT.md HIGH-3 (соответствуют старым CF bindings):
+    engagement: new RedisRateLimiter(redis, { limit: 30, windowSeconds: 60 }),
+    pipeline: new RedisRateLimiter(redis, { limit: 10, windowSeconds: 60 }),
+  };
+}
+
+function buildObjectStorage(env: NodeJS.ProcessEnv): ObjectStorage | undefined {
+  const endpoint = env.S3_ENDPOINT?.trim();
+  const region = env.S3_REGION?.trim();
+  const accessKeyId = env.S3_ACCESS_KEY_ID?.trim();
+  const secretAccessKey = env.S3_SECRET_ACCESS_KEY?.trim();
+  const bucket = env.S3_BUCKET?.trim();
+  if (!endpoint || !region || !accessKeyId || !secretAccessKey || !bucket) {
+    if (env.NODE_ENV === "production") {
+      console.warn("[server] S3_* env неполные — upload endpoint вернёт 503");
+    }
+    return undefined;
+  }
+  const client = createS3Client({
+    endpoint,
+    region,
+    accessKeyId,
+    secretAccessKey,
+    bucket,
+    forcePathStyle: true,
+  });
+  return new S3Storage(client, bucket);
 }
 
 function readBindings(): AppBindings {
@@ -35,6 +70,10 @@ function readBindings(): AppBindings {
   if (!databaseUrl) {
     throw new Error("DATABASE_URL обязателен — задайте в env / docker -e DATABASE_URL=...");
   }
+
+  const limiters = buildRateLimiters(process.env.REDIS_URL);
+  const objectStorage = buildObjectStorage(process.env);
+
   return {
     NODE_ENV: nodeEnv,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -67,12 +106,9 @@ function readBindings(): AppBindings {
 
     REDIS_URL: process.env.REDIS_URL,
 
-    ENGAGEMENT_LIMITER: noopLimiter,
-    PIPELINE_LIMITER: noopLimiter,
-    X10_IMAGES: buildObjectStorage({
-      S3_ENDPOINT: process.env.S3_ENDPOINT,
-      S3_BUCKET: process.env.S3_BUCKET,
-    }),
+    ENGAGEMENT_LIMITER: limiters.engagement,
+    PIPELINE_LIMITER: limiters.pipeline,
+    X10_IMAGES: objectStorage,
   };
 }
 
@@ -92,11 +128,13 @@ const server = serve(
 
 const shutdown = (signal: string) => {
   console.log(`[server] received ${signal}, closing...`);
-  server.close((err) => {
+  server.close(async (err) => {
     if (err) {
       console.error("[server] close error", err);
       process.exit(1);
     }
+    // Redis quit чтобы pending команды успели завершиться.
+    await disconnectRedis().catch((e) => console.error("[server] redis quit:", e));
     process.exit(0);
   });
 };

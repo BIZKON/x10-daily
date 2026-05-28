@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1055.0",
     "@hono/node-server": "^2.0.4",
     "@hono/zod-validator": "^0.8.0",
     "@x10/agents": "workspace:*",
@@ -17,6 +18,7 @@
     "@x10/db": "workspace:*",
     "hono": "^4.12.23",
     "inngest": "^4.4.0",
+    "ioredis": "^5.11.0",
     "jose": "^6.2.3",
     "zod": "^4.4.3"
   },

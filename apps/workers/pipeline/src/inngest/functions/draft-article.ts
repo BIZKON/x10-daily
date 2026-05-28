@@ -11,8 +11,10 @@ import {
   type AgentContext,
 } from "@x10/agents";
 import { loadEnv } from "@x10/config";
+import { channels, createDb } from "@x10/db";
 import { persistArticle, serializeDraftForNumbers } from "../../persist";
 import {
+  articleReadyEvent,
   DEFAULT_SECTION,
   DEFAULT_TEMPLATE,
   topicIngestedEvent,
@@ -203,6 +205,28 @@ export function createDraftArticleFunction(
           pipelineMetadata,
         }),
       );
+
+      // Walking Skeleton (ТЗ #1, N4→N5 шов): сохраняем готовый TG-пост в
+      // channels (Content Object per article per channel) и шлём article.ready.
+      // post-to-tg.ts ловит event, читает row из channels, делает реальный
+      // вызов api.telegram.org. Это вне B2-цепочки агентов — терминальный
+      // сигнал, не модификация pipeline'а.
+      await step.run("save-tg-channel", async () => {
+        const db = createDb(env.DATABASE_URL);
+        await db
+          .insert(channels)
+          .values({
+            articleId: persisted.id,
+            channel: "tg",
+            text: social.output.post,
+            visualRef: null,
+          })
+          .onConflictDoNothing();
+      });
+      await step.sendEvent("notify-ready", {
+        name: articleReadyEvent.event,
+        data: { articleId: persisted.id, channel: "tg" as const },
+      });
 
       return {
         articleId: persisted.id,

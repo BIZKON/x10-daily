@@ -59,6 +59,12 @@ const baseSchema = z.object({
     .regex(/^\d+:[A-Za-z0-9_-]+$/, "TELEGRAM_BOT_TOKEN должен быть формата `<id>:<secret>`")
     .optional(),
   TELEGRAM_WEBAPP_URL: urlOrEmpty.optional(),
+  /**
+   * Walking Skeleton (ТЗ #1, N5): тестовый канал для автономного постинга.
+   * Формат: `@channel_username` или numeric chat_id (`-1001234567890`).
+   * Required в production только если AUTONOMOUS_POSTING_TG=true.
+   */
+  TG_TEST_CHANNEL_ID: z.string().optional(),
 
   /**
    * HMAC-secret для подписи JWT-сессий (HS256). Минимум 32 байта.

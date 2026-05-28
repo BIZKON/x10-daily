@@ -27,4 +27,8 @@ export interface PipelineBindings {
   // ---- Inngest (signing key обязателен в prod — CRITICAL-4) ----
   INNGEST_EVENT_KEY?: string;
   INNGEST_SIGNING_KEY?: string;
+
+  // ---- Telegram posting (ТЗ #1, N5 — реальный sendMessage в тестовый канал) ----
+  TELEGRAM_BOT_TOKEN?: string;
+  TG_TEST_CHANNEL_ID?: string;
 }

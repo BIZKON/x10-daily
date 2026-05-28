@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>vc.ru — деловое медиа</title>
+    <link>https://vc.ru/</link>
+    <description>vc.ru news feed (fixture для walking skeleton)</description>
+    <item>
+      <title>Тестовая новость для walking skeleton</title>
+      <link>https://vc.ru/test/walking-skeleton-1</link>
+      <guid isPermaLink="false">vc-test-walking-1</guid>
+      <pubDate>Wed, 28 May 2026 06:00:00 GMT</pubDate>
+      <description>Краткое описание новости для тестирования автономного контура vc.ru.</description>
+    </item>
+  </channel>
+</rss>

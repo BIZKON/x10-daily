@@ -187,6 +187,23 @@ vi.mock("../src/persist", () => ({
   serializeDraftForNumbers: vi.fn().mockReturnValue("serialized draft"),
 }));
 
+// save-tg-channel step делает прямой INSERT в channels (Walking Skeleton, ТЗ #1).
+// Этот тест не проверяет содержимое channels — no-op stub достаточно. Подробный
+// тест pipeline-связки см. walking-skeleton.e2e.test.ts.
+vi.mock("@x10/db", async () => {
+  const actual = await vi.importActual<typeof import("@x10/db")>("@x10/db");
+  return {
+    ...actual,
+    createDb: vi.fn(() => ({
+      insert: () => ({
+        values: () => ({
+          onConflictDoNothing: () => Promise.resolve(),
+        }),
+      }),
+    })),
+  };
+});
+
 import {
   BrevityAgent,
   DraftAgent,
@@ -226,6 +243,9 @@ const EVENT = {
 function makeStep() {
   return {
     run: vi.fn(async (_id: string, fn: () => Promise<unknown>) => fn()),
+    sendEvent: vi.fn(
+      async (_id: string, _ev: { name: string; data: unknown }) => undefined,
+    ),
   };
 }
 
@@ -271,7 +291,8 @@ describe("draft-article pipeline", () => {
     expect(PreviewScoreAgent.run).toHaveBeenCalledOnce();
     expect(persistArticle).toHaveBeenCalledOnce();
 
-    expect(step.run).toHaveBeenCalledTimes(8);
+    // 8 шагов B2 + 1 терминальный шаг save-tg-channel (Walking Skeleton, ТЗ #1, N4→N5 шов).
+    expect(step.run).toHaveBeenCalledTimes(9);
     const stepIds = step.run.mock.calls.map((c) => c[0]);
     expect(stepIds).toEqual([
       "draft",
@@ -282,7 +303,14 @@ describe("draft-article pipeline", () => {
       "social",
       "score",
       "persist",
+      "save-tg-channel",
     ]);
+    // Терминальный сигнал для post-to-tg.
+    expect(step.sendEvent).toHaveBeenCalledOnce();
+    expect(step.sendEvent.mock.calls[0]![1]).toMatchObject({
+      name: "article.ready",
+      data: { articleId: "art-uuid-1", channel: "tg" },
+    });
 
     expect(result.articleId).toBe("art-uuid-1");
     expect(result.totalCostUsd).toBeCloseTo(
@@ -347,7 +375,8 @@ describe("draft-article pipeline", () => {
     };
 
     expect(FactCheckAgent.run).toHaveBeenCalledOnce();
-    expect(step.run).toHaveBeenCalledTimes(9);
+    // 9 шагов B2 (с factcheck) + 1 терминальный save-tg-channel.
+    expect(step.run).toHaveBeenCalledTimes(10);
     const stepIds = step.run.mock.calls.map((c) => c[0]);
     expect(stepIds).toEqual([
       "draft",
@@ -359,6 +388,7 @@ describe("draft-article pipeline", () => {
       "social",
       "score",
       "persist",
+      "save-tg-channel",
     ]);
     expect(result.factcheck.status).toBe("passed");
     expect(result.totalCostUsd).toBeCloseTo(
@@ -417,7 +447,8 @@ describe("draft-article pipeline", () => {
       factcheck: { status: string } | null;
     };
     expect(FactCheckAgent.run).not.toHaveBeenCalled();
-    expect(step.run).toHaveBeenCalledTimes(8);
+    // 8 step.run (без factcheck) + 1 save-tg-channel.
+    expect(step.run).toHaveBeenCalledTimes(9);
     expect(result.factcheck).toBeNull();
   });
 

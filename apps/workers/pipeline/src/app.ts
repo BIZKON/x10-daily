@@ -5,6 +5,8 @@ import { getPipelineEnv } from "./env";
 import { createPipelineInngest } from "./inngest/client";
 import { createAssembleNewsletterFunction } from "./inngest/functions/assemble-newsletter";
 import { createDraftArticleFunction } from "./inngest/functions/draft-article";
+import { createIngestVcRssFunction } from "./inngest/functions/ingest-vc-rss";
+import { createPostToTgFunction } from "./inngest/functions/post-to-tg";
 import { createProcessSourceItemFunction } from "./inngest/functions/process-source-item";
 import { createRunWeeklyScoreFunction } from "./inngest/functions/run-weekly-score";
 
@@ -47,6 +49,8 @@ export function createApp() {
         createProcessSourceItemFunction(client, c.env),
         createAssembleNewsletterFunction(client, c.env),
         createRunWeeklyScoreFunction(client, c.env),
+        createIngestVcRssFunction(client, c.env),
+        createPostToTgFunction(client, c.env),
       ],
     });
     // inngest/hono возвращает HTTP-handler (c) => Response. Просто проксируем.

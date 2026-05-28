@@ -129,3 +129,24 @@ export const scoreWeeklyRequestedEvent = eventType("score.weekly.requested", {
   schema: scoreWeeklyRequestedDataSchema,
 });
 export const SCORE_WEEKLY_REQUESTED = scoreWeeklyRequestedEvent.event;
+
+/* ----------------------------------------------------------------
+ * article.ready — финальный сигнал после persistArticle. Триггер для
+ * posting-функций (TG / VK / Дзен / ...). Один event → один channel,
+ * `channel` поле указывает в какую очередь posting забирать row из
+ * channels-таблицы.
+ *
+ * Walking Skeleton (ТЗ #1, N5/N6): only channel='tg'. Posting-функция
+ * читает channels WHERE article_id=$1 AND channel=$2 и ветвится по
+ * visual_ref.
+ * ---------------------------------------------------------------- */
+export const articleReadyDataSchema = z.object({
+  articleId: z.string().uuid(),
+  channel: z.enum(["tg", "vk", "dzen", "linkedin"]),
+});
+export type ArticleReadyData = z.infer<typeof articleReadyDataSchema>;
+
+export const articleReadyEvent = eventType("article.ready", {
+  schema: articleReadyDataSchema,
+});
+export const ARTICLE_READY = articleReadyEvent.event;

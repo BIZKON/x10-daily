@@ -15,6 +15,7 @@
     "@x10/agents": "workspace:*",
     "@x10/config": "workspace:*",
     "@x10/db": "workspace:*",
+    "@x10/worker-ingest": "workspace:*",
     "hono": "^4.12.23",
     "inngest": "^4.4.0",
     "zod": "^4.4.3"

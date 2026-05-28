@@ -105,6 +105,9 @@ services:
       INNGEST_SIGNING_KEY: "${INNGEST_SIGNING_KEY:-}"
       AI_GATEWAY_URL: "${AI_GATEWAY_URL:-https://api.timeweb.ai/v1}"
       AI_GATEWAY_API_KEY: "${AI_GATEWAY_API_KEY:-}"
+      # Walking Skeleton (ТЗ #1): автономный постинг vc.ru → тестовый TG-канал.
+      TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:-}"
+      TG_TEST_CHANNEL_ID: "${TG_TEST_CHANNEL_ID:-}"
     ports:
       - "8787:8787"
     depends_on:

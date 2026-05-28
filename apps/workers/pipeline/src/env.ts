@@ -27,6 +27,8 @@ export function getPipelineEnv(bindings: PipelineBindings): BaseEnv {
     MASKER_API_KEY: bindings.MASKER_API_KEY,
     INNGEST_EVENT_KEY: bindings.INNGEST_EVENT_KEY,
     INNGEST_SIGNING_KEY: bindings.INNGEST_SIGNING_KEY,
+    TELEGRAM_BOT_TOKEN: bindings.TELEGRAM_BOT_TOKEN,
+    TG_TEST_CHANNEL_ID: bindings.TG_TEST_CHANNEL_ID,
   };
   cached = loadEnv(source);
   return cached;

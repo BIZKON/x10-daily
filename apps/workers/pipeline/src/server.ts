@@ -35,6 +35,9 @@ function readBindings(): PipelineBindings {
 
     INNGEST_EVENT_KEY: process.env.INNGEST_EVENT_KEY,
     INNGEST_SIGNING_KEY: process.env.INNGEST_SIGNING_KEY,
+
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    TG_TEST_CHANNEL_ID: process.env.TG_TEST_CHANNEL_ID,
   };
 }
 

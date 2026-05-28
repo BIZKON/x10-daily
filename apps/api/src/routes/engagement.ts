@@ -144,8 +144,9 @@ export const engagementRoute = new Hono<AppEnv>()
       if (!article) return c.json({ error: "not_found", id: articleId }, 404);
 
       // MEDIUM-9: toggle race-safe через PK constraint + onConflictDoNothing.
-      // Без транзакции (neon-http one-shot), но конкурентный INSERT теперь не
-      // бросает 500 — racer получит no-op, оба видят корректную "added".
+      // С node-postgres Pool можно было бы использовать транзакцию, но
+      // PK+onConflictDoNothing проще и достаточно — racer получает no-op,
+      // оба клиента видят корректную "added".
       const deleted = await db
         .delete(reactions)
         .where(

@@ -1,3 +1,3 @@
-export { createDb, schema, type Database, type Schema } from "./client";
+export { createDb, closeAllPools, schema, type Database, type Schema } from "./client";
 export * from "./schema";
 export * from "./sql";

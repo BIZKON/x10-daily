@@ -507,9 +507,42 @@ pg_dump "$DIRECT_DATABASE_URL" > backup-$(date +%Y%m%d).sql
 
 ---
 
-## 11. Что ещё не описано (future scope)
+## 11. GitHub Actions setup
 
-- **GitHub Actions CI/CD** — handoff session 9 §«Не работает» #11. Будет: typecheck + tests + lint + preview deploy на PR.
+3 workflow'а в [.github/workflows/](../.github/workflows/) (добавлены session 12):
+
+- **ci.yml** — на push/main + PR. 5 параллельных jobs: typecheck, lint (biome), test (apps/api исключён из-за vitest-pool-workers regression), build, audit (`--audit-level=high`).
+- **security.yml** — на PR + weekly Mon 09:00 UTC. Dependency Review action блокирует PR с high+ severity deps, `pnpm audit --audit-level=moderate` для weekly inventory.
+- **preview.yml** — на PR. Vercel preview deploys для miniapp + admin параллельно, posts URL в PR comment (обновляется на каждый push).
+
+### Required GitHub secrets
+
+Установить через GitHub UI (Settings → Secrets and variables → Actions) или CLI:
+
+```bash
+# Vercel preview deploys
+gh secret set VERCEL_TOKEN              # https://vercel.com/account/tokens
+gh secret set VERCEL_ORG_ID             # vercel link → выведет в .vercel/project.json
+gh secret set VERCEL_PROJECT_ID_MINIAPP # из apps/miniapp/.vercel/project.json
+gh secret set VERCEL_PROJECT_ID_ADMIN   # из apps/admin/.vercel/project.json
+```
+
+VERCEL_ORG_ID одинаков для обоих apps, PROJECT_ID — разный per app. После первого `pnpm dlx vercel link` в каждом app получаешь `.vercel/project.json` с обоими id.
+
+### Что нужно настроить дополнительно
+
+- **Branch protection rule** на `main`: Settings → Branches → Add rule → require status checks: `Typecheck`, `Lint (biome)`, `Test`, `Build`, `Audit (high+)`. Это блокирует force-merge сломанного кода.
+- **Dependabot** для weekly dependency updates — опционально, может конфликтовать с pnpm-lock churn. Если включаем — `pnpm-lock.yaml` в `versioning-strategy: lockfile-only`.
+
+### Что НЕ настроено (future scope)
+
+- **CF Workers preview deploys** (api + pipeline) — отложено до Phase 2. Требует `CLOUDFLARE_API_TOKEN` + per-env wrangler.toml override. Текущий `pnpm build` (wrangler deploy --dry-run) ловит typecheck-проблемы на PR, что достаточно для MVP.
+- **Lighthouse CI** — для метрологических бюджетов из CLAUDE.md §2. Требует deployed URL → запускать после preview.yml через workflow_run trigger.
+
+---
+
+## 12. Что ещё не описано (future scope)
+
 - **Cron triggers в Inngest** — daily ingest 06:00 МСК, newsletter 06:00 МСК, weekly score Mon 09:00 МСК. Сейчас функции зарегистрированы, но без `cron` triggers в wrangler.toml.
 - **Hyperdrive** — закомментирован в [apps/api/wrangler.toml](apps/api/wrangler.toml), включить когда нагрузка вырастет.
 - **Sentry sourcemaps** — отдельная задача.
@@ -519,6 +552,6 @@ pg_dump "$DIRECT_DATABASE_URL" > backup-$(date +%Y%m%d).sql
 
 ## Версия
 
-**v1.0 · 27 мая 2026** · session 10 handoff.
+**v1.1 · 28 мая 2026** · session 12 handoff. Добавлены: HIGH-2 (Telegram session auth, session 11), GitHub Actions (session 12).
 
-Обновлять при изменении wrangler.toml structure, добавлении новых workers/секретов, миграциях >0003.
+Обновлять при изменении wrangler.toml structure, добавлении новых workers/секретов, миграциях.

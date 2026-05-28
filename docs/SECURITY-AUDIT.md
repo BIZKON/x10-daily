@@ -108,7 +108,7 @@
 - [ ] **L7** · LLM responses через `console.error` → CF dashboard logs (retention per CF policy). Post-unmask PII утечёт. Fix: Sentry `beforeSend` strip полей `text|body|context|topic`
 - [ ] **L8** · FactCheckAgent (Opus $5/$25) не дедуплицирует по hash(topic+sources) → повторы жгут $$. Fix: deduplication step в workflow
 - [ ] **L9** · `pipeline.ts:21-30` — Inngest cached client (module-level singleton) может закешировать первый env. Минор риск. Fix: key cache by `env.NODE_ENV`
-- [ ] **L10** · `pnpm audit --prod` не запускался в CI — добавить как обязательный gate
+- [x] **L10** · `pnpm audit --prod` не запускался в CI — ✅ closed (session 12). `audit` job в `.github/workflows/ci.yml` с `--audit-level=high` блокирует PR; `pnpm audit --audit-level=moderate` weekly в `.github/workflows/security.yml`. Заодно `pnpm overrides` зафиксировал `valibot>=1.2.0` для закрытия GHSA-vqpr-j7v3-hqw9 (ReDoS, через `@telegram-apps/sdk-react>valibot`).
 
 ---
 

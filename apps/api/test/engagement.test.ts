@@ -20,7 +20,7 @@ const TEST_BINDINGS: AppBindings = {
  * Это контракт для client-side initial state в optimistic UI.
  */
 describe("GET /v1/articles/:id/me (anonymous)", () => {
-  const articleId = "00000000-0000-0000-0000-000000000001";
+  const articleId = "00000000-0000-4000-8000-000000000001";
 
   it("returns zeroed snapshot without Authorization (no DB roundtrip)", async () => {
     const app = createApp();

@@ -2,7 +2,7 @@
  * Data layer для /profile.
  *
  * Источник: /v1/profile/stats → ApiProfileStats.
- * Auth: X-User-Id header через X10_DEV_USER_ID env (serverside).
+ * Auth: session cookie x10_session → Authorization Bearer (HIGH-2).
  *
  * Fallback на мок-цифры из прототипа (CLAUDE.md §1, прототип fonts.ts).
  * PROFILE/SUBSCRIPTIONS/SCHEDULE остаются мок до auth + user_topic_subscriptions (3d/4).

@@ -4,8 +4,9 @@
  * Server Actions для article engagement.
  *
  * Тонкий слой над postReaction/postBookmark/postProgress из @/lib/api:
- * вызываются из client-компонентов (useOptimistic) и пробрасывают X-User-Id
- * из серверного env (X10_DEV_USER_ID — MVP-stub до Telegram session auth).
+ * вызываются из client-компонентов (useOptimistic). Auth через session
+ * cookie (HIGH-2): TelegramProvider при маунте автологинит юзера, cookie
+ * подхватывается postAuthed → Authorization Bearer.
  *
  * Контракт: возвращают success/error без бросаемых исключений — client
  * сам решает revert по action.ok=false. Это нужно чтобы useOptimistic
@@ -22,6 +23,7 @@ import {
   type ApiReactionResponse,
   type ReactionKind,
 } from "./api";
+import { getSessionToken } from "./session";
 
 export type ToggleReactionResult =
   | { ok: true; data: ApiReactionResponse }
@@ -31,16 +33,18 @@ export type ToggleBookmarkResult =
   | { ok: true; data: ApiBookmarkResponse }
   | { ok: false; reason: "no_auth" | "api_error" };
 
+async function classifyFailure(): Promise<"no_auth" | "api_error"> {
+  const token = await getSessionToken();
+  return token ? "api_error" : "no_auth";
+}
+
 export async function toggleReactionAction(
   articleId: string,
   kind: ReactionKind,
 ): Promise<ToggleReactionResult> {
   const data = await postReaction(articleId, kind);
   if (!data) {
-    return {
-      ok: false,
-      reason: process.env.X10_DEV_USER_ID ? "api_error" : "no_auth",
-    };
+    return { ok: false, reason: await classifyFailure() };
   }
   return { ok: true, data };
 }
@@ -50,10 +54,7 @@ export async function toggleBookmarkAction(
 ): Promise<ToggleBookmarkResult> {
   const data = await postBookmark(articleId);
   if (!data) {
-    return {
-      ok: false,
-      reason: process.env.X10_DEV_USER_ID ? "api_error" : "no_auth",
-    };
+    return { ok: false, reason: await classifyFailure() };
   }
   return { ok: true, data };
 }

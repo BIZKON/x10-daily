@@ -181,24 +181,23 @@ export async function fetchEvents(
 /* ----------------------------------------------------------------
  * Profile (Этап 3d — brief §6 UserProgress + §11 engagement)
  *
- * X10_DEV_USER_ID — серверный env, dev-stub auth.
- * В прод появится Telegram initData → JWT session.
+ * Session-based auth (HIGH-2): JWT хранится в HttpOnly cookie x10_session,
+ * выпускается через /v1/auth/telegram (real TG) или /v1/auth/dev-login
+ * (только NODE_ENV !== "production"). Здесь читаем cookie и шлём Bearer.
  * ---------------------------------------------------------------- */
 
-function getDevUserId(): string | null {
-  const v = process.env.X10_DEV_USER_ID;
-  return v && v.trim() !== "" ? v : null;
-}
+import { getSessionToken } from "./session";
 
 async function fetchAuthed(path: string): Promise<Response | null> {
   const base = getBaseUrl();
-  const userId = getDevUserId();
-  if (!base || !userId) return null;
+  if (!base) return null;
+  const token = await getSessionToken();
+  if (!token) return null;
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
     return await fetch(`${base}${path}`, {
-      headers: { "X-User-Id": userId },
+      headers: { Authorization: `Bearer ${token}` },
       signal: ctrl.signal,
     });
   } catch {
@@ -270,15 +269,16 @@ export async function fetchArticleUserState(
 
 async function postAuthed(path: string, body: unknown): Promise<Response | null> {
   const base = getBaseUrl();
-  const userId = getDevUserId();
-  if (!base || !userId) return null;
+  if (!base) return null;
+  const token = await getSessionToken();
+  if (!token) return null;
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
     return await fetch(`${base}${path}`, {
       method: "POST",
       headers: {
-        "X-User-Id": userId,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body ?? {}),

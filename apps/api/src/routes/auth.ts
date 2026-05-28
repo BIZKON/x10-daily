@@ -26,6 +26,10 @@ const telegramLoginSchema = z.object({
   initData: z.string().min(1).max(8192),
 });
 
+const devLoginSchema = z.object({
+  userId: z.string().uuid(),
+});
+
 const widgetLoginSchema = z.object({
   id: z.union([z.number(), z.string()]),
   first_name: z.string().min(1).max(128),
@@ -179,6 +183,63 @@ export const authRoute = new Hono<AppEnv>()
       user: {
         id: user.id,
         role,
+        displayName: user.displayName,
+        username: user.username,
+        avatarUrl: user.avatarUrl,
+        locale: user.locale,
+      },
+    });
+  })
+
+  /**
+   * POST /v1/auth/dev-login
+   * Body: { userId: UUID }
+   * Response: { token, expiresAt, user }
+   *
+   * DEV-only — endpoint доступен только если NODE_ENV !== "production".
+   * Нужен чтобы локальный dev без TG WebView мог получить JWT по seed-UUID
+   * (X10_DEV_USER_ID env в miniapp/admin). В prod этот endpoint 404.
+   */
+  .post("/dev-login", zValidator("json", devLoginSchema), async (c) => {
+    if (c.env.NODE_ENV === "production") {
+      throw new HTTPException(404, { message: "Not found" });
+    }
+    const env = getEnv(c.env);
+    const jwtSecret = requireJwtSecret(env);
+    const ttl = env.X10_JWT_TTL_SECONDS;
+    const { userId } = c.req.valid("json");
+
+    const db = getDb(env.DATABASE_URL);
+    const [user] = await db
+      .select({
+        id: users.id,
+        role: users.role,
+        displayName: users.displayName,
+        username: users.username,
+        avatarUrl: users.avatarUrl,
+        locale: users.locale,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      throw new HTTPException(404, {
+        message: `User ${userId} не найден. Запусти pnpm db:seed.`,
+      });
+    }
+
+    const token = await signSession(
+      { userId: user.id, role: user.role as UserRole },
+      { secret: jwtSecret, ttlSeconds: ttl },
+    );
+    const expiresAt = Math.floor(Date.now() / 1000) + ttl;
+    return c.json({
+      token,
+      expiresAt,
+      user: {
+        id: user.id,
+        role: user.role,
         displayName: user.displayName,
         username: user.username,
         avatarUrl: user.avatarUrl,

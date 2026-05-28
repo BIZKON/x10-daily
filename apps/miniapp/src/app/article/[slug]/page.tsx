@@ -170,7 +170,7 @@ export default async function ArticlePage({
 }
 
 /**
- * Async RSC внутри Suspense — фетчит per-user snapshot (X-User-Id из server env).
+ * Async RSC внутри Suspense — фетчит per-user snapshot (session cookie → Bearer).
  * Без auth — fetchArticleUserState вернёт нули, bar отрисуется в guest-режиме.
  */
 async function ArticleEngagement({ article }: { article: FeedItem }) {

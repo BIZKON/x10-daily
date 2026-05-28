@@ -102,7 +102,7 @@ export function createApp() {
     const handler = cors({
       origin: buildCorsOrigin(c.env),
       allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      allowHeaders: ["Content-Type", "X-User-Id", "Authorization"],
+      allowHeaders: ["Content-Type", "Authorization"],
       credentials: true,
       maxAge: 600,
     });

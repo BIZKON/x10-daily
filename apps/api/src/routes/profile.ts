@@ -12,7 +12,7 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../app";
-import { extractUserId } from "../auth";
+import { extractSession } from "../auth";
 import { getDb } from "../db";
 import { getEnv } from "../env";
 
@@ -23,7 +23,7 @@ import { getEnv } from "../env";
  * /v1/profile/history      — последние прочитанные
  * /v1/profile/stats        — агрегат: streak, totals, weekly streak дни
  *
- * Все require X-User-Id.
+ * Все require Authorization: Bearer (HIGH-2).
  */
 
 const querySchema = z.object({
@@ -36,7 +36,7 @@ export const profileRoute = new Hono<AppEnv>()
    * Returns: { items: Array<{ articleId, slug, tease, category, savedAt }>, count }
    */
   .get("/bookmarks", zValidator("query", querySchema), async (c) => {
-    const userId = extractUserId(c);
+    const { userId } = await extractSession(c);
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
     const q = c.req.valid("query");
@@ -67,7 +67,7 @@ export const profileRoute = new Hono<AppEnv>()
    * Returns: { items: ReadingHistoryItem[], count }
    */
   .get("/history", zValidator("query", querySchema), async (c) => {
-    const userId = extractUserId(c);
+    const { userId } = await extractSession(c);
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
     const q = c.req.valid("query");
@@ -105,7 +105,7 @@ export const profileRoute = new Hono<AppEnv>()
    * Streak — последовательные дни с reading_history.lastReadAt активностью.
    */
   .get("/stats", async (c) => {
-    const userId = extractUserId(c);
+    const { userId } = await extractSession(c);
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
 

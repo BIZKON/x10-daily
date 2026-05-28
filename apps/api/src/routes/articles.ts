@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import type { AppEnv } from "../app";
-import { tryExtractUserId } from "../auth";
+import { tryExtractSession } from "../auth";
 import { getDb } from "../db";
 import { getEnv } from "../env";
 import { hasPaidSubscription, stripPaidContent } from "../paywall";
@@ -38,8 +38,8 @@ export const articlesRoute = new Hono<AppEnv>().get(
 
     // HIGH-6: paywall enforcement. isPaid + user без active подписки →
     // strip body/citations/audio. Тизер (tease/lede/whyItMatters) остаётся.
-    const userId = tryExtractUserId(c);
-    const hasAccess = await hasPaidSubscription(db, userId);
+    const session = await tryExtractSession(c);
+    const hasAccess = await hasPaidSubscription(db, session?.userId ?? null);
     return c.json(stripPaidContent(row, hasAccess));
   },
 );

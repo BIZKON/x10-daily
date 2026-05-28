@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 describe("GET /v1/articles/:id/me (anonymous)", () => {
   const articleId = "00000000-0000-0000-0000-000000000001";
 
-  it("returns zeroed snapshot without X-User-Id (no DB roundtrip)", async () => {
+  it("returns zeroed snapshot without Authorization (no DB roundtrip)", async () => {
     const res = await SELF.fetch(`https://x10-api.local/v1/articles/${articleId}/me`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as {

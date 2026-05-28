@@ -11,7 +11,7 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../app";
-import { extractUserId, tryExtractUserId } from "../auth";
+import { extractSession, tryExtractSession } from "../auth";
 import { getDb } from "../db";
 import { getEnv } from "../env";
 import { applyRateLimit } from "../rate-limit";
@@ -23,7 +23,7 @@ import { applyRateLimit } from "../rate-limit";
  * POST /v1/articles/:id/bookmark       — toggle (user, article)
  * POST /v1/articles/:id/progress       — upsert прогресса чтения
  *
- * Все require X-User-Id header (см. auth.ts). Counter триггеры в БД (миграция 0003)
+ * Все require Authorization: Bearer (HIGH-2). Counter триггеры в БД (миграция 0003)
  * автоматически обновляют articles.reactions / bookmark_count.
  */
 
@@ -69,12 +69,13 @@ export const engagementRoute = new Hono<AppEnv>()
   /**
    * GET /v1/articles/:id/me
    * Per-user snapshot: какие реакции этот user поставил, в закладках ли, прогресс чтения.
-   * Anonymous (без X-User-Id) — мгновенно возвращает нули, без обращения к БД.
+   * Anonymous (без Authorization) — мгновенно возвращает нули, без обращения к БД.
    * Используется client-side для initial state в optimistic UI.
    */
   .get("/articles/:id/me", zValidator("param", paramsSchema), async (c) => {
-    const userId = tryExtractUserId(c);
-    if (!userId) return c.json(ANONYMOUS_USER_STATE);
+    const session = await tryExtractSession(c);
+    if (!session) return c.json(ANONYMOUS_USER_STATE);
+    const { userId } = session;
 
     const { id: articleId } = c.req.valid("param");
     const env = getEnv(c.env);
@@ -125,7 +126,7 @@ export const engagementRoute = new Hono<AppEnv>()
     zValidator("param", paramsSchema),
     zValidator("json", reactionBodySchema),
     async (c) => {
-      const userId = extractUserId(c);
+      const { userId } = await extractSession(c);
       // HIGH-3: 30 req/мин per (userId+IP). Защищает Neon pool и engagement-сигнал.
       await applyRateLimit(c, c.env.ENGAGEMENT_LIMITER, "reactions", userId);
       const { id: articleId } = c.req.valid("param");
@@ -185,7 +186,7 @@ export const engagementRoute = new Hono<AppEnv>()
    * Returns: { action, isBookmarked, bookmarkCount }
    */
   .post("/articles/:id/bookmark", zValidator("param", paramsSchema), async (c) => {
-    const userId = extractUserId(c);
+    const { userId } = await extractSession(c);
     await applyRateLimit(c, c.env.ENGAGEMENT_LIMITER, "bookmark", userId);
     const { id: articleId } = c.req.valid("param");
     const env = getEnv(c.env);
@@ -235,7 +236,7 @@ export const engagementRoute = new Hono<AppEnv>()
     zValidator("param", paramsSchema),
     zValidator("json", progressBodySchema),
     async (c) => {
-      const userId = extractUserId(c);
+      const { userId } = await extractSession(c);
       // Progress шлётся каждые 5с при чтении — лимит чуть выше, но всё равно
       // защищаем общий counter shared с reactions/bookmark.
       await applyRateLimit(c, c.env.ENGAGEMENT_LIMITER, "progress", userId);

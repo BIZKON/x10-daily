@@ -18,8 +18,8 @@ import { getEnv } from "../env";
 /**
  * Admin CRUD endpoints для контентных сущностей brief'a.
  *
- * Все require X-User-Id (когда появится Telegram session — добавим role check
- * users.role IN ('editor','admin')).
+ * Все require Authorization Bearer (HIGH-2) + role check editor|admin
+ * через requireRole. См. auth.ts.
  *
  * GET-эндпоинты не дублируем — используются публичные /v1/community/klamps,
  * /v1/authors, /v1/events, /v1/digests. Здесь только POST/PATCH/DELETE.

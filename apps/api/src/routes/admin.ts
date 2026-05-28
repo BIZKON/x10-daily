@@ -12,8 +12,8 @@ import { getEnv } from "../env";
  *
  * Все endpoints закрыты `requireRole(["editor","admin"])` (см. auth.ts).
  * Закрывает CRITICAL-1 из docs/SECURITY-AUDIT.md — `/publish` ранее был без auth.
- * До перехода на Telegram session auth (HIGH-2) X-User-Id остаётся spoof-able —
- * это известный ограничение MVP.
+ * HIGH-2: auth basis — Telegram-issued JWT в Authorization Bearer (Login Widget
+ * для admin или Mini App initData для editor-кламперов).
  */
 
 const querySchema = z.object({

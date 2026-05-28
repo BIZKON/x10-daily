@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
@@ -70,6 +71,28 @@ export function createApp() {
   const app = new Hono<AppEnv>();
 
   app.use("*", logger());
+
+  // MEDIUM-8: body size limit — 1 MB по умолчанию для JSON. Upload endpoint
+  // имеет свой 6 MB лимит через Content-Length check + 5 MB через file.size.
+  // Hono bodyLimit считает по Content-Length header (быстрая reject до буферизации).
+  app.use("*", async (c, next) => {
+    const limit = c.req.path.startsWith("/v1/admin/upload")
+      ? 6 * 1024 * 1024
+      : 1 * 1024 * 1024;
+    const handler = bodyLimit({
+      maxSize: limit,
+      onError: (c) =>
+        c.json(
+          {
+            error: "request_too_large",
+            maxBytes: limit,
+            message: "Request body превышает лимит.",
+          },
+          413,
+        ),
+    });
+    return handler(c, next);
+  });
 
   // HIGH-1: CORS allowlist через X10_ALLOWED_ORIGINS (comma-separated, wildcards
   // вида `https://*.vercel.app` поддерживаются). Без env в prod — closed-by-default.

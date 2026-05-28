@@ -133,15 +133,18 @@ export const engagementRoute = new Hono<AppEnv>()
       const env = getEnv(c.env);
       const db = getDb(env.DATABASE_URL);
 
-      // Проверяем существование статьи (FK ловит, но даём осмысленный 404).
+      // MEDIUM-6: фильтр status=published — нельзя реагировать на draft/scheduled
+      // (UUID мог утечь через admin queue endpoint, до C1-fix это было открыто).
       const [article] = await db
         .select({ id: articles.id })
         .from(articles)
-        .where(eq(articles.id, articleId))
+        .where(and(eq(articles.id, articleId), eq(articles.status, "published")))
         .limit(1);
       if (!article) return c.json({ error: "not_found", id: articleId }, 404);
 
-      // Toggle: пытаемся удалить; если 0 строк удалено — вставляем.
+      // MEDIUM-9: toggle race-safe через PK constraint + onConflictDoNothing.
+      // Без транзакции (neon-http one-shot), но конкурентный INSERT теперь не
+      // бросает 500 — racer получит no-op, оба видят корректную "added".
       const deleted = await db
         .delete(reactions)
         .where(
@@ -153,9 +156,17 @@ export const engagementRoute = new Hono<AppEnv>()
         )
         .returning({ kind: reactions.kind });
 
-      const action: "added" | "removed" = deleted.length > 0 ? "removed" : "added";
-      if (action === "added") {
-        await db.insert(reactions).values({ userId, articleId, kind });
+      let action: "added" | "removed";
+      if (deleted.length > 0) {
+        action = "removed";
+      } else {
+        // Возможен PK race (concurrent INSERT) — onConflictDoNothing → no-op,
+        // row уже существует, состояние "added" корректно для UI.
+        await db
+          .insert(reactions)
+          .values({ userId, articleId, kind })
+          .onConflictDoNothing();
+        action = "added";
       }
 
       const counts = await getCurrentCounters(db, articleId);
@@ -180,21 +191,29 @@ export const engagementRoute = new Hono<AppEnv>()
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
 
+    // MEDIUM-6: фильтр published.
     const [article] = await db
       .select({ id: articles.id })
       .from(articles)
-      .where(eq(articles.id, articleId))
+      .where(and(eq(articles.id, articleId), eq(articles.status, "published")))
       .limit(1);
     if (!article) return c.json({ error: "not_found", id: articleId }, 404);
 
+    // MEDIUM-9: race-safe toggle через PK + onConflictDoNothing.
     const deleted = await db
       .delete(bookmarks)
       .where(and(eq(bookmarks.userId, userId), eq(bookmarks.articleId, articleId)))
       .returning({ userId: bookmarks.userId });
 
-    const action: "added" | "removed" = deleted.length > 0 ? "removed" : "added";
-    if (action === "added") {
-      await db.insert(bookmarks).values({ userId, articleId });
+    let action: "added" | "removed";
+    if (deleted.length > 0) {
+      action = "removed";
+    } else {
+      await db
+        .insert(bookmarks)
+        .values({ userId, articleId })
+        .onConflictDoNothing();
+      action = "added";
     }
 
     const counts = await getCurrentCounters(db, articleId);
@@ -225,10 +244,11 @@ export const engagementRoute = new Hono<AppEnv>()
       const env = getEnv(c.env);
       const db = getDb(env.DATABASE_URL);
 
+      // MEDIUM-6: фильтр published — progress на draft бессмысленен.
       const [article] = await db
         .select({ id: articles.id })
         .from(articles)
-        .where(eq(articles.id, articleId))
+        .where(and(eq(articles.id, articleId), eq(articles.status, "published")))
         .limit(1);
       if (!article) return c.json({ error: "not_found", id: articleId }, 404);
 

@@ -15,23 +15,102 @@ import { getEnv, getImagesConfig } from "../env";
  * Если R2 не настроен → 503 c понятной инструкцией.
  *
  * Validation:
- *   - mime in image/png, image/jpeg, image/webp, image/gif, image/svg+xml
- *   - size ≤ 5 MB
+ *   - mime in image/png, image/jpeg, image/webp, image/gif (MEDIUM-3: SVG убран — XSS)
+ *   - magic bytes match для proven формата (MEDIUM-2: не доверяем Content-Type клиента)
+ *   - Content-Length ≤ 6 MB pre-check до буферизации (MEDIUM-5)
+ *   - file.size ≤ 5 MB после буферизации
  *
  * Key структура: {YYYY}/{MM}/{userId}/{timestamp}-{random}.{ext}
  * Это даёт хронологическую раскладку + изоляцию per editor для аудита.
  */
 
 const MAX_BYTES = 5 * 1024 * 1024;
+/** Pre-check на Content-Length — слегка больше real cap из-за multipart overhead. */
+const MAX_CONTENT_LENGTH = 6 * 1024 * 1024;
 
+/**
+ * MEDIUM-3: SVG drop — может содержать `<script>` и `<foreignObject>`.
+ * Если когда-нибудь понадобится — serve from sandboxed subdomain
+ * с Content-Security-Policy: sandbox или DOMPurify санитизацией перед put.
+ */
 const ALLOWED_MIME: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
   "image/jpg": "jpg",
   "image/webp": "webp",
   "image/gif": "gif",
-  "image/svg+xml": "svg",
 };
+
+/**
+ * MEDIUM-2: magic bytes verification. `file.type` контролируется клиентом
+ * (multipart Content-Type header) — атакующий может выдать `.html` за PNG.
+ * Реальный формат определяется по signature первых байт.
+ *
+ * https://en.wikipedia.org/wiki/List_of_file_signatures
+ */
+type DetectedFormat = "png" | "jpg" | "webp" | "gif";
+
+function detectFormat(bytes: Uint8Array): DetectedFormat | null {
+  if (bytes.length < 12) return null;
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  ) {
+    return "png";
+  }
+  // JPEG: FF D8 FF
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return "jpg";
+  }
+  // GIF87a / GIF89a: 47 49 46 38 37/39 61
+  if (
+    bytes[0] === 0x47 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x38 &&
+    (bytes[4] === 0x37 || bytes[4] === 0x39) &&
+    bytes[5] === 0x61
+  ) {
+    return "gif";
+  }
+  // WEBP: 'RIFF' .... 'WEBP' (52 49 46 46 ?? ?? ?? ?? 57 45 42 50)
+  if (
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  ) {
+    return "webp";
+  }
+  return null;
+}
+
+function expectedFormatFromMime(mime: string): DetectedFormat | null {
+  switch (mime) {
+    case "image/png":
+      return "png";
+    case "image/jpeg":
+    case "image/jpg":
+      return "jpg";
+    case "image/webp":
+      return "webp";
+    case "image/gif":
+      return "gif";
+    default:
+      return null;
+  }
+}
 
 function randomString(len: number): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -66,6 +145,25 @@ export const uploadRoute = new Hono<AppEnv>().post("/", async (c) => {
     );
   }
 
+  // MEDIUM-5: pre-check Content-Length до буферизации formData.
+  // Без этого CF Workers буферизует весь body (до ~100MB лимита CF) ради
+  // последующей валидации — bandwidth + memory abuse vector.
+  const contentLengthRaw = c.req.header("content-length");
+  if (contentLengthRaw) {
+    const cl = Number.parseInt(contentLengthRaw, 10);
+    if (Number.isFinite(cl) && cl > MAX_CONTENT_LENGTH) {
+      return c.json(
+        {
+          error: "request_too_large",
+          maxBytes: MAX_CONTENT_LENGTH,
+          actualBytes: cl,
+          message: "Content-Length превышает лимит. Используйте файл ≤ 5 MB.",
+        },
+        413,
+      );
+    }
+  }
+
   let form: FormData;
   try {
     form = await c.req.formData();
@@ -89,15 +187,35 @@ export const uploadRoute = new Hono<AppEnv>().post("/", async (c) => {
   }
 
   const mime = file.type.toLowerCase();
-  const ext = ALLOWED_MIME[mime];
-  if (!ext) {
+  const declaredExt = ALLOWED_MIME[mime];
+  if (!declaredExt) {
     return c.json(
       { error: "unsupported_mime", mime, allowed: Object.keys(ALLOWED_MIME) },
       415,
     );
   }
 
-  const key = buildKey(userId, ext);
+  // MEDIUM-2: магические байты должны совпадать с заявленным MIME.
+  // Защищает от: 1) выдачи html/js за png; 2) выдачи неизвестного формата
+  // за разрешённый. Читаем только первые 16 байт — этого достаточно для
+  // detection PNG/JPEG/GIF/WEBP.
+  const headerBytes = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  const detected = detectFormat(headerBytes);
+  const expected = expectedFormatFromMime(mime);
+  if (!detected || detected !== expected) {
+    return c.json(
+      {
+        error: "mime_signature_mismatch",
+        mime,
+        detected,
+        message:
+          "Magic bytes файла не совпадают с Content-Type. Не пытайтесь спуфить MIME.",
+      },
+      415,
+    );
+  }
+
+  const key = buildKey(userId, declaredExt);
   try {
     await images.bucket.put(key, file.stream(), {
       httpMetadata: {

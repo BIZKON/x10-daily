@@ -35,6 +35,10 @@ export function createDraftArticleFunction(
       triggers: [{ event: topicIngestedEvent }],
       retries: 2,
       concurrency: { limit: 5 },
+      // MEDIUM-4: cost-runaway protection. 50 запусков/час — потолок ~$22.50/час
+      // даже если C2 (auth) обойдут или бот зальёт events напрямую в Inngest.
+      // Дневной полный $ budget — отдельный мониторинг (pipeline_runs.cost_usd sum).
+      rateLimit: { limit: 50, period: "1h" },
     },
     async ({ event, step }) => {
       const env = loadEnv(bindings as unknown as Record<string, string | undefined>);

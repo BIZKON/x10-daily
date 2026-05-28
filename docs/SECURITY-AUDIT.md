@@ -81,15 +81,15 @@
 
 ### MEDIUM — backlog
 
-- [ ] **M1** · `articles.ts:7` — slug param без Zod validation. SQLi нет (drizzle), но нет limit на длину. Fix: `z.string().min(1).max(200).regex(/^[a-z0-9-]+$/)`
-- [ ] **M2** · `upload.ts:88-95` — MIME проверяется по `file.type` (client-controlled), не magic bytes
-- [ ] **M3** · `upload.ts:32` — `image/svg+xml` в allowlist → stored XSS если public bucket same-origin к admin/miniapp. Fix: drop SVG или serve from sandboxed subdomain с `CSP: sandbox`
-- [ ] **M4** · `draft-article.ts` — нет global $ budget. Loop bug × `retries:2` × `concurrency:5` = expensive incident. Fix: `RateLimit` в Inngest config + hard daily spend check
-- [ ] **M5** · `upload.ts:24` — 5MB cap проверяется ПОСЛЕ `c.req.formData()` (буфферит весь body). Fix: check `Content-Length` header сначала, reject early at 6MB
-- [ ] **M6** · `engagement.ts:127` — reactions можно ставить на `status='draft'` статьи (если знаешь UUID, leak через admin queue). Fix: добавить `eq(articles.status, "published")` в existence check
-- [ ] **M7** · `pipeline_config.agent` — нет unique index, race condition при concurrent PUT. Уже в TODO handoff'a. Fix: migration 0004
-- [ ] **M8** · Нет Hono `bodyLimit()` middleware → дефолт ~100MB → JSON DoS. Fix: `app.use('*', bodyLimit({ maxSize: 1_000_000 }))`
-- [ ] **M9** · `engagement.ts` toggle (delete+insert) без transaction → race window для double-count. Fix: wrap в `db.transaction()`
+- [x] **M1** · `articles.ts:7` — slug param Zod validation. ✅ closed в HIGH commit (вместе с paywall): `z.string().min(1).max(200).regex(/^[a-z0-9-]+$/)`.
+- [x] **M2** · `upload.ts` — MIME spoofing. ✅ closed: `detectFormat()` читает первые 16 байт и проверяет magic bytes для PNG/JPEG/GIF/WEBP. Mismatch с заявленным Content-Type → 415.
+- [x] **M3** · `upload.ts` — SVG XSS. ✅ closed: `image/svg+xml` удалён из `ALLOWED_MIME`. Если потребуется — sandboxed subdomain с CSP в будущем.
+- [x] **M4** · `draft-article.ts` — cost-runaway. ✅ closed: `rateLimit: {limit: 50, period: "1h"}` в Inngest function config. Потолок ~$22.50/час даже при auth bypass. Полное daily $ accounting — отдельная задача (метрика, не security).
+- [x] **M5** · `upload.ts` — 5MB cap после буферизации. ✅ closed: pre-check `Content-Length` header (6 MB cap, multipart overhead+) до `c.req.formData()`. Раннее 413 без bandwidth abuse.
+- [x] **M6** · `engagement.ts` — reactions на draft статьи. ✅ closed: `eq(articles.status, "published")` добавлен в existence check для reactions, bookmark, progress.
+- [ ] **M7** · `pipeline_config.agent` — нет unique index. Отложено — отдельный коммит с миграцией 0004.
+- [x] **M8** · Нет Hono `bodyLimit()` middleware. ✅ closed: `bodyLimit({maxSize: 1MB})` global, override 6MB для `/v1/admin/upload`. JSON DoS закрыт.
+- [x] **M9** · `engagement.ts` toggle race. ✅ closed: `.onConflictDoNothing()` на INSERT branch — concurrent racer получает no-op вместо PK violation, оба клиента видят корректную "added" (row exists). Без транзакции (neon-http one-shot), но PK constraint обеспечивает консистентность.
 
 ### LOW / informational
 

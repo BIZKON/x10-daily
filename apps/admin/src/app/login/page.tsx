@@ -13,11 +13,34 @@
  */
 
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { devLoginAction } from "@/lib/auth-actions";
 import { getSessionToken } from "@/lib/session";
 import { TgLoginWidget } from "@/components/tg-login-widget";
 
-export default async function LoginPage({
+// Cache Components (Next 16): async (searchParams + cookie read) ДОЛЖНО быть
+// внутри <Suspense>, иначе prerender падает «Uncached data outside Suspense».
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  return (
+    <Suspense fallback={<LoginSkeleton />}>
+      <LoginContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+function LoginSkeleton() {
+  return (
+    <div className="flex min-h-dvh items-center justify-center bg-background px-6">
+      <div className="h-72 w-full max-w-sm animate-pulse rounded-2xl bg-card" />
+    </div>
+  );
+}
+
+async function LoginContent({
   searchParams,
 }: {
   searchParams: Promise<{ next?: string }>;

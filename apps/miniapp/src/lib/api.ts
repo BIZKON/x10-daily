@@ -61,7 +61,14 @@ function getBaseUrl(): string | null {
     // HIGH-5: hard-fail в prod — иначе miniapp молча работает на mock-данных
     // из feed.ts, пользователи видят 4 фейковых статьи как реальные.
     // В dev/preview без env остаётся mock fallback (для dev UI без backend).
-    if (process.env.NODE_ENV === "production" && process.env.X10_DEMO !== "1") {
+    // NEXT_PHASE guard: во время `next build` (Docker/Timeweb — бэкенда нет)
+    // НЕ кидаем — динамический SSR подтянет реальные данные в рантайме.
+    // Рантайм-защита HIGH-5 (NEXT_PHASE при serve не задан) сохраняется.
+    if (
+      process.env.NODE_ENV === "production" &&
+      process.env.X10_DEMO !== "1" &&
+      process.env.NEXT_PHASE !== "phase-production-build"
+    ) {
       throw new Error(
         "X10_API_BASE_URL is required in production. Set it in Vercel env. " +
           "Чтобы явно включить demo mode в prod (preview-deploy без backend) — задай X10_DEMO=1.",

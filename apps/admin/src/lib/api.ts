@@ -103,7 +103,15 @@ function getBaseUrl(): string | null {
     // HIGH-5: hard-fail в prod если URL не задан — иначе admin молча
     // включает demo mode, редактор видит mock data, mutations silently fail.
     // В dev/preview/test возвращаем null → demo fallback.
-    if (process.env.NODE_ENV === "production" && process.env.X10_DEMO !== "1") {
+    // NEXT_PHASE guard: во время `next build` (Docker/Timeweb — бэкенда нет)
+    // НЕ кидаем, иначе пререндер статичной /_not-found/шелла падает. Реальные
+    // данные тянутся динамически в рантайме; рантайм-защита HIGH-5 цела
+    // (NEXT_PHASE при serve не задан).
+    if (
+      process.env.NODE_ENV === "production" &&
+      process.env.X10_DEMO !== "1" &&
+      process.env.NEXT_PHASE !== "phase-production-build"
+    ) {
       throw new Error(
         "X10_API_BASE_URL is required in production. Set it in Vercel env. " +
           "Чтобы явно включить demo mode в prod (для preview-deploy без backend) — задай X10_DEMO=1.",
@@ -127,8 +135,16 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
 /**
  * Demo mode — true когда нет X10_API_BASE_URL.
  * Используется для рендера DemoBanner и для fallback в каждом fetcher.
+ *
+ * NEXT_PHASE guard: во время `next build` (Docker/Timeweb — бэкенда нет)
+ * возвращаем false, чтобы mock-fetchers не запускались. Иначе их Date.now()
+ * запекается в prerender (Cache Components Next 16 это запрещает: «used
+ * Date.now() before accessing uncached data»). На билде fetchers вернут null,
+ * страницы отрендерят ApiUnavailable — статично. В рантайме (NEXT_PHASE при
+ * serve не задан) demo mode работает как прежде.
  */
 export function isDemoMode(): boolean {
+  if (process.env.NEXT_PHASE === "phase-production-build") return false;
   return getBaseUrl() === null;
 }
 

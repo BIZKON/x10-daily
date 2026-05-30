@@ -14,11 +14,15 @@ import { EngagementBar } from "@/components/article/engagement-bar";
 import { HeaderShare } from "@/components/article/header-share";
 import { ReadingProgress } from "@/components/article/reading-progress";
 import { ANONYMOUS_USER_STATE, fetchArticleUserState } from "@/lib/api";
-import { loadArticle, loadDailyFeed, type FeedItem } from "@/lib/feed";
+import { loadArticle, type FeedItem } from "@/lib/feed";
 
 export async function generateStaticParams() {
-  const items = await loadDailyFeed();
-  return items.map((i) => ({ slug: i.slug }));
+  // Cache Components (Next 16) требует ≥1 результат и НЕ допускает route-config
+  // `dynamicParams` (slug'и вне списка рендерятся on-demand неявно). Реальных
+  // статей на билде нет (бэкенд недоступен), поэтому отдаём один sentinel-slug:
+  // getBaseUrl→null коротит loadArticle ДО fetch → его пререндер = статичный
+  // 404, без dynamic-доступа. Реальные slug'и рендерятся server-side в рантайме.
+  return [{ slug: "__prerender_placeholder__" }];
 }
 
 export default async function ArticlePage({

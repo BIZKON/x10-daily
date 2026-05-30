@@ -43,6 +43,13 @@
       "when": 1780233372448,
       "tag": "0005_uploads_log",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780319772448,
+      "tag": "0006_seen_items_channels",
+      "breakpoints": true
     }
   ]
 }

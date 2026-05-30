@@ -28,6 +28,9 @@ RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
 FROM deps AS builder
 COPY apps/miniapp ./apps/miniapp
 COPY packages ./packages
+# tsconfig.json наследует ../../tsconfig.base.json — без корневого файла
+# `next build` (Turbopack) падает «extends doesn't resolve correctly».
+COPY tsconfig.base.json ./
 ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app/apps/miniapp
 RUN pnpm exec next build

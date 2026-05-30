@@ -38,17 +38,25 @@ services:
   inngest:
     image: inngest/inngest:latest
     restart: unless-stopped
-    command: ["inngest", "start"]
-    environment:
-      # Без INNGEST_DEV=1 — это prod-режим.
-      INNGEST_POSTGRES_URI: "${INNGEST_POSTGRES_URI}"
-      INNGEST_REDIS_URI: "redis://redis:6379"
-      INNGEST_EVENT_KEY: "${INNGEST_EVENT_KEY}"
-      INNGEST_SIGNING_KEY: "${INNGEST_SIGNING_KEY}"
-      # SDK URL для авто-регистрации функций при старте. В prod Inngest сам
-      # запрашивает /inngest endpoint у каждого SDK URL — функции появляются
-      # в дашборде после `deploy.sh`.
-      INNGEST_SDK_URL: "http://pipeline:8787/inngest"
+    # ВАЖНО: `inngest start` читает ТОЛЬКО CLI-флаги, НЕ env-переменные —
+    # в `inngest start --help` ни одного [$ENV_VAR]. Прежняя передача через
+    # environment молча игнорировалась → fallback на SQLite + in-memory Redis,
+    # потеря in-flight events при рестарте. Поэтому всё серверное — флагами.
+    # Без INNGEST_DEV — это prod-режим. `-u` — SDK URL для авто-регистрации
+    # функций (Inngest сам дёргает /inngest при старте → видны в дашборде).
+    command:
+      - "inngest"
+      - "start"
+      - "--postgres-uri"
+      - "${INNGEST_POSTGRES_URI}"
+      - "--redis-uri"
+      - "redis://redis:6379"
+      - "--event-key"
+      - "${INNGEST_EVENT_KEY}"
+      - "--signing-key"
+      - "${INNGEST_SIGNING_KEY}"
+      - "-u"
+      - "http://pipeline:8787/inngest"
     expose:
       - "8288"
     depends_on:
@@ -132,6 +140,9 @@ services:
       PORT: "3001"
       HOSTNAME: "0.0.0.0"
       DATABASE_URL: "${DATABASE_URL}"
+      # Серверный base URL до apps/api (RSC/Server Actions/upload). Код читает
+      # X10_API_BASE_URL (admin/src/lib/api.ts); внутри сети — по имени сервиса.
+      X10_API_BASE_URL: "http://api:8080"
       NEXT_PUBLIC_API_URL: "https://api.${X10_BASE_DOMAIN:-x10.media}"
       NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: "${NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:-}"
       SENTRY_DSN: "${SENTRY_DSN:-}"
@@ -151,6 +162,11 @@ services:
       NODE_ENV: production
       PORT: "3000"
       HOSTNAME: "0.0.0.0"
+      # X10_API_BASE_URL — серверный base URL до apps/api (RSC/Server Actions).
+      # КОД ЧИТАЕТ ИМЕННО ЭТО (miniapp/src/lib/api.ts getBaseUrl). Внутри Docker-
+      # сети miniapp→api идёт по имени сервиса напрямую, без TLS-хопа через Caddy.
+      # NEXT_PUBLIC_API_URL в коде не читается нигде (legacy с Vercel).
+      X10_API_BASE_URL: "http://api:8080"
       NEXT_PUBLIC_API_URL: "https://api.${X10_BASE_DOMAIN:-x10.media}"
       NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: "${NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:-}"
       NEXT_PUBLIC_POSTHOG_KEY: "${NEXT_PUBLIC_POSTHOG_KEY:-}"

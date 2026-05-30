@@ -33,6 +33,11 @@ COPY apps/workers/pipeline ./apps/workers/pipeline
 
 COPY packages/config/src ./packages/config/src
 COPY packages/db/src ./packages/db/src
+# deploy.sh гоняет `pnpm --filter @x10/db db:migrate` (= drizzle-kit migrate)
+# именно в этом образе. drizzle-kit требует config + SQL-миграции на диске —
+# без них migrate падает «no config / no migrations». src/ недостаточно.
+COPY packages/db/drizzle.config.ts ./packages/db/drizzle.config.ts
+COPY packages/db/drizzle ./packages/db/drizzle
 COPY packages/agents/src ./packages/agents/src
 COPY packages/voice ./packages/voice
 

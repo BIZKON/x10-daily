@@ -1,12 +1,30 @@
 import { CheckCircle2, ChevronLeft, Send } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { DeleteButton } from "@/components/form/delete-button";
 import { fetchAdminDigestByDate } from "@/lib/api";
 import { deleteDigest, markDigestSent, updateDigest } from "../actions";
 import { DigestForm } from "../digest-form";
 
-export default async function EditDigestPage({
+// Cache Components (Next 16): async (params + fetch) ДОЛЖНО быть в <Suspense>.
+export default function EditDigestPage({
+  params,
+}: {
+  params: Promise<{ date: string }>;
+}) {
+  return (
+    <Suspense fallback={<EditDigestSkeleton />}>
+      <EditDigestContent params={params} />
+    </Suspense>
+  );
+}
+
+function EditDigestSkeleton() {
+  return <div className="h-96 animate-pulse rounded-2xl bg-card" />;
+}
+
+async function EditDigestContent({
   params,
 }: {
   params: Promise<{ date: string }>;

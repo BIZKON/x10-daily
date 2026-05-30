@@ -1,12 +1,30 @@
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { DeleteButton } from "@/components/form/delete-button";
 import { fetchAdminKlampBySlug } from "@/lib/api";
 import { deleteKlamp, updateKlamp } from "../actions";
 import { KlampForm } from "../klamp-form";
 
-export default async function EditKlampPage({
+// Cache Components (Next 16): async (params + fetch) ДОЛЖНО быть в <Suspense>.
+export default function EditKlampPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  return (
+    <Suspense fallback={<EditKlampSkeleton />}>
+      <EditKlampContent params={params} />
+    </Suspense>
+  );
+}
+
+function EditKlampSkeleton() {
+  return <div className="h-96 animate-pulse rounded-2xl bg-card" />;
+}
+
+async function EditKlampContent({
   params,
 }: {
   params: Promise<{ slug: string }>;

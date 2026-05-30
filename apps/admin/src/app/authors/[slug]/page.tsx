@@ -1,12 +1,30 @@
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { DeleteButton } from "@/components/form/delete-button";
 import { fetchAdminAuthorBySlug } from "@/lib/api";
 import { deleteAuthor, updateAuthor } from "../actions";
 import { AuthorForm } from "../author-form";
 
-export default async function EditAuthorPage({
+// Cache Components (Next 16): async (params + fetch) ДОЛЖНО быть в <Suspense>.
+export default function EditAuthorPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  return (
+    <Suspense fallback={<EditAuthorSkeleton />}>
+      <EditAuthorContent params={params} />
+    </Suspense>
+  );
+}
+
+function EditAuthorSkeleton() {
+  return <div className="h-96 animate-pulse rounded-2xl bg-card" />;
+}
+
+async function EditAuthorContent({
   params,
 }: {
   params: Promise<{ slug: string }>;

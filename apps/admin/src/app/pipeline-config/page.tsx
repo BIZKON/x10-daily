@@ -1,5 +1,6 @@
 import { Cpu, Pencil, Power } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 import {
   fetchAdminPipelineConfigs,
   type AdminPipelineConfig,
@@ -23,7 +24,20 @@ export const metadata = { title: "Pipeline config — X10 Admin" };
  *
  * HumanGate — без edit-ссылки (не агент, а UI-шаг редактора в admin queue).
  */
-export default async function PipelineConfigPage() {
+// Cache Components (Next 16): async fetch ДОЛЖЕН быть внутри <Suspense>.
+export default function PipelineConfigPage() {
+  return (
+    <Suspense fallback={<PipelineConfigSkeleton />}>
+      <PipelineConfigContent />
+    </Suspense>
+  );
+}
+
+function PipelineConfigSkeleton() {
+  return <div className="h-96 animate-pulse rounded-2xl bg-card" />;
+}
+
+async function PipelineConfigContent() {
   const data = await fetchAdminPipelineConfigs();
   const byAgent = new Map<PipelineAgent, AdminPipelineConfig>();
   for (const c of data?.items ?? []) byAgent.set(c.agent, c);

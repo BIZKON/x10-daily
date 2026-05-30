@@ -1,8 +1,22 @@
 import { Plus, Star } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 import { fetchAdminAuthors } from "@/lib/api";
 
-export default async function AuthorsPage() {
+// Cache Components (Next 16): async fetch ДОЛЖЕН быть внутри <Suspense>.
+export default function AuthorsPage() {
+  return (
+    <Suspense fallback={<AuthorsSkeleton />}>
+      <AuthorsContent />
+    </Suspense>
+  );
+}
+
+function AuthorsSkeleton() {
+  return <div className="h-72 animate-pulse rounded-2xl bg-card" />;
+}
+
+async function AuthorsContent() {
   const data = await fetchAdminAuthors();
 
   return (

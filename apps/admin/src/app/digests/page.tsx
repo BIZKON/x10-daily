@@ -1,8 +1,22 @@
 import { CheckCircle2, Clock, Mic, Plus } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 import { fetchAdminLatestDigest } from "@/lib/api";
 
-export default async function DigestsPage() {
+// Cache Components (Next 16): async fetch ДОЛЖЕН быть внутри <Suspense>.
+export default function DigestsPage() {
+  return (
+    <Suspense fallback={<DigestsSkeleton />}>
+      <DigestsContent />
+    </Suspense>
+  );
+}
+
+function DigestsSkeleton() {
+  return <div className="h-72 animate-pulse rounded-2xl bg-card" />;
+}
+
+async function DigestsContent() {
   const latest = await fetchAdminLatestDigest();
 
   return (

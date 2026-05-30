@@ -1,6 +1,7 @@
 import { ChevronLeft, Cpu, Power } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { fetchAdminPipelineConfigByAgent, type PipelineAgent } from "@/lib/api";
 import {
   findAgentMeta,
@@ -14,7 +15,24 @@ import { PipelineConfigForm } from "./pipeline-config-form";
 
 export const metadata = { title: "Edit agent config — X10 Admin" };
 
-export default async function EditPipelineConfigPage({
+// Cache Components (Next 16): async (params + fetch) ДОЛЖНО быть в <Suspense>.
+export default function EditPipelineConfigPage({
+  params,
+}: {
+  params: Promise<{ agent: string }>;
+}) {
+  return (
+    <Suspense fallback={<EditPipelineConfigSkeleton />}>
+      <EditPipelineConfigContent params={params} />
+    </Suspense>
+  );
+}
+
+function EditPipelineConfigSkeleton() {
+  return <div className="h-96 animate-pulse rounded-2xl bg-card" />;
+}
+
+async function EditPipelineConfigContent({
   params,
 }: {
   params: Promise<{ agent: string }>;

@@ -1,10 +1,38 @@
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { fetchArticleDetail, type ArticleDetail } from "@/lib/api";
 import { publishAction } from "./publish-action";
 
-export default async function ArticleReviewPage({
+// Cache Components (Next 16): async data (params/searchParams/fetch) ДОЛЖНА
+// быть внутри <Suspense>. Иначе build падает «Uncached data accessed outside
+// of Suspense». Поэтому страница-обёртка — синхронная, всё динамическое
+// уехало в <Content/>.
+export default function ArticleReviewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
+}) {
+  return (
+    <Suspense fallback={<ArticleReviewSkeleton />}>
+      <ArticleReviewContent params={params} searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+function ArticleReviewSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="h-10 animate-pulse rounded-xl bg-card" />
+      <div className="h-72 animate-pulse rounded-2xl bg-card" />
+    </div>
+  );
+}
+
+async function ArticleReviewContent({
   params,
   searchParams,
 }: {

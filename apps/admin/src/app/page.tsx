@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 import {
   fetchQueue,
   type AdminCategory,
@@ -47,7 +48,30 @@ function parseSubcategory(raw: string | string[] | undefined): string | undefine
   return v;
 }
 
-export default async function QueuePage({
+// Cache Components (Next 16): async (searchParams + fetch) ДОЛЖНО быть внутри
+// <Suspense>. Иначе build падает «Uncached data accessed outside of Suspense».
+export default function QueuePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string | string[]; subcategory?: string | string[] }>;
+}) {
+  return (
+    <Suspense fallback={<QueueSkeleton />}>
+      <QueueContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+function QueueSkeleton() {
+  return (
+    <div className="space-y-3">
+      <div className="h-12 animate-pulse rounded-xl bg-card" />
+      <div className="h-72 animate-pulse rounded-2xl bg-card" />
+    </div>
+  );
+}
+
+async function QueueContent({
   searchParams,
 }: {
   searchParams: Promise<{ category?: string | string[]; subcategory?: string | string[] }>;

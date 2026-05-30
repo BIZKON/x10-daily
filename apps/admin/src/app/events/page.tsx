@@ -1,5 +1,6 @@
 import { Calendar, MapPin, Plus, Ticket, Users } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 import { fetchAdminEvents, type AdminEvent } from "@/lib/api";
 
 const TYPE_LABEL: Record<AdminEvent["type"], string> = {
@@ -18,11 +19,47 @@ const TYPE_COLOR: Record<AdminEvent["type"], string> = {
   breakfast: "text-mist",
 };
 
-export default async function EventsPage() {
+// Cache Components (Next 16): async fetch ДОЛЖЕН быть внутри <Suspense>.
+export default function EventsPage() {
+  return (
+    <Suspense fallback={<EventsSkeleton />}>
+      <EventsContent />
+    </Suspense>
+  );
+}
+
+function EventsSkeleton() {
+  return <div className="h-72 animate-pulse rounded-2xl bg-card" />;
+}
+
+async function EventsContent() {
   const data = await fetchAdminEvents("all");
+  // Ранний возврат ДО Date.now: на билде data===null (фейк fetch без реального
+  // HTTP), Cache Components считает что uncached data не была прочитана → Date.now
+  // запекался бы во время сборки. Этот guard выводит Date.now в недостижимую
+  // на билде ветку. В рантайме (data есть) — поведение прежнее.
+  if (!data) {
+    return (
+      <>
+        <header className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="m-0 font-display text-2xl font-extrabold">События</h1>
+            <p className="m-0 mt-1 text-[13px] text-mist">apps/api недоступен</p>
+          </div>
+          <Link
+            href="/events/new"
+            className="flex items-center gap-1.5 rounded-lg bg-red px-3 py-2 text-[13px] font-semibold text-white transition hover:bg-red-deep"
+          >
+            <Plus size={14} strokeWidth={2} /> Создать
+          </Link>
+        </header>
+        <ApiUnavailable />
+      </>
+    );
+  }
   const now = Date.now();
-  const upcoming = data?.items.filter((e) => new Date(e.startDate).getTime() >= now) ?? [];
-  const past = data?.items.filter((e) => new Date(e.startDate).getTime() < now) ?? [];
+  const upcoming = data.items.filter((e) => new Date(e.startDate).getTime() >= now);
+  const past = data.items.filter((e) => new Date(e.startDate).getTime() < now);
 
   return (
     <>
@@ -41,9 +78,7 @@ export default async function EventsPage() {
         </Link>
       </header>
 
-      {!data ? (
-        <ApiUnavailable />
-      ) : data.items.length === 0 ? (
+      {data.items.length === 0 ? (
         <EmptyState message="Ещё нет событий." />
       ) : (
         <>

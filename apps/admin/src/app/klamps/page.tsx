@@ -1,8 +1,22 @@
 import { MapPin, Plus, Users } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 import { fetchAdminKlamps } from "@/lib/api";
 
-export default async function KlampsPage() {
+// Cache Components (Next 16): async fetch ДОЛЖЕН быть внутри <Suspense>.
+export default function KlampsPage() {
+  return (
+    <Suspense fallback={<KlampsSkeleton />}>
+      <KlampsContent />
+    </Suspense>
+  );
+}
+
+function KlampsSkeleton() {
+  return <div className="h-72 animate-pulse rounded-2xl bg-card" />;
+}
+
+async function KlampsContent() {
   const data = await fetchAdminKlamps();
   const total = data?.items.reduce((acc, k) => acc + k.memberCount, 0) ?? 0;
 

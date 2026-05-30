@@ -30,6 +30,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/workers/pipeline/node_modules ./apps/workers/pipeline/node_modules
 COPY --from=deps /app/packages ./packages
 COPY apps/workers/pipeline ./apps/workers/pipeline
+# deploy.sh гонит `pnpm --filter @x10/db db:migrate` в этом образе. Без
+# корневых метафайлов corepack не видит packageManager pin → скачивает latest
+# pnpm (11+), конфликт с lockfile pnpm 10 → migrate падает в runDepsStatusCheck.
+# Плюс pnpm без pnpm-workspace.yaml не видит workspace → --filter не работает.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 COPY packages/config/src ./packages/config/src
 COPY packages/db/src ./packages/db/src

@@ -60,6 +60,14 @@ const baseSchema = z.object({
     .optional(),
   TELEGRAM_WEBAPP_URL: urlOrEmpty.optional(),
   /**
+   * HTTP/HTTPS-прокси для api.telegram.org из workers/pipeline. На Timeweb
+   * ru-1 (РФ-ЦОД) прямой fetch к api.telegram.org молча умирает по таймауту
+   * (TelegramNetworkError). См. timeweb-telegram-deploy skill §4.
+   * Формат: http://user:pass@host:port (HTTP CONNECT) — undici.ProxyAgent.
+   * Пусто → прямой fetch (для dev / non-РФ-хостинга).
+   */
+  TELEGRAM_PROXY_URL: urlOrEmpty.optional(),
+  /**
    * Walking Skeleton (ТЗ #1, N5): тестовый канал для автономного постинга.
    * Формат: `@channel_username` или numeric chat_id (`-1001234567890`).
    * Required в production только если AUTONOMOUS_POSTING_TG=true.

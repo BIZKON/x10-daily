@@ -1,5 +1,6 @@
 import { and, channels, createDb, eq } from "@x10/db";
 import { loadEnv } from "@x10/config";
+import { fetch as undiciFetch, ProxyAgent } from "undici";
 import { articleReadyEvent } from "../../events";
 import type { PipelineInngest } from "../client";
 import type { PipelineBindings } from "../../bindings";
@@ -80,7 +81,18 @@ export function createPostToTgFunction(
         return r;
       });
 
-      const fetchImpl = opts.fetchImpl ?? globalThis.fetch;
+      // Resolution priority: тестовый override → прокси (если задан) → direct.
+      // На Timeweb ru-1 api.telegram.org молча таймаутится; TELEGRAM_PROXY_URL
+      // прокидывает через HTTP-прокси вне РФ (undici.ProxyAgent). См. env.ts.
+      const proxyUrl = env.TELEGRAM_PROXY_URL;
+      const fetchImpl: typeof fetch = opts.fetchImpl
+        ?? (proxyUrl
+          ? (((input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) =>
+              undiciFetch(input as Parameters<typeof undiciFetch>[0], {
+                ...(init as Parameters<typeof undiciFetch>[1]),
+                dispatcher: new ProxyAgent(proxyUrl),
+              })) as unknown as typeof fetch)
+          : globalThis.fetch);
       const text = row.text;
       const visualRef = row.visualRef;
 

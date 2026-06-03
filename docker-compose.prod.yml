@@ -75,6 +75,7 @@ services:
       DATABASE_URL: "${DATABASE_URL}"
       REDIS_URL: "redis://redis:6379"
       INNGEST_EVENT_KEY: "${INNGEST_EVENT_KEY}"
+      INNGEST_BASE_URL: "http://inngest:8288"
       AI_GATEWAY_BASE_URL: "${AI_GATEWAY_BASE_URL:-https://api.timeweb.ai/v1}"
       AI_GATEWAY_API_KEY: "${AI_GATEWAY_API_KEY}"
       TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"
@@ -112,6 +113,10 @@ services:
       DATABASE_URL: "${DATABASE_URL}"
       INNGEST_EVENT_KEY: "${INNGEST_EVENT_KEY}"
       INNGEST_SIGNING_KEY: "${INNGEST_SIGNING_KEY}"
+      # Self-host Inngest: SDK (pipeline) и event-sender (api) должны знать
+      # адрес inngest-сервера, иначе SDK по умолчанию шлёт в Inngest Cloud и
+      # функции не регистрируются (GraphQL functions:[]). Это звено sync.
+      INNGEST_BASE_URL: "http://inngest:8288"
       AI_GATEWAY_BASE_URL: "${AI_GATEWAY_BASE_URL:-https://api.timeweb.ai/v1}"
       AI_GATEWAY_API_KEY: "${AI_GATEWAY_API_KEY}"
       TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"

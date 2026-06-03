@@ -14,6 +14,7 @@ COPY apps/api/package.json ./apps/api/
 COPY apps/admin/package.json ./apps/admin/
 COPY apps/miniapp/package.json ./apps/miniapp/
 COPY apps/workers/pipeline/package.json ./apps/workers/pipeline/
+COPY apps/workers/ingest/package.json ./apps/workers/ingest/
 COPY packages/agents/package.json ./packages/agents/
 COPY packages/config/package.json ./packages/config/
 COPY packages/db/package.json ./packages/db/
@@ -30,6 +31,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/workers/pipeline/node_modules ./apps/workers/pipeline/node_modules
 COPY --from=deps /app/packages ./packages
 COPY apps/workers/pipeline ./apps/workers/pipeline
+# pipeline импортирует @x10/worker-ingest (workspace dep) — runtime ESM
+# resolver не найдёт пакет без его src в образе. Без этого: ERR_MODULE_NOT_FOUND
+# для @x10/worker-ingest из ingest-vc-rss.ts.
+COPY apps/workers/ingest ./apps/workers/ingest
 # deploy.sh гонит `pnpm --filter @x10/db db:migrate` в этом образе. Без
 # корневых метафайлов corepack не видит packageManager pin → скачивает latest
 # pnpm (11+), конфликт с lockfile pnpm 10 → migrate падает в runDepsStatusCheck.

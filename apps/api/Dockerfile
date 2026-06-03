@@ -37,6 +37,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=deps /app/packages ./packages
 COPY apps/api ./apps/api
+# CMD ["pnpm","start"] → pnpm читает packageManager pin из root package.json.
+# Без корневых метафайлов corepack скачивает latest pnpm (11+), runDepsStatusCheck
+# падает «Command failed with exit code 1». Это тот же фикс что для pipeline (ec08c64).
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Workspace deps source (TS, загружаются tsx-runtime):
 COPY packages/config/src ./packages/config/src

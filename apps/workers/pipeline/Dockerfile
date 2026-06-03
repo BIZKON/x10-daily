@@ -35,6 +35,10 @@ COPY apps/workers/pipeline ./apps/workers/pipeline
 # resolver не найдёт пакет без его src в образе. Без этого: ERR_MODULE_NOT_FOUND
 # для @x10/worker-ingest из ingest-vc-rss.ts.
 COPY apps/workers/ingest ./apps/workers/ingest
+# ingest/src импортирует drizzle-orm — pnpm strict кладёт его symlink в
+# apps/workers/ingest/node_modules (НЕ в hoisted root). packages/* копируются
+# целиком выше, но apps/workers/ingest — нет, поэтому его node_modules явно.
+COPY --from=deps /app/apps/workers/ingest/node_modules ./apps/workers/ingest/node_modules
 # deploy.sh гонит `pnpm --filter @x10/db db:migrate` в этом образе. Без
 # корневых метафайлов corepack не видит packageManager pin → скачивает latest
 # pnpm (11+), конфликт с lockfile pnpm 10 → migrate падает в runDepsStatusCheck.

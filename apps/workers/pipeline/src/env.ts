@@ -30,7 +30,13 @@ export function getPipelineEnv(bindings: PipelineBindings): BaseEnv {
     TELEGRAM_BOT_TOKEN: bindings.TELEGRAM_BOT_TOKEN,
     TG_TEST_CHANNEL_ID: bindings.TG_TEST_CHANNEL_ID,
   };
-  cached = loadEnv(source);
+  // Pipeline — фоновый воркер, JWT-сессий не выпускает → X10_JWT_SECRET ему
+  // не нужен (он только у api/admin). Boot-критичны: AI Gateway (LLM-вызовы)
+  // + Inngest signing/event keys. TELEGRAM_BOT_TOKEN опционален — post-to-tg
+  // сам проверяет наличие и gracefully скипает если не задан.
+  cached = loadEnv(source, {
+    requiredKeys: ["AI_GATEWAY_API_KEY", "INNGEST_EVENT_KEY", "INNGEST_SIGNING_KEY"],
+  });
   return cached;
 }
 

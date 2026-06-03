@@ -142,7 +142,17 @@ export class EnvValidationError extends Error {
   }
 }
 
-export function loadEnv(source: EnvSource): Env {
+export interface LoadEnvOptions {
+  /**
+   * Переопределяет productionRequired для конкретного сервиса. Напр. pipeline
+   * (фоновый воркер) не выпускает JWT-сессии → X10_JWT_SECRET ему не нужен,
+   * хотя глобальный productionRequired (для api/admin) его требует.
+   * Дефолт = productionRequired.
+   */
+  requiredKeys?: ReadonlyArray<keyof Env>;
+}
+
+export function loadEnv(source: EnvSource, opts?: LoadEnvOptions): Env {
   const parsed = baseSchema.safeParse(source);
   if (!parsed.success) {
     throw new EnvValidationError(parsed.error.issues);
@@ -150,7 +160,8 @@ export function loadEnv(source: EnvSource): Env {
   const env = parsed.data;
 
   if (env.NODE_ENV === "production") {
-    const missing = productionRequired.filter((k) => !env[k]);
+    const required = opts?.requiredKeys ?? productionRequired;
+    const missing = required.filter((k) => !env[k]);
     if (missing.length > 0) {
       throw new Error(
         `Production env missing required keys: ${missing.join(", ")}. ` +

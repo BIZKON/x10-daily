@@ -116,6 +116,9 @@ services:
       AI_GATEWAY_API_KEY: "${AI_GATEWAY_API_KEY}"
       TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"
       TG_TEST_CHANNEL_ID: "${TG_TEST_CHANNEL_ID:-}"
+      # loadEnv (общий для api+pipeline) требует X10_JWT_SECRET в productionRequired.
+      # Pipeline сессии не выпускает, но env-валидатор общий → ключ обязателен.
+      X10_JWT_SECRET: "${X10_JWT_SECRET}"
       SENTRY_DSN: "${SENTRY_DSN:-}"
     expose:
       - "8787"

@@ -73,6 +73,32 @@ const baseSchema = z.object({
    * Required в production только если AUTONOMOUS_POSTING_TG=true.
    */
   TG_TEST_CHANNEL_ID: z.string().optional(),
+  /**
+   * Пост-M0 hardening (session 20): чат для $-алертов автономного конвейера
+   * (личка с ботом или приватный ops-канал). Формат как у TG_TEST_CHANNEL_ID.
+   * Опционален — если пуст, алерты пишутся только в логи (console.warn), без
+   * отправки в Telegram. Намеренно ОТДЕЛЬНЫЙ от контент-канала, чтобы ops-шум
+   * не попадал в публикации. См. apps/workers/pipeline/src/lib/ops-alert.ts.
+   */
+  TG_OPS_CHAT_ID: z.string().optional(),
+
+  /**
+   * Пост-M0 hardening (session 20): жёсткий дневной потолок $-расхода на LLM.
+   * draft-article в начале каждого запуска суммирует расход за календарный день
+   * МСК (pipeline_runs.cost_usd) и при >= DAILY_BUDGET_USD ПРОПУСКАЕТ статью
+   * (агенты не запускаются) до полуночи МСК — чтобы бурст источников не съел
+   * бюджет. Дешёвый IngestAgent-гейт (Haiku) продолжает работать. Часовой
+   * rateLimit (50/час ≈ $22.5/час) остаётся как второй контур.
+   * coerce.number — env приходит строкой. Default 15 (CLAUDE.md §4: ~$6/день —
+   * норма full-AI-бюджета; $15 — щедрый headroom, в ~36× ниже теоретического
+   * рунавея часового лимита).
+   */
+  DAILY_BUDGET_USD: z.coerce.number().nonnegative().default(15),
+  /**
+   * Предупредительный порог: при пересечении шлётся warn-алерт (один раз в день).
+   * Должен быть < DAILY_BUDGET_USD. Default 9 (60% потолка).
+   */
+  DAILY_BUDGET_WARN_USD: z.coerce.number().nonnegative().default(9),
 
   /**
    * HMAC-secret для подписи JWT-сессий (HS256). Минимум 32 байта.
@@ -164,14 +190,17 @@ export function loadEnv(source: EnvSource, opts?: LoadEnvOptions): Env {
     const missing = required.filter((k) => !env[k]);
     if (missing.length > 0) {
       throw new Error(
-        `Production env missing required keys: ${missing.join(", ")}. ` +
-          "See docs/DEPLOY.md.",
+        `Production env missing required keys: ${missing.join(", ")}. ` + "See docs/DEPLOY.md.",
       );
     }
     // CRITICAL-6: ZDR-чек выполняется ТОЛЬКО при использовании ANTHROPIC_API_KEY
     // (direct anthropic.com). При работе через AI_GATEWAY_API_KEY (Timeweb)
     // данные не идут к Anthropic напрямую — 152-ФЗ обеспечивается DPA с Timeweb.
-    if (env.ANTHROPIC_API_KEY && !env.AI_GATEWAY_API_KEY && env.ANTHROPIC_ZDR_CONFIRMED !== "true") {
+    if (
+      env.ANTHROPIC_API_KEY &&
+      !env.AI_GATEWAY_API_KEY &&
+      env.ANTHROPIC_ZDR_CONFIRMED !== "true"
+    ) {
       throw new Error(
         "ANTHROPIC_ZDR_CONFIRMED=true обязательна в production при прямом подключении " +
           "к Anthropic API (когда AI_GATEWAY_API_KEY не задан). Без подписанного ZDR-контракта " +

@@ -31,4 +31,12 @@ export interface PipelineBindings {
   // ---- Telegram posting (ТЗ #1, N5 — реальный sendMessage в тестовый канал) ----
   TELEGRAM_BOT_TOKEN?: string;
   TG_TEST_CHANNEL_ID?: string;
+
+  // ---- $-мониторинг автономного конвейера (session 20 hardening) ----
+  /** Чат для $-алертов (отдельный от контент-канала). Пуст → алерты в логи. */
+  TG_OPS_CHAT_ID?: string;
+  /** Жёсткий дневной потолок $-расхода. Строка (coerce.number в @x10/config). */
+  DAILY_BUDGET_USD?: string;
+  /** Warn-порог $-расхода (< DAILY_BUDGET_USD). */
+  DAILY_BUDGET_WARN_USD?: string;
 }

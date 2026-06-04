@@ -1,4 +1,5 @@
 import {
+  type AgentContext,
   BrevityAgent,
   DraftAgent,
   FactCheckAgent,
@@ -8,29 +9,27 @@ import {
   SocialAmplifyAgent,
   ToVAgent,
   createMasker,
-  type AgentContext,
 } from "@x10/agents";
-import { loadPipelineEnv } from "../../env";
 import { channels, createDb } from "@x10/db";
-import { persistArticle, serializeDraftForNumbers } from "../../persist";
+import type { PipelineBindings } from "../../bindings";
+import { loadPipelineEnv } from "../../env";
 import {
-  articleReadyEvent,
   DEFAULT_SECTION,
   DEFAULT_TEMPLATE,
+  articleReadyEvent,
   topicIngestedEvent,
 } from "../../events";
+import { claimAlert, getTodaySpendUsd, mskDayString, recordRun } from "../../lib/cost-ledger";
+import { sendOpsAlert } from "../../lib/ops-alert";
+import { persistArticle, serializeDraftForNumbers } from "../../persist";
 import type { PipelineInngest } from "../client";
-import type { PipelineBindings } from "../../bindings";
 
 /**
  * Pipeline DRAFT → (NUMBERS ∥ TOV) → BREVITY → [FACTCHECK if political] → (HOOKGEN ∥ SOCIAL ∥ SCORE ∥ PERSIST).
  * FactCheck шаг условный — запускается только если event.data.political === true.
  * Если FactCheck вернул status="halt" — функция бросает; статья не публикуется.
  */
-export function createDraftArticleFunction(
-  inngest: PipelineInngest,
-  bindings: PipelineBindings,
-) {
+export function createDraftArticleFunction(inngest: PipelineInngest, bindings: PipelineBindings) {
   return inngest.createFunction(
     {
       id: "draft-article",
@@ -40,7 +39,8 @@ export function createDraftArticleFunction(
       concurrency: { limit: 5 },
       // MEDIUM-4: cost-runaway protection. 50 запусков/час — потолок ~$22.50/час
       // даже если C2 (auth) обойдут или бот зальёт events напрямую в Inngest.
-      // Дневной полный $ budget — отдельный мониторинг (pipeline_runs.cost_usd sum).
+      // Дневной $-потолок (DAILY_BUDGET_USD) — budget-gate ниже (sum
+      // pipeline_runs.cost_usd за календарный день МСК). Два независимых контура.
       rateLimit: { limit: 50, period: "1h" },
     },
     async ({ event, step }) => {
@@ -52,6 +52,45 @@ export function createDraftArticleFunction(
             "См. CLAUDE.md §7.",
         );
       }
+
+      // $-budget hard cap (session 20 hardening). Суммируем расход за
+      // календарный день МСК (pipeline_runs.cost_usd) ДО запуска агентов. При
+      // достижении потолка — НЕ драфтим (агенты ~$0.45 не запускаются), шлём
+      // exhausted-алерт (один раз в день) и выходим. Это «бурст не съест
+      // бюджет». Лимит проверяется здесь, в самой дорогой точке → ловит и cron,
+      // и ручные events, и обход auth — как и rateLimit ниже. Дешёвый
+      // IngestAgent-гейт (process-source-item) продолжает работать.
+      const budget = await step.run("budget-gate", async () => {
+        const db = createDb(env.DATABASE_URL);
+        const spentUsd = await getTodaySpendUsd(db, new Date());
+        return { spentUsd };
+      });
+      if (budget.spentUsd >= env.DAILY_BUDGET_USD) {
+        await step.run("budget-exhausted-alert", async () => {
+          const db = createDb(env.DATABASE_URL);
+          const claimed = await claimAlert(
+            db,
+            mskDayString(new Date()),
+            "exhausted",
+            budget.spentUsd,
+          );
+          if (claimed) {
+            await sendOpsAlert(
+              env,
+              `🛑 X10 pipeline: дневной бюджет исчерпан — $${budget.spentUsd.toFixed(2)} ≥ cap $${env.DAILY_BUDGET_USD}. ` +
+                "Драфт статей остановлен до полуночи МСК. Гейт (Haiku) продолжает работать.",
+            );
+          }
+          return { claimed };
+        });
+        return {
+          skipped: true as const,
+          reason: "daily-budget-exceeded" as const,
+          spentUsd: budget.spentUsd,
+          capUsd: env.DAILY_BUDGET_USD,
+        };
+      }
+
       const masker = createMasker(env);
       const ctx: AgentContext = { apiKey, baseURL: env.AI_GATEWAY_BASE_URL, masker };
 
@@ -61,7 +100,7 @@ export function createDraftArticleFunction(
             topic: event.data.topic,
             context: event.data.context,
             sources: event.data.sources,
-            section: (event.data.section ?? DEFAULT_SECTION),
+            section: event.data.section ?? DEFAULT_SECTION,
             template: event.data.template ?? DEFAULT_TEMPLATE,
             subcategory: event.data.subcategory,
           },
@@ -116,19 +155,14 @@ export function createDraftArticleFunction(
           ),
         )) as FactCheckStep;
         if (fc.output.status === "halt") {
-          throw new Error(
-            `FactCheck halt: ${fc.output.haltReason ?? "противоречия в источниках"}`,
-          );
+          throw new Error(`FactCheck halt: ${fc.output.haltReason ?? "противоречия в источниках"}`);
         }
         factcheck = fc;
       }
 
       const [hookgen, social, score] = await Promise.all([
         step.run("hookgen", () =>
-          HookGenAgent.run(
-            { draft: brevity.output.compressed, channel: "tg-x10" },
-            ctx,
-          ),
+          HookGenAgent.run({ draft: brevity.output.compressed, channel: "tg-x10" }, ctx),
         ),
         step.run("social", () =>
           SocialAmplifyAgent.run(
@@ -140,9 +174,7 @@ export function createDraftArticleFunction(
             ctx,
           ),
         ),
-        step.run("score", () =>
-          PreviewScoreAgent.run({ draft: brevity.output.compressed }, ctx),
-        ),
+        step.run("score", () => PreviewScoreAgent.run({ draft: brevity.output.compressed }, ctx)),
       ]);
 
       const totalCost =
@@ -154,6 +186,37 @@ export function createDraftArticleFunction(
         hookgen.costUsd +
         social.costUsd +
         score.costUsd;
+
+      // $-ledger (session 20): агрегируем токены и per-agent $ для одной строки
+      // pipeline_runs (agent='draft'). Источник дневного расхода для budget-gate.
+      const agentResults = [
+        draft,
+        numbers,
+        tov,
+        brevity,
+        hookgen,
+        social,
+        score,
+        ...(factcheck ? [factcheck] : []),
+      ];
+      const aggUsage = agentResults.reduce(
+        (a, r) => ({
+          inputTokens: a.inputTokens + (r.usage?.inputTokens ?? 0),
+          outputTokens: a.outputTokens + (r.usage?.outputTokens ?? 0),
+          cachedInputTokens: a.cachedInputTokens + (r.usage?.cachedInputTokens ?? 0),
+        }),
+        { inputTokens: 0, outputTokens: 0, cachedInputTokens: 0 },
+      );
+      const perAgentCostUsd: Record<string, number> = {
+        draft: draft.costUsd,
+        numbers: numbers.costUsd,
+        tov: tov.costUsd,
+        brevity: brevity.costUsd,
+        hookgen: hookgen.costUsd,
+        social: social.costUsd,
+        score: score.costUsd,
+        ...(factcheck ? { factcheck: factcheck.costUsd } : {}),
+      };
 
       const pipelineMetadata = {
         brevity: {
@@ -196,7 +259,7 @@ export function createDraftArticleFunction(
       const persisted = await step.run("persist", () =>
         persistArticle({
           revised: brevity.output.compressed,
-          section: (event.data.section ?? DEFAULT_SECTION),
+          section: event.data.section ?? DEFAULT_SECTION,
           category: event.data.category,
           subcategory: event.data.subcategory,
           template: event.data.template,
@@ -206,6 +269,22 @@ export function createDraftArticleFunction(
           pipelineMetadata,
         }),
       );
+
+      // $-ledger строка ДО warn-пересчёта, чтобы расход за день включал эту статью.
+      await step.run("record-run", async () => {
+        const db = createDb(env.DATABASE_URL);
+        await recordRun(db, {
+          articleId: persisted.id,
+          agent: "draft",
+          status: "succeeded",
+          costUsd: totalCost,
+          modelUsed: draft.modelUsed,
+          inputTokens: aggUsage.inputTokens,
+          outputTokens: aggUsage.outputTokens,
+          cachedInputTokens: aggUsage.cachedInputTokens,
+          output: { perAgentCostUsd, political: event.data.political === true },
+        });
+      });
 
       // Walking Skeleton (ТЗ #1, N4→N5 шов): сохраняем готовый TG-пост в
       // channels (Content Object per article per channel) и шлём article.ready.
@@ -224,6 +303,24 @@ export function createDraftArticleFunction(
           })
           .onConflictDoNothing();
       });
+
+      // Warn-алерт (session 20): пересчитываем расход за день (уже с этой статьёй)
+      // и при пересечении предупредительной планки шлём уведомление один раз/день.
+      await step.run("budget-warn-alert", async () => {
+        const db = createDb(env.DATABASE_URL);
+        const spentUsd = await getTodaySpendUsd(db, new Date());
+        if (spentUsd < env.DAILY_BUDGET_WARN_USD) return { warned: false, spentUsd };
+        const claimed = await claimAlert(db, mskDayString(new Date()), "warn", spentUsd);
+        if (claimed) {
+          await sendOpsAlert(
+            env,
+            `⚠️ X10 pipeline: расход за день $${spentUsd.toFixed(2)} ≥ warn $${env.DAILY_BUDGET_WARN_USD} ` +
+              `(cap $${env.DAILY_BUDGET_USD}). До жёсткого стопа осталось ~$${(env.DAILY_BUDGET_USD - spentUsd).toFixed(2)}.`,
+          );
+        }
+        return { warned: claimed, spentUsd };
+      });
+
       await step.sendEvent("notify-ready", {
         name: articleReadyEvent.event,
         data: { articleId: persisted.id, channel: "tg" as const },

@@ -16,10 +16,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PipelineBindings } from "../src/bindings";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const RSS_FIXTURE = readFileSync(
-  resolve(__dirname, "fixtures/vc-rss.xml"),
-  "utf-8",
-);
+const RSS_FIXTURE = readFileSync(resolve(__dirname, "fixtures/vc-rss.xml"), "utf-8");
 
 const FAKE_ARTICLE_ID = "00000000-0000-4000-8000-000000000abc";
 const FAKE_SOURCE_ID = "00000000-0000-4000-8000-000000000aaa";
@@ -34,22 +31,40 @@ const { seenStore, channelsStore } = vi.hoisted(() => ({
 
 // dedupe слой — in-memory, без реального Postgres.
 vi.mock("@x10/worker-ingest", async () => {
-  const actual =
-    await vi.importActual<typeof import("@x10/worker-ingest")>("@x10/worker-ingest");
+  const actual = await vi.importActual<typeof import("@x10/worker-ingest")>("@x10/worker-ingest");
   return {
-    ...actual, // fetchRss + simhash64 + VC_RSS_URL — оригинал (rss-parser реально парсит XML)
+    ...actual, // fetchRss + simhash64 + VC_RSS_URL + isSourceDue — оригинал
     ensureSource: vi.fn(async () => FAKE_SOURCE_ID),
     // Multi-source ingest читает источники из таблицы — мокаем один vc.ru.
+    // lastPolledAt=null → isSourceDue=true каждый тик (оба тика поллят, dedup
+    // ловит дубль на 2-м). markSourcePolled — noop (in-memory, без pg).
     listEnabledRssSources: vi.fn(async () => [
-      { id: FAKE_SOURCE_ID, name: "vc.ru", url: actual.VC_RSS_URL },
+      {
+        id: FAKE_SOURCE_ID,
+        name: "vc.ru",
+        url: actual.VC_RSS_URL,
+        pollIntervalSec: 900,
+        lastPolledAt: null,
+      },
     ]),
     markIfNew: vi.fn(async (_db: unknown, args: { externalId: string }) => {
       if (seenStore.has(args.externalId)) return false;
       seenStore.add(args.externalId);
       return true;
     }),
+    markSourcePolled: vi.fn(async () => undefined),
   };
 });
+
+// $-ledger / алерты не относятся к skeleton-пути vc.ru→TG — мокаем noop, чтобы
+// e2e не зависел от формы $-запросов (их проверяет cost-ledger.test.ts).
+vi.mock("../src/lib/cost-ledger", () => ({
+  getTodaySpendUsd: vi.fn(async () => 0),
+  recordRun: vi.fn(async () => undefined),
+  claimAlert: vi.fn(async () => false),
+  mskDayString: () => "2026-06-04",
+}));
+vi.mock("../src/lib/ops-alert", () => ({ sendOpsAlert: vi.fn(async () => undefined) }));
 
 // Все LLM-агенты в цепочке. Outputs минимально валидные.
 vi.mock("@x10/agents", async () => {
@@ -140,9 +155,7 @@ vi.mock("@x10/agents", async () => {
       tier: "HAIKU" as const,
       run: vi.fn(async () => ({
         output: {
-          hooks: [
-            { pattern: "number-led", text: "Хук walking", reasoning: "fixture" },
-          ],
+          hooks: [{ pattern: "number-led", text: "Хук walking", reasoning: "fixture" }],
         },
         usage,
         costUsd: 0.001,
@@ -196,8 +209,7 @@ vi.mock("@x10/agents", async () => {
 });
 
 vi.mock("../src/persist", async () => {
-  const actual =
-    await vi.importActual<typeof import("../src/persist")>("../src/persist");
+  const actual = await vi.importActual<typeof import("../src/persist")>("../src/persist");
   return {
     ...actual,
     persistArticle: vi.fn(async () => ({
@@ -313,21 +325,18 @@ interface CapturedEvent {
 function makeStep(events: CapturedEvent[]) {
   return {
     run: vi.fn(async (_id: string, fn: () => Promise<unknown>) => fn()),
-    sendEvent: vi.fn(
-      async (
-        _id: string,
-        ev: { name: string; data: Record<string, unknown> },
-      ) => {
-        events.push(ev);
-      },
-    ),
+    sendEvent: vi.fn(async (_id: string, ev: { name: string; data: Record<string, unknown> }) => {
+      events.push(ev);
+    }),
   };
 }
 
 function getHandler<T>(fn: T): (args: { event?: unknown; step: unknown }) => Promise<unknown> {
-  return (fn as unknown as {
-    fn: (args: { event?: unknown; step: unknown }) => Promise<unknown>;
-  }).fn;
+  return (
+    fn as unknown as {
+      fn: (args: { event?: unknown; step: unknown }) => Promise<unknown>;
+    }
+  ).fn;
 }
 
 function makeRssFetchSpy(xml: string) {
@@ -388,9 +397,7 @@ describe("Walking Skeleton e2e — cron → fetch → dedup → chain → real T
       source: { url: string; publisher: string };
     };
     expect(ingestData.rawTitle).toContain("walking skeleton");
-    expect(ingestData.source.url).toBe(
-      "https://vc.ru/test/walking-skeleton-1",
-    );
+    expect(ingestData.source.url).toBe("https://vc.ru/test/walking-skeleton-1");
     expect(ingestData.source.publisher).toBe("vc.ru");
 
     // N4: process-source-item (IngestAgent gate → accept → topic.ingested)
@@ -443,12 +450,12 @@ describe("Walking Skeleton e2e — cron → fetch → dedup → chain → real T
     expect(tgSpy).toHaveBeenCalledOnce();
     const [calledUrl, calledInit] = tgSpy.mock.calls[0]!;
     const urlStr = String(calledUrl);
-    expect(urlStr).toBe(
-      "https://api.telegram.org/bot123:test-bot-token/sendMessage",
-    );
-    const body = JSON.parse(
-      ((calledInit as RequestInit).body as string) ?? "{}",
-    ) as { chat_id: string; text: string; photo?: string };
+    expect(urlStr).toBe("https://api.telegram.org/bot123:test-bot-token/sendMessage");
+    const body = JSON.parse(((calledInit as RequestInit).body as string) ?? "{}") as {
+      chat_id: string;
+      text: string;
+      photo?: string;
+    };
     expect(body.chat_id).toBe("@x10_test_channel");
     expect(body.text).toBeTruthy();
     expect(body.text.length).toBeGreaterThan(0);
@@ -506,9 +513,11 @@ describe("Walking Skeleton e2e — cron → fetch → dedup → chain → real T
     expect(String(tgSpy.mock.calls[0]![0])).toBe(
       "https://api.telegram.org/bot123:test-bot-token/sendPhoto",
     );
-    const body = JSON.parse(
-      ((tgSpy.mock.calls[0]![1] as RequestInit).body as string) ?? "{}",
-    ) as { photo: string; caption: string; text?: string };
+    const body = JSON.parse(((tgSpy.mock.calls[0]![1] as RequestInit).body as string) ?? "{}") as {
+      photo: string;
+      caption: string;
+      text?: string;
+    };
     expect(body.photo).toBe("stub://photo.jpg");
     expect(body.caption).toBe("Caption под фото walking skeleton");
     expect(body.text).toBeUndefined();

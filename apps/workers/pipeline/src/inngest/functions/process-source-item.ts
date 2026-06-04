@@ -1,4 +1,6 @@
-import { IngestAgent, createMasker, type AgentContext } from "@x10/agents";
+import { type AgentContext, IngestAgent, createMasker } from "@x10/agents";
+import { createDb } from "@x10/db";
+import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
 import {
   DEFAULT_CATEGORY,
@@ -7,8 +9,8 @@ import {
   sourceItemReceivedEvent,
   topicIngestedEvent,
 } from "../../events";
+import { recordRun } from "../../lib/cost-ledger";
 import type { PipelineInngest } from "../client";
-import type { PipelineBindings } from "../../bindings";
 
 /**
  * IngestAgent gate: получает сырой RSS/API item, решает брать или нет.
@@ -50,11 +52,30 @@ export function createProcessSourceItemFunction(
         ),
       );
 
-      if (
-        ingest.output.decision !== "accept" ||
-        !ingest.output.topic ||
-        !ingest.output.context
-      ) {
+      // $-ledger гейта (session 20): пишем строку на КАЖДЫЙ item, включая
+      // reject/duplicate (status='skipped') — до раннего return ниже. Гейт
+      // дешёвый (Haiku), но это и объём вызовов (детект флуда), и его $ в
+      // дневном расходе. ДО ветвления по decision, чтобы reject тоже учитывался.
+      await step.run("record-gate", async () => {
+        const db = createDb(env.DATABASE_URL);
+        await recordRun(db, {
+          articleId: null,
+          agent: "ingest",
+          status: ingest.output.decision === "accept" ? "succeeded" : "skipped",
+          costUsd: ingest.costUsd,
+          modelUsed: ingest.modelUsed,
+          inputTokens: ingest.usage?.inputTokens ?? 0,
+          outputTokens: ingest.usage?.outputTokens ?? 0,
+          cachedInputTokens: ingest.usage?.cachedInputTokens ?? 0,
+          output: {
+            decision: ingest.output.decision,
+            relevanceScore: ingest.output.relevanceScore,
+            publisher: event.data.source.publisher,
+          },
+        });
+      });
+
+      if (ingest.output.decision !== "accept" || !ingest.output.topic || !ingest.output.context) {
         return {
           dispatched: false,
           decision: ingest.output.decision,

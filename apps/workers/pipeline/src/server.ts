@@ -28,7 +28,8 @@ function readBindings(): PipelineBindings {
     AI_GATEWAY_BASE_URL: process.env.AI_GATEWAY_BASE_URL,
     AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-    ANTHROPIC_ZDR_CONFIRMED: process.env.ANTHROPIC_ZDR_CONFIRMED as PipelineBindings["ANTHROPIC_ZDR_CONFIRMED"],
+    ANTHROPIC_ZDR_CONFIRMED: process.env
+      .ANTHROPIC_ZDR_CONFIRMED as PipelineBindings["ANTHROPIC_ZDR_CONFIRMED"],
 
     MASKER_BASE_URL: process.env.MASKER_BASE_URL,
     MASKER_API_KEY: process.env.MASKER_API_KEY,
@@ -38,6 +39,10 @@ function readBindings(): PipelineBindings {
 
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
     TG_TEST_CHANNEL_ID: process.env.TG_TEST_CHANNEL_ID,
+
+    TG_OPS_CHAT_ID: process.env.TG_OPS_CHAT_ID,
+    DAILY_BUDGET_USD: process.env.DAILY_BUDGET_USD,
+    DAILY_BUDGET_WARN_USD: process.env.DAILY_BUDGET_WARN_USD,
   };
 }
 

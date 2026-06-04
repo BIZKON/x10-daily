@@ -14,9 +14,7 @@ const { COMPRESSED_DRAFT } = vi.hoisted(() => ({
     tease: "ЦБ ставка 17%",
     lede: "Совет сохранил ставку.",
     whyItMatters: "Кредитное окно закрыто.",
-    body: [
-      { type: "paragraph", text: "Совет директоров сохранил ставку четвёртый раз подряд." },
-    ],
+    body: [{ type: "paragraph", text: "Совет директоров сохранил ставку четвёртый раз подряд." }],
   },
 }));
 
@@ -97,7 +95,11 @@ vi.mock("@x10/agents", async () => {
             { pattern: "contrarian", text: "Все ждут снижения. ЦБ не снизит", reasoning: "контр" },
             { pattern: "transformation", text: "Было 21%, стало 17%", reasoning: "до/после" },
             { pattern: "authority", text: "Греф: ставка — главный риск", reasoning: "имя" },
-            { pattern: "admission", text: "Кредитное окно для МСП закрыто", reasoning: "признание" },
+            {
+              pattern: "admission",
+              text: "Кредитное окно для МСП закрыто",
+              reasoning: "признание",
+            },
             { pattern: "future-shock", text: "Что если ЦБ удержит до Q4", reasoning: "будущее" },
           ],
         },
@@ -204,6 +206,22 @@ vi.mock("@x10/db", async () => {
   };
 });
 
+// $-ledger / алерты мокаем — БД-логика проверяется отдельно в cost-ledger.test.ts.
+// Здесь нас интересует только что draft-article корректно вызывает gate/record/alert.
+const { getTodaySpendUsd, recordRun, claimAlert } = vi.hoisted(() => ({
+  getTodaySpendUsd: vi.fn(),
+  recordRun: vi.fn(),
+  claimAlert: vi.fn(),
+}));
+vi.mock("../src/lib/cost-ledger", () => ({
+  getTodaySpendUsd,
+  recordRun,
+  claimAlert,
+  mskDayString: () => "2026-06-04",
+}));
+const { sendOpsAlert } = vi.hoisted(() => ({ sendOpsAlert: vi.fn() }));
+vi.mock("../src/lib/ops-alert", () => ({ sendOpsAlert }));
+
 import {
   BrevityAgent,
   DraftAgent,
@@ -214,9 +232,9 @@ import {
   SocialAmplifyAgent,
   ToVAgent,
 } from "@x10/agents";
-import { persistArticle } from "../src/persist";
 import { createPipelineInngest } from "../src/inngest/client";
 import { createDraftArticleFunction } from "../src/inngest/functions/draft-article";
+import { persistArticle } from "../src/persist";
 
 const BINDINGS: Record<string, string> = {
   NODE_ENV: "test",
@@ -243,15 +261,18 @@ const EVENT = {
 function makeStep() {
   return {
     run: vi.fn(async (_id: string, fn: () => Promise<unknown>) => fn()),
-    sendEvent: vi.fn(
-      async (_id: string, _ev: { name: string; data: unknown }) => undefined,
-    ),
+    sendEvent: vi.fn(async (_id: string, _ev: { name: string; data: unknown }) => undefined),
   };
 }
 
 describe("draft-article pipeline", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Дефолт: расход за день 0 → под потолком, конвейер идёт целиком.
+    getTodaySpendUsd.mockResolvedValue(0);
+    recordRun.mockResolvedValue(undefined);
+    claimAlert.mockResolvedValue(false);
+    sendOpsAlert.mockResolvedValue(undefined);
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -262,9 +283,11 @@ describe("draft-article pipeline", () => {
     const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
     const step = makeStep();
 
-    const handler = (fn as unknown as {
-      fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
-    }).fn;
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
 
     const result = (await handler({ event: EVENT, step })) as {
       articleId: string;
@@ -291,10 +314,11 @@ describe("draft-article pipeline", () => {
     expect(PreviewScoreAgent.run).toHaveBeenCalledOnce();
     expect(persistArticle).toHaveBeenCalledOnce();
 
-    // 8 шагов B2 + 1 терминальный шаг save-tg-channel (Walking Skeleton, ТЗ #1, N4→N5 шов).
-    expect(step.run).toHaveBeenCalledTimes(9);
+    // budget-gate + 8 шагов B2 + persist/record-run/save-tg-channel/budget-warn-alert.
+    expect(step.run).toHaveBeenCalledTimes(12);
     const stepIds = step.run.mock.calls.map((c) => c[0]);
     expect(stepIds).toEqual([
+      "budget-gate",
       "draft",
       "numbers",
       "tov",
@@ -303,7 +327,9 @@ describe("draft-article pipeline", () => {
       "social",
       "score",
       "persist",
+      "record-run",
       "save-tg-channel",
+      "budget-warn-alert",
     ]);
     // Терминальный сигнал для post-to-tg.
     expect(step.sendEvent).toHaveBeenCalledOnce();
@@ -329,9 +355,11 @@ describe("draft-article pipeline", () => {
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
     const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
     const step = makeStep();
-    const handler = (fn as unknown as {
-      fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
-    }).fn;
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
 
     await handler({ event: EVENT, step });
 
@@ -361,9 +389,14 @@ describe("draft-article pipeline", () => {
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
     const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
     const step = makeStep();
-    const handler = (fn as unknown as {
-      fn: (args: { event: { data: typeof EVENT.data & { political: boolean } }; step: typeof step }) => Promise<unknown>;
-    }).fn;
+    const handler = (
+      fn as unknown as {
+        fn: (args: {
+          event: { data: typeof EVENT.data & { political: boolean } };
+          step: typeof step;
+        }) => Promise<unknown>;
+      }
+    ).fn;
 
     const politicalEvent = {
       data: { ...EVENT.data, political: true },
@@ -375,10 +408,11 @@ describe("draft-article pipeline", () => {
     };
 
     expect(FactCheckAgent.run).toHaveBeenCalledOnce();
-    // 9 шагов B2 (с factcheck) + 1 терминальный save-tg-channel.
-    expect(step.run).toHaveBeenCalledTimes(10);
+    // budget-gate + 9 шагов B2 (с factcheck) + persist/record-run/save-tg-channel/budget-warn-alert.
+    expect(step.run).toHaveBeenCalledTimes(13);
     const stepIds = step.run.mock.calls.map((c) => c[0]);
     expect(stepIds).toEqual([
+      "budget-gate",
       "draft",
       "numbers",
       "tov",
@@ -388,7 +422,9 @@ describe("draft-article pipeline", () => {
       "social",
       "score",
       "persist",
+      "record-run",
       "save-tg-channel",
+      "budget-warn-alert",
     ]);
     expect(result.factcheck.status).toBe("passed");
     expect(result.totalCostUsd).toBeCloseTo(
@@ -422,9 +458,14 @@ describe("draft-article pipeline", () => {
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
     const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
     const step = makeStep();
-    const handler = (fn as unknown as {
-      fn: (args: { event: { data: typeof EVENT.data & { political: boolean } }; step: typeof step }) => Promise<unknown>;
-    }).fn;
+    const handler = (
+      fn as unknown as {
+        fn: (args: {
+          event: { data: typeof EVENT.data & { political: boolean } };
+          step: typeof step;
+        }) => Promise<unknown>;
+      }
+    ).fn;
 
     const politicalEvent = { data: { ...EVENT.data, political: true } };
 
@@ -439,31 +480,111 @@ describe("draft-article pipeline", () => {
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
     const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
     const step = makeStep();
-    const handler = (fn as unknown as {
-      fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
-    }).fn;
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
 
     const result = (await handler({ event: EVENT, step })) as {
       factcheck: { status: string } | null;
     };
     expect(FactCheckAgent.run).not.toHaveBeenCalled();
-    // 8 step.run (без factcheck) + 1 save-tg-channel.
-    expect(step.run).toHaveBeenCalledTimes(9);
+    // budget-gate + 8 (без factcheck) + persist/record-run/save-tg-channel/budget-warn-alert.
+    expect(step.run).toHaveBeenCalledTimes(12);
     expect(result.factcheck).toBeNull();
   });
 
   it("бросает если ANTHROPIC_API_KEY не задан", async () => {
     const bindingsNoKey: Record<string, string> = { ...BINDINGS, ANTHROPIC_API_KEY: "" };
     const inngest = createPipelineInngest({ NODE_ENV: bindingsNoKey.NODE_ENV });
-    const fn = createDraftArticleFunction(
-      inngest,
-      bindingsNoKey as unknown as PipelineBindings,
-    );
+    const fn = createDraftArticleFunction(inngest, bindingsNoKey as unknown as PipelineBindings);
     const step = makeStep();
-    const handler = (fn as unknown as {
-      fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
-    }).fn;
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
 
     await expect(handler({ event: EVENT, step })).rejects.toThrow(/ANTHROPIC_API_KEY/);
+  });
+
+  it("budget hard-cap: при расходе ≥ DAILY_BUDGET_USD драфт пропускается, агенты НЕ запускаются", async () => {
+    // Default DAILY_BUDGET_USD = 15. Расход за день уже 15 → стоп.
+    getTodaySpendUsd.mockResolvedValue(15);
+    claimAlert.mockResolvedValue(true); // первый exhausted-алерт за день
+
+    const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
+    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
+    const step = makeStep();
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
+
+    const result = (await handler({ event: EVENT, step })) as {
+      skipped: boolean;
+      reason: string;
+      spentUsd: number;
+      capUsd: number;
+    };
+
+    expect(result.skipped).toBe(true);
+    expect(result.reason).toBe("daily-budget-exceeded");
+    expect(result.spentUsd).toBe(15);
+    expect(result.capUsd).toBe(15);
+    // Ни один LLM-агент не вызван — главное «бурст не съест бюджет».
+    expect(DraftAgent.run).not.toHaveBeenCalled();
+    expect(NumbersAgent.run).not.toHaveBeenCalled();
+    expect(persistArticle).not.toHaveBeenCalled();
+    // exhausted-алерт заклеймлен и отправлен один раз.
+    expect(claimAlert).toHaveBeenCalledWith(expect.anything(), "2026-06-04", "exhausted", 15);
+    expect(sendOpsAlert).toHaveBeenCalledOnce();
+    expect(sendOpsAlert.mock.calls[0]![1]).toMatch(/бюджет исчерпан/);
+    // Только budget-gate + budget-exhausted-alert.
+    expect(step.run.mock.calls.map((c) => c[0])).toEqual(["budget-gate", "budget-exhausted-alert"]);
+  });
+
+  it("budget warn: расход пересёк DAILY_BUDGET_WARN_USD → warn-алерт один раз", async () => {
+    // 1-й вызов (gate, в начале) — под потолком; 2-й (warn-пересчёт, в конце) — ≥ warn (9).
+    getTodaySpendUsd.mockResolvedValueOnce(5).mockResolvedValueOnce(9.5);
+    claimAlert.mockResolvedValue(true);
+
+    const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
+    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
+    const step = makeStep();
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
+
+    await handler({ event: EVENT, step });
+
+    expect(DraftAgent.run).toHaveBeenCalledOnce(); // под потолком — драфт прошёл
+    expect(recordRun).toHaveBeenCalledOnce();
+    expect(claimAlert).toHaveBeenCalledWith(expect.anything(), "2026-06-04", "warn", 9.5);
+    expect(sendOpsAlert).toHaveBeenCalledOnce();
+    expect(sendOpsAlert.mock.calls[0]![1]).toMatch(/расход за день/);
+  });
+
+  it("budget warn НЕ дублируется: claimAlert=false → алерт не шлётся", async () => {
+    getTodaySpendUsd.mockResolvedValueOnce(5).mockResolvedValueOnce(9.5);
+    claimAlert.mockResolvedValue(false); // уже заклеймлен сегодня
+
+    const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
+    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
+    const step = makeStep();
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
+
+    await handler({ event: EVENT, step });
+
+    expect(claimAlert).toHaveBeenCalledOnce();
+    expect(sendOpsAlert).not.toHaveBeenCalled();
   });
 });

@@ -13,6 +13,12 @@ vi.mock("@x10/agents", async () => {
   };
 });
 
+// record-gate пишет строку $-ledger на каждый item. БД-логику проверяет
+// cost-ledger.test.ts; здесь мокаем recordRun + createDb (без реального pg).
+const { recordRun } = vi.hoisted(() => ({ recordRun: vi.fn() }));
+vi.mock("../src/lib/cost-ledger", () => ({ recordRun }));
+vi.mock("@x10/db", () => ({ createDb: vi.fn(() => ({})) }));
+
 import { IngestAgent } from "@x10/agents";
 import { createPipelineInngest } from "../src/inngest/client";
 import { createProcessSourceItemFunction } from "../src/inngest/functions/process-source-item";
@@ -34,9 +40,7 @@ const EVENT = {
 function makeStep() {
   return {
     run: vi.fn(async (_id: string, fn: () => Promise<unknown>) => fn()),
-    sendEvent: vi.fn(
-      async (_id: string, _event: { name: string; data: unknown }) => undefined,
-    ),
+    sendEvent: vi.fn(async (_id: string, _event: { name: string; data: unknown }) => undefined),
   };
 }
 
@@ -65,14 +69,13 @@ describe("process-source-item", () => {
     });
 
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
-    const fn = createProcessSourceItemFunction(
-      inngest,
-      BINDINGS as unknown as PipelineBindings,
-    );
+    const fn = createProcessSourceItemFunction(inngest, BINDINGS as unknown as PipelineBindings);
     const step = makeStep();
-    const handler = (fn as unknown as {
-      fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
-    }).fn;
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
 
     const result = (await handler({ event: EVENT, step })) as {
       dispatched: boolean;
@@ -104,6 +107,12 @@ describe("process-source-item", () => {
     expect(result.dispatched).toBe(true);
     expect(result.category).toBe("money");
     expect(result.template).toBe("card-news");
+    // accept → $-ledger строка гейта со status='succeeded'.
+    expect(recordRun).toHaveBeenCalledOnce();
+    const gate = recordRun.mock.calls[0]![1] as { agent: string; status: string; costUsd: number };
+    expect(gate.agent).toBe("ingest");
+    expect(gate.status).toBe("succeeded");
+    expect(gate.costUsd).toBe(0.001);
   });
 
   it("reject: не шлёт topic.ingested, возвращает reason", async () => {
@@ -127,14 +136,13 @@ describe("process-source-item", () => {
     });
 
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
-    const fn = createProcessSourceItemFunction(
-      inngest,
-      BINDINGS as unknown as PipelineBindings,
-    );
+    const fn = createProcessSourceItemFunction(inngest, BINDINGS as unknown as PipelineBindings);
     const step = makeStep();
-    const handler = (fn as unknown as {
-      fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
-    }).fn;
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
 
     const result = (await handler({ event: EVENT, step })) as {
       dispatched: boolean;
@@ -144,6 +152,10 @@ describe("process-source-item", () => {
     expect(step.sendEvent).not.toHaveBeenCalled();
     expect(result.dispatched).toBe(false);
     expect(result.rejectReason).toBe("infobiz");
+    // reject тоже пишется в $-ledger (status='skipped') — до раннего return,
+    // чтобы дневной расход учитывал стоимость гейта на отклонённых items.
+    expect(recordRun).toHaveBeenCalledOnce();
+    expect((recordRun.mock.calls[0]![1] as { status: string }).status).toBe("skipped");
   });
 
   it("duplicate: тоже не диспатчит", async () => {
@@ -167,14 +179,13 @@ describe("process-source-item", () => {
     });
 
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
-    const fn = createProcessSourceItemFunction(
-      inngest,
-      BINDINGS as unknown as PipelineBindings,
-    );
+    const fn = createProcessSourceItemFunction(inngest, BINDINGS as unknown as PipelineBindings);
     const step = makeStep();
-    const handler = (fn as unknown as {
-      fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
-    }).fn;
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
 
     const result = (await handler({ event: EVENT, step })) as {
       dispatched: boolean;

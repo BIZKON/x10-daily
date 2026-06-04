@@ -1,9 +1,9 @@
 import { and, channels, createDb, eq } from "@x10/db";
-import { loadPipelineEnv } from "../../env";
-import { fetch as undiciFetch, ProxyAgent } from "undici";
-import { articleReadyEvent } from "../../events";
-import type { PipelineInngest } from "../client";
 import type { PipelineBindings } from "../../bindings";
+import { loadPipelineEnv } from "../../env";
+import { articleReadyEvent } from "../../events";
+import { callTelegram } from "../../lib/telegram";
+import type { PipelineInngest } from "../client";
 
 /**
  * Walking Skeleton (ТЗ #1, N5 + N6): реальный outbound в Telegram Bot API.
@@ -20,14 +20,6 @@ import type { PipelineBindings } from "../../bindings";
  *  - TELEGRAM_BOT_TOKEN — required, формат `<id>:<secret>`
  *  - TG_TEST_CHANNEL_ID — required, `@username` или numeric chat_id
  */
-
-const TG_API_BASE = "https://api.telegram.org";
-
-interface TgOkResponse {
-  ok: boolean;
-  result?: { message_id: number };
-  description?: string;
-}
 
 export function createPostToTgFunction(
   inngest: PipelineInngest,
@@ -66,12 +58,7 @@ export function createPostToTgFunction(
         const [r] = await db
           .select({ text: channels.text, visualRef: channels.visualRef })
           .from(channels)
-          .where(
-            and(
-              eq(channels.articleId, event.data.articleId),
-              eq(channels.channel, "tg"),
-            ),
-          )
+          .where(and(eq(channels.articleId, event.data.articleId), eq(channels.channel, "tg")))
           .limit(1);
         if (!r) {
           throw new Error(
@@ -81,45 +68,23 @@ export function createPostToTgFunction(
         return r;
       });
 
-      // Resolution priority: тестовый override → прокси (если задан) → direct.
-      // На Timeweb ru-1 api.telegram.org молча таймаутится; TELEGRAM_PROXY_URL
-      // прокидывает через HTTP-прокси вне РФ (undici.ProxyAgent). См. env.ts.
-      const proxyUrl = env.TELEGRAM_PROXY_URL;
-      const fetchImpl: typeof fetch = opts.fetchImpl
-        ?? (proxyUrl
-          ? (((input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) =>
-              undiciFetch(input as Parameters<typeof undiciFetch>[0], {
-                ...(init as Parameters<typeof undiciFetch>[1]),
-                dispatcher: new ProxyAgent(proxyUrl),
-              })) as unknown as typeof fetch)
-          : globalThis.fetch);
       const text = row.text;
       const visualRef = row.visualRef;
 
       const result = await step.run("send-tg", async () => {
         const method = visualRef ? "sendPhoto" : "sendMessage";
-        const url = `${TG_API_BASE}/bot${token}/${method}`;
         const body = visualRef
           ? { chat_id: chatId, photo: visualRef, caption: text }
           : { chat_id: chatId, text };
 
-        const res = await fetchImpl(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+        // На Timeweb ru-1 api.telegram.org молча таймаутится по IPv4 → доступен
+        // только по IPv6 (NAT66) или через прокси. callTelegram резолвит fetch:
+        // тестовый override → TELEGRAM_PROXY_URL → direct (IPv6). См. lib/telegram.ts.
+        return callTelegram(method, body, {
+          token,
+          proxyUrl: env.TELEGRAM_PROXY_URL || undefined,
+          fetchImpl: opts.fetchImpl,
         });
-
-        const json = (await res.json()) as TgOkResponse;
-        if (!res.ok || !json.ok) {
-          throw new Error(
-            `Telegram API ${method} failed: HTTP ${res.status} ${json.description ?? ""}`,
-          );
-        }
-        return {
-          ok: json.ok,
-          method,
-          messageId: json.result?.message_id ?? null,
-        };
       });
 
       return {

@@ -23,8 +23,16 @@ describe("createMasker", () => {
     expect(r.masked).toBe("foo");
   });
 
-  it("production + no MASKER URL → fail-closed", () => {
+  it("production + no MASKER + Anthropic direct (no AI Gateway) → fail-closed", () => {
     expect(() => createMasker({ NODE_ENV: "production" })).toThrow(MaskerUnconfiguredError);
+  });
+
+  it("production + no MASKER + Timeweb AI Gateway → pass-through (ПДн не покидают РФ, §14)", async () => {
+    const m = createMasker({ NODE_ENV: "production", AI_GATEWAY_API_KEY: "tw-key" });
+    const { masked, session } = await m.mask("Иванов И.И., +7-916-555-12-34");
+    expect(masked).toContain("Иванов");
+    expect(session.sessionId).toBe("passthrough");
+    expect(await m.unmask(masked, session)).toBe(masked);
   });
 
   it("MASKER URL+KEY → HTTP-вызов", async () => {

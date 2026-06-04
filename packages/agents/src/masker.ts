@@ -3,9 +3,10 @@
  * См. CLAUDE.md §7: иностранные LLM не должны видеть сырые ПДн (152-ФЗ).
  *
  * Поведение:
- *  - prod + MASKER_BASE_URL пуст          → fail-closed (бросаем)
- *  - dev/test + MASKER_BASE_URL пуст      → pass-through (заглушка)
- *  - MASKER_BASE_URL задан                → реальные HTTP-вызовы
+ *  - MASKER_BASE_URL+KEY заданы                  → реальные HTTP-вызовы
+ *  - prod + MASKER пуст + Anthropic direct       → fail-closed (бросаем)
+ *  - prod + MASKER пуст + Timeweb AI Gateway     → pass-through (ПДн в РФ, §14)
+ *  - dev/test + MASKER пуст                      → pass-through (заглушка)
  */
 
 import type { Env } from "@x10/config";
@@ -80,7 +81,9 @@ class HttpMasker implements Masker {
   }
 }
 
-export function createMasker(env: Pick<Env, "NODE_ENV" | "MASKER_BASE_URL" | "MASKER_API_KEY">): Masker {
+export function createMasker(
+  env: Pick<Env, "NODE_ENV" | "MASKER_BASE_URL" | "MASKER_API_KEY" | "AI_GATEWAY_API_KEY">,
+): Masker {
   const url = env.MASKER_BASE_URL?.trim();
   const key = env.MASKER_API_KEY?.trim();
 
@@ -88,7 +91,14 @@ export function createMasker(env: Pick<Env, "NODE_ENV" | "MASKER_BASE_URL" | "MA
     return new HttpMasker(url, key);
   }
 
-  if (env.NODE_ENV === "production") {
+  // Fail-closed ТОЛЬКО при прямом подключении к иностранному LLM (Anthropic
+  // direct). При работе через Timeweb AI Gateway (AI_GATEWAY_API_KEY задан)
+  // LLM-вызовы идут на российскую инфру api.timeweb.ai → ПДн не покидают РФ,
+  // 152-ФЗ покрывается DPA с Timeweb, обезличивание не обязательно. Это то же
+  // решение session 14, что вынесло MASKER_* из productionRequired и сузило
+  // ZDR-чек в @x10/config env.ts. Без этого условия pipeline-функции падают в
+  // проде с MaskerUnconfiguredError, хотя Masker архитектурно не нужен.
+  if (env.NODE_ENV === "production" && !env.AI_GATEWAY_API_KEY?.trim()) {
     throw new MaskerUnconfiguredError();
   }
 

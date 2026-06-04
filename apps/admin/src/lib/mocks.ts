@@ -18,6 +18,7 @@ import type {
   ArticleDetail,
   PipelineAgent,
   PipelineRunStats,
+  PostingControl,
   QueueItem,
   QueueResponse,
 } from "./api";
@@ -585,4 +586,16 @@ export const MOCK_PIPELINE_RUN_STATS: PipelineRunStats = {
     },
   ],
   alertsToday: [],
+};
+
+/** Стоп-кран автопостинга (session 20) — demo: тихие часы 21→09 включены. */
+export const MOCK_POSTING_CONTROL: PostingControl = {
+  paused: false,
+  quietEnabled: true,
+  quietStartHour: 21,
+  quietEndHour: 9,
+  updatedAt: "2026-06-04T18:00:00.000Z",
+  currentlyPaused: false,
+  pauseReason: null,
+  mskHour: 14,
 };

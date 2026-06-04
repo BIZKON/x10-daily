@@ -508,6 +508,42 @@ export type PipelineRunStats = {
   alertsToday: Array<{ kind: "warn" | "exhausted"; spendUsd: number; createdAt: string }>;
 };
 
+/* ----------------------------------------------------------------
+ * Стоп-кран автопостинга (session 20) — ручная пауза + тихие часы (МСК).
+ * Endpoint role-gated → форвардим session-токен.
+ * ---------------------------------------------------------------- */
+
+export type PostingControl = {
+  paused: boolean;
+  quietEnabled: boolean;
+  quietStartHour: number;
+  quietEndHour: number;
+  updatedAt: string;
+  /** Вычисляется бэкендом: на паузе ли конвейер прямо сейчас. */
+  currentlyPaused: boolean;
+  pauseReason: "manual" | "quiet-hours" | null;
+  mskHour: number;
+};
+
+export async function fetchPostingControl(): Promise<PostingControl | null> {
+  const base = getBaseUrl();
+  if (!base) {
+    if (!isDemoMode()) return null;
+    const { MOCK_POSTING_CONTROL } = await import("./mocks");
+    return MOCK_POSTING_CONTROL;
+  }
+  const token = await getSessionToken();
+  try {
+    const res = await fetchWithTimeout(`${base}/v1/admin/posting-control`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as PostingControl;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchPipelineRunStats(): Promise<PipelineRunStats | null> {
   const base = getBaseUrl();
   if (!base) {

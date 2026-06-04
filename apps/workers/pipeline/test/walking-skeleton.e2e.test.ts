@@ -227,6 +227,15 @@ vi.mock("@x10/db", async () => {
   return {
     ...actual,
     createDb: vi.fn(() => makeTestDb()),
+    // Стоп-кран не на паузе — skeleton постит. (БД-логику posting_control
+    // makeTestDb не моделирует; реальная проверяется в posting-control.test.ts.)
+    getPostingControl: vi.fn(async () => ({
+      paused: false,
+      quietEnabled: false,
+      quietStartHour: 21,
+      quietEndHour: 9,
+    })),
+    isPostingPaused: () => ({ paused: false, reason: null }),
   };
 });
 

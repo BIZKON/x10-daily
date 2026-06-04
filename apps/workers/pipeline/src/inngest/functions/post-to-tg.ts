@@ -1,4 +1,4 @@
-import { and, channels, createDb, eq } from "@x10/db";
+import { and, channels, createDb, eq, getPostingControl, isPostingPaused } from "@x10/db";
 import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
 import { articleReadyEvent } from "../../events";
@@ -54,6 +54,23 @@ export function createPostToTgFunction(
       }
 
       const db = createDb(env.DATABASE_URL);
+
+      // Стоп-кран (session 20): не публикуем при ручной паузе / в тихие часы.
+      // Гейт ingest-rss останавливает генерацию; этот — страховка, чтобы статья,
+      // начатая до начала окна, не «утекла» постом внутри тихих часов.
+      const gate = await step.run("posting-control", async () => {
+        const ctrl = await getPostingControl(db);
+        return { ctrl, nowMs: Date.now() };
+      });
+      const pause = isPostingPaused(gate.ctrl, new Date(gate.nowMs));
+      if (pause.paused) {
+        return {
+          skipped: true as const,
+          reason: `posting-paused:${pause.reason}`,
+          articleId: event.data.articleId,
+          channel: "tg" as const,
+        };
+      }
 
       const row = await step.run("load-channel", async () => {
         const [r] = await db

@@ -6,6 +6,7 @@ export * from "./authors";
 export * from "./articles";
 export * from "./channels";
 export * from "./pipeline";
+export * from "./posting_control";
 export * from "./subscriptions";
 export * from "./embeddings";
 export * from "./klamps";

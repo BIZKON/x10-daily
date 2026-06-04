@@ -1,5 +1,17 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, articles, costAlerts, desc, eq, pipelineRuns, sql } from "@x10/db";
+import {
+  and,
+  articles,
+  costAlerts,
+  desc,
+  eq,
+  getPostingControl,
+  isPostingPaused,
+  mskHour,
+  pipelineRuns,
+  setPostingControl,
+  sql,
+} from "@x10/db";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../app";
@@ -27,6 +39,15 @@ const querySchema = z.object({
 const paramsSchema = z.object({
   id: z.string().uuid(),
 });
+
+const postingControlSchema = z
+  .object({
+    paused: z.boolean().optional(),
+    quietEnabled: z.boolean().optional(),
+    quietStartHour: z.coerce.number().int().min(0).max(23).optional(),
+    quietEndHour: z.coerce.number().int().min(0).max(23).optional(),
+  })
+  .refine((b) => Object.keys(b).length > 0, { message: "Пустой patch" });
 
 export const adminRoute = new Hono<AppEnv>()
   /**
@@ -207,6 +228,50 @@ export const adminRoute = new Hono<AppEnv>()
         spendUsd: Number(r.spendUsd),
         createdAt: iso(r.createdAt),
       })),
+    });
+  })
+
+  /**
+   * GET /v1/admin/posting-control
+   * Текущий стоп-кран автопостинга + вычисленное «сейчас на паузе?» (session 20).
+   */
+  .get("/posting-control", async (c) => {
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
+    const ctrl = await getPostingControl(db);
+    const now = new Date();
+    const state = isPostingPaused(ctrl, now);
+    return c.json({
+      paused: ctrl.paused,
+      quietEnabled: ctrl.quietEnabled,
+      quietStartHour: ctrl.quietStartHour,
+      quietEndHour: ctrl.quietEndHour,
+      updatedAt:
+        ctrl.updatedAt instanceof Date ? ctrl.updatedAt.toISOString() : String(ctrl.updatedAt),
+      currentlyPaused: state.paused,
+      pauseReason: state.reason,
+      mskHour: mskHour(now),
+    });
+  })
+
+  /**
+   * PUT /v1/admin/posting-control
+   * Обновляет стоп-кран (ручная пауза / тихие часы). Конвейер читает это на лету.
+   */
+  .put("/posting-control", zValidator("json", postingControlSchema), async (c) => {
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
+    const patch = c.req.valid("json");
+    const ctrl = await setPostingControl(db, patch);
+    return c.json({
+      paused: ctrl.paused,
+      quietEnabled: ctrl.quietEnabled,
+      quietStartHour: ctrl.quietStartHour,
+      quietEndHour: ctrl.quietEndHour,
+      updatedAt:
+        ctrl.updatedAt instanceof Date ? ctrl.updatedAt.toISOString() : String(ctrl.updatedAt),
     });
   })
 

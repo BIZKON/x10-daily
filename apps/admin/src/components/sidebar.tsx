@@ -6,6 +6,7 @@ import {
   FileCheck2,
   Layers,
   Mic,
+  Power,
   Users,
   UsersRound,
   Video,
@@ -52,6 +53,7 @@ export function Sidebar() {
           active={isActive("/pipeline-config")}
         />
         <NavItem href="/cost" label="Расходы" icon={Wallet} active={isActive("/cost")} />
+        <NavItem href="/posting" label="Постинг" icon={Power} active={isActive("/posting")} />
       </nav>
 
       <div className="border-t border-fence px-5 py-4 text-[11px] text-haze">

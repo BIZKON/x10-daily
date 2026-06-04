@@ -6,12 +6,16 @@ import type { PipelineBindings } from "../src/bindings";
  * изоляция битых источников, кап эмиссий на источник за тик.
  */
 
-const { listMock, fetchMock, markMock, markPolledMock } = vi.hoisted(() => ({
-  listMock: vi.fn(),
-  fetchMock: vi.fn(),
-  markMock: vi.fn(),
-  markPolledMock: vi.fn(),
-}));
+const { listMock, fetchMock, markMock, markPolledMock, getCtrlMock, pauseMock } = vi.hoisted(
+  () => ({
+    listMock: vi.fn(),
+    fetchMock: vi.fn(),
+    markMock: vi.fn(),
+    markPolledMock: vi.fn(),
+    getCtrlMock: vi.fn(),
+    pauseMock: vi.fn(),
+  }),
+);
 
 // importActual → реальный isSourceDue (gating-логику тестируем через функцию,
 // без дублирования impl). Остальное переопределяем мок-функциями.
@@ -26,7 +30,11 @@ vi.mock("@x10/worker-ingest", async () => {
     simhash64: () => "fp",
   };
 });
-vi.mock("@x10/db", () => ({ createDb: vi.fn(() => ({})) }));
+vi.mock("@x10/db", () => ({
+  createDb: vi.fn(() => ({})),
+  getPostingControl: getCtrlMock,
+  isPostingPaused: pauseMock,
+}));
 
 import { isSourceDue } from "@x10/worker-ingest";
 import { createPipelineInngest } from "../src/inngest/client";
@@ -78,6 +86,8 @@ describe("ingest-rss — multi-source", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     markMock.mockResolvedValue(true);
+    getCtrlMock.mockResolvedValue({ paused: false, quietEnabled: false });
+    pauseMock.mockReturnValue({ paused: false, reason: null }); // по умолчанию не на паузе
   });
 
   it("эмитит из нескольких источников, publisher = source.name", async () => {
@@ -178,6 +188,23 @@ describe("ingest-rss — multi-source", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(events).toHaveLength(1);
     expect(markPolledMock).toHaveBeenCalledOnce();
+  });
+
+  it("стоп-кран (пауза/тихие часы) → весь тик пропущен, ни fetch, ни emit", async () => {
+    pauseMock.mockReturnValue({ paused: true, reason: "quiet-hours" });
+    listMock.mockResolvedValue([{ id: "s1", name: "РБК", url: "https://rbc/rss" }]);
+    fetchMock.mockResolvedValue([item("a")]);
+
+    const events: Emitted[] = [];
+    const r = (await getHandler(createIngestRssFunction(inngest(), BINDINGS))({
+      step: makeStep(events),
+    })) as unknown as { skipped?: boolean; reason?: string };
+
+    expect(r.skipped).toBe(true);
+    expect(r.reason).toContain("quiet-hours");
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(listMock).not.toHaveBeenCalled();
+    expect(events).toHaveLength(0);
   });
 });
 

@@ -1,4 +1,4 @@
-import { createDb } from "@x10/db";
+import { createDb, getPostingControl, isPostingPaused } from "@x10/db";
 import {
   type NormalizedItem,
   fetchRss,
@@ -61,6 +61,22 @@ export function createIngestRssFunction(
       // Один timestamp на тик (мемоизирован) — детерминизм gating при ретрае.
       const nowMs = await step.run("now", async () => Date.now());
       const now = new Date(nowMs);
+
+      // Стоп-кран автопостинга (session 20): ручная пауза или тихие часы (МСК) →
+      // пропускаем весь тик. Полная пауза: ни fetch, ни генерации, ни постинга,
+      // ни трат. Управляется из админки /posting без редеплоя.
+      const control = await step.run("posting-control", () => getPostingControl(db));
+      const pause = isPostingPaused(control, now);
+      if (pause.paused) {
+        return {
+          skipped: true as const,
+          reason: `posting-paused:${pause.reason}`,
+          sources: 0,
+          fetched: 0,
+          emitted: 0,
+          perSource: [],
+        };
+      }
 
       const sources = await step.run("list-sources", () => listEnabledRssSources(db));
 

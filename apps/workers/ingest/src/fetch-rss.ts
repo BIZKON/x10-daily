@@ -1,8 +1,10 @@
 import Parser from "rss-parser";
 
 /**
- * Нормализованный item из vc.ru RSS — формат под `inngest_items` row +
- * payload для `source.item.received` (см. apps/workers/pipeline/src/events.ts).
+ * Нормализованный item из RSS-фида — формат под payload для
+ * `source.item.received` (см. apps/workers/pipeline/src/events.ts).
+ * Generic: один и тот же парсер для любого RSS-источника (vc.ru, РБК,
+ * Коммерсантъ, Forbes, Habr, …) — источник задаётся URL'ом.
  */
 export interface NormalizedItem {
   /** RSS guid или link если guid отсутствует. */
@@ -25,15 +27,16 @@ function stripHtml(s: string): string {
 }
 
 /**
- * Fetch + parse RSS-фида vc.ru.
+ * Fetch + parse произвольного RSS-фида.
  *
- * @param opts.rssUrl — переопределение URL (для тестов / альтернативных fed'ов того же издателя).
+ * @param rssUrl — URL фида (обязателен; источники берутся из таблицы `sources`).
  * @param opts.fetchImpl — fetch-инжекция для тестов (mock RSS body без сети).
  */
-export async function fetchVcRss(
-  opts: { rssUrl?: string; fetchImpl?: typeof fetch } = {},
+export async function fetchRss(
+  rssUrl: string,
+  opts: { fetchImpl?: typeof fetch } = {},
 ): Promise<NormalizedItem[]> {
-  const url = opts.rssUrl ?? VC_RSS_URL;
+  const url = rssUrl;
   const fetchFn = opts.fetchImpl ?? globalThis.fetch;
 
   const res = await fetchFn(url, {
@@ -43,7 +46,7 @@ export async function fetchVcRss(
     },
   });
   if (!res.ok) {
-    throw new Error(`vc.ru RSS fetch failed: ${res.status} ${res.statusText}`);
+    throw new Error(`RSS fetch failed (${url}): ${res.status} ${res.statusText}`);
   }
   const xml = await res.text();
 
@@ -57,10 +60,7 @@ export async function fetchVcRss(
     const link = (item.link ?? "").trim();
     if (!externalId || !title || !link) continue;
 
-    const rawText =
-      item.contentSnippet ??
-      (item.content ? stripHtml(item.content) : "") ??
-      title;
+    const rawText = item.contentSnippet ?? (item.content ? stripHtml(item.content) : "") ?? title;
     const text = rawText.trim() || title;
 
     let publishedAt: string | null = null;

@@ -37,8 +37,12 @@ vi.mock("@x10/worker-ingest", async () => {
   const actual =
     await vi.importActual<typeof import("@x10/worker-ingest")>("@x10/worker-ingest");
   return {
-    ...actual, // fetchVcRss + simhash64 + VC_RSS_URL — оригинал (rss-parser реально парсит XML)
+    ...actual, // fetchRss + simhash64 + VC_RSS_URL — оригинал (rss-parser реально парсит XML)
     ensureSource: vi.fn(async () => FAKE_SOURCE_ID),
+    // Multi-source ingest читает источники из таблицы — мокаем один vc.ru.
+    listEnabledRssSources: vi.fn(async () => [
+      { id: FAKE_SOURCE_ID, name: "vc.ru", url: actual.VC_RSS_URL },
+    ]),
     markIfNew: vi.fn(async (_db: unknown, args: { externalId: string }) => {
       if (seenStore.has(args.externalId)) return false;
       seenStore.add(args.externalId);
@@ -288,7 +292,7 @@ function makeTestDb() {
 // === Imports после vi.mock (hoisted) ===
 import { createPipelineInngest } from "../src/inngest/client";
 import { createDraftArticleFunction } from "../src/inngest/functions/draft-article";
-import { createIngestVcRssFunction } from "../src/inngest/functions/ingest-vc-rss";
+import { createIngestRssFunction } from "../src/inngest/functions/ingest-rss";
 import { createPostToTgFunction } from "../src/inngest/functions/post-to-tg";
 import { createProcessSourceItemFunction } from "../src/inngest/functions/process-source-item";
 
@@ -363,8 +367,8 @@ describe("Walking Skeleton e2e — cron → fetch → dedup → chain → real T
     const rssSpy = makeRssFetchSpy(RSS_FIXTURE);
     const tgSpy = makeTgFetchSpy();
 
-    // N2: cron-tick ingest-vc-rss (триггерится ТОЛЬКО эта функция вручную)
-    const ingestFn = createIngestVcRssFunction(inngest, BINDINGS, {
+    // N2: cron-tick ingest-rss (триггерится ТОЛЬКО эта функция вручную; один vc.ru источник)
+    const ingestFn = createIngestRssFunction(inngest, BINDINGS, {
       fetchImpl: rssSpy,
     });
     const step1 = makeStep(events);
@@ -459,22 +463,24 @@ describe("Walking Skeleton e2e — cron → fetch → dedup → chain → real T
   it("повторный cron-тик НЕ эмитит дубль (dedup по seen_items)", async () => {
     const inngest = createPipelineInngest({ NODE_ENV: "test" });
     const rssSpy = makeRssFetchSpy(RSS_FIXTURE);
-    const ingestFn = createIngestVcRssFunction(inngest, BINDINGS, {
+    const ingestFn = createIngestRssFunction(inngest, BINDINGS, {
       fetchImpl: rssSpy,
     });
 
     const events1: CapturedEvent[] = [];
     const result1 = (await getHandler(ingestFn)({
       step: makeStep(events1),
-    })) as { fetched: number; emitted: number };
-    expect(result1).toEqual({ fetched: 1, emitted: 1 });
+    })) as { sources: number; fetched: number; emitted: number };
+    expect(result1.fetched).toBe(1);
+    expect(result1.emitted).toBe(1);
     expect(events1).toHaveLength(1);
 
     const events2: CapturedEvent[] = [];
     const result2 = (await getHandler(ingestFn)({
       step: makeStep(events2),
-    })) as { fetched: number; emitted: number };
-    expect(result2).toEqual({ fetched: 1, emitted: 0 });
+    })) as { sources: number; fetched: number; emitted: number };
+    expect(result2.fetched).toBe(1);
+    expect(result2.emitted).toBe(0);
     expect(events2).toHaveLength(0);
   });
 

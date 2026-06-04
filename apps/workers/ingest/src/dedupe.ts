@@ -1,5 +1,25 @@
-import { and, eq } from "drizzle-orm";
-import { seenItems, sources, type Database, type NewSource } from "@x10/db";
+import { type Database, type NewSource, seenItems, sources } from "@x10/db";
+import { and, asc, eq } from "drizzle-orm";
+
+export interface RssSource {
+  id: string;
+  name: string;
+  url: string;
+}
+
+/**
+ * Активные RSS-источники для автопостинга. Multi-source ingest (session 18+)
+ * читает их из таблицы `sources` (data-driven, без хардкода) вместо
+ * единственного vc.ru. poll_interval_sec/last_polled_at пока не используются —
+ * cron поллит все enabled каждый тик (future-оптимизация: gating по интервалу).
+ */
+export async function listEnabledRssSources(db: Database): Promise<RssSource[]> {
+  return db
+    .select({ id: sources.id, name: sources.name, url: sources.url })
+    .from(sources)
+    .where(and(eq(sources.enabled, true), eq(sources.kind, "rss")))
+    .orderBy(asc(sources.createdAt));
+}
 
 /**
  * Атомарно отмечает item как seen. Возвращает true если запись свежая

@@ -1,3 +1,8 @@
-export { fetchVcRss, VC_RSS_URL, type NormalizedItem } from "./fetch-vc";
+export { fetchRss, VC_RSS_URL, type NormalizedItem } from "./fetch-rss";
 export { simhash64 } from "./simhash";
-export { markIfNew, ensureSource } from "./dedupe";
+export {
+  markIfNew,
+  ensureSource,
+  listEnabledRssSources,
+  type RssSource,
+} from "./dedupe";

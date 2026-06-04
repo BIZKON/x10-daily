@@ -7,6 +7,21 @@ import type { AppBindings, ObjectStorage } from "./bindings";
  */
 let cached: BaseEnv | undefined;
 
+/**
+ * Prod-required ключи именно для API. В отличие от глобального productionRequired
+ * (@x10/config) НЕ требует INNGEST_SIGNING_KEY: signing key верифицирует входящие
+ * Inngest-вебхуки и нужен только pipeline-воркеру (он serve'ит /inngest). API
+ * лишь ШЛЁТ события через INNGEST_EVENT_KEY и signing key в source даже не
+ * маппит. Без этого override loadEnv падал в проде «missing INNGEST_SIGNING_KEY»
+ * → getEnv throw ДО auth → все /v1/admin/* читения отдавали 500 (а не 401).
+ */
+const API_REQUIRED_KEYS = [
+  "AI_GATEWAY_API_KEY",
+  "INNGEST_EVENT_KEY",
+  "TELEGRAM_BOT_TOKEN",
+  "X10_JWT_SECRET",
+] as const satisfies ReadonlyArray<keyof BaseEnv>;
+
 export function getEnv(bindings: AppBindings): BaseEnv {
   if (cached) return cached;
   const source: Record<string, string | undefined> = {
@@ -25,7 +40,7 @@ export function getEnv(bindings: AppBindings): BaseEnv {
     X10_JWT_SECRET: bindings.X10_JWT_SECRET,
     X10_JWT_TTL_SECONDS: bindings.X10_JWT_TTL_SECONDS,
   };
-  cached = loadEnv(source);
+  cached = loadEnv(source, { requiredKeys: API_REQUIRED_KEYS });
   return cached;
 }
 

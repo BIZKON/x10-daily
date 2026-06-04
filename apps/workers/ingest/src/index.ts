@@ -4,5 +4,7 @@ export {
   markIfNew,
   ensureSource,
   listEnabledRssSources,
+  isSourceDue,
+  markSourcePolled,
   type RssSource,
 } from "./dedupe";

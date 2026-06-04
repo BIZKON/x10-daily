@@ -2,8 +2,10 @@ import { createDb } from "@x10/db";
 import {
   type NormalizedItem,
   fetchRss,
+  isSourceDue,
   listEnabledRssSources,
   markIfNew,
+  markSourcePolled,
   simhash64,
 } from "@x10/worker-ingest";
 import type { PipelineBindings } from "../../bindings";
@@ -56,16 +58,30 @@ export function createIngestRssFunction(
       const env = loadPipelineEnv(bindings);
       const db = createDb(env.DATABASE_URL);
 
+      // Один timestamp на тик (мемоизирован) — детерминизм gating при ретрае.
+      const nowMs = await step.run("now", async () => Date.now());
+      const now = new Date(nowMs);
+
       const sources = await step.run("list-sources", () => listEnabledRssSources(db));
 
       const perSource: Array<{
         name: string;
         fetched: number;
         emitted: number;
+        skipped?: boolean;
         error?: string;
       }> = [];
 
       for (const src of sources) {
+        // Gating (session 20): cron тикает каждые 5 мин, но источник поллится не
+        // чаще poll_interval_sec (default 900 = 15 мин). Бережёт rate-limit'ы
+        // фидов и пустые гейт-вызовы на медленных лентах. lastPolledAt обновляем
+        // только при успехе → битый источник ретраится каждый тик.
+        if (!isSourceDue(src, now)) {
+          perSource.push({ name: src.name, fetched: 0, emitted: 0, skipped: true });
+          continue;
+        }
+
         // fetch + mark всего фида в ОДНОМ step (Inngest мемоизирует → markIfNew
         // не повторяется при ретрае функции). Возвращаем только свежие items.
         const res = await step.run(`ingest-${src.id}`, async () => {
@@ -82,6 +98,8 @@ export function createIngestRssFunction(
               });
               if (isNew) fresh.push(item);
             }
+            // Успешный полл — фиксируем время, чтобы gating отсчитывал интервал.
+            await markSourcePolled(db, src.id, now);
             return {
               fetched: items.length,
               fresh,

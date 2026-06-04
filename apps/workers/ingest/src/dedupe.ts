@@ -5,20 +5,48 @@ export interface RssSource {
   id: string;
   name: string;
   url: string;
+  /** Минимальный интервал между поллами источника, сек (session 20 gating). */
+  pollIntervalSec: number;
+  /** ISO-время последнего успешного полла; null → ещё ни разу. */
+  lastPolledAt: string | null;
 }
 
 /**
  * Активные RSS-источники для автопостинга. Multi-source ingest (session 18+)
  * читает их из таблицы `sources` (data-driven, без хардкода) вместо
- * единственного vc.ru. poll_interval_sec/last_polled_at пока не используются —
- * cron поллит все enabled каждый тик (future-оптимизация: gating по интервалу).
+ * единственного vc.ru. Поля poll_interval_sec/last_polled_at используются
+ * ingest-rss (session 20) для gating: cron тикает каждые 5 мин, но источник
+ * поллится не чаще своего интервала (по умолчанию 900 сек = 15 мин).
  */
 export async function listEnabledRssSources(db: Database): Promise<RssSource[]> {
   return db
-    .select({ id: sources.id, name: sources.name, url: sources.url })
+    .select({
+      id: sources.id,
+      name: sources.name,
+      url: sources.url,
+      pollIntervalSec: sources.pollIntervalSec,
+      lastPolledAt: sources.lastPolledAt,
+    })
     .from(sources)
     .where(and(eq(sources.enabled, true), eq(sources.kind, "rss")))
     .orderBy(asc(sources.createdAt));
+}
+
+/**
+ * Источник «созрел» для полла? null/невалидный lastPolledAt → да (ещё не
+ * поллили). Иначе — прошло ли >= pollIntervalSec с прошлого полла. Чистая
+ * функция → юнит-тестируется без БД.
+ */
+export function isSourceDue(src: RssSource, now: Date): boolean {
+  if (!src.lastPolledAt) return true;
+  const last = Date.parse(src.lastPolledAt);
+  if (Number.isNaN(last)) return true;
+  return now.getTime() - last >= src.pollIntervalSec * 1000;
+}
+
+/** Отметить успешный полл источника (last_polled_at = at). */
+export async function markSourcePolled(db: Database, sourceId: string, at: Date): Promise<void> {
+  await db.update(sources).set({ lastPolledAt: at.toISOString() }).where(eq(sources.id, sourceId));
 }
 
 /**

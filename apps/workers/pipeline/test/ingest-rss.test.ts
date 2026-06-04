@@ -6,18 +6,26 @@ import type { PipelineBindings } from "../src/bindings";
  * изоляция битых источников, кап эмиссий на источник за тик.
  */
 
-const { listMock, fetchMock, markMock } = vi.hoisted(() => ({
+const { listMock, fetchMock, markMock, markPolledMock } = vi.hoisted(() => ({
   listMock: vi.fn(),
   fetchMock: vi.fn(),
   markMock: vi.fn(),
+  markPolledMock: vi.fn(),
 }));
 
-vi.mock("@x10/worker-ingest", () => ({
-  listEnabledRssSources: listMock,
-  fetchRss: fetchMock,
-  markIfNew: markMock,
-  simhash64: () => "fp",
-}));
+// importActual → реальный isSourceDue (gating-логику тестируем через функцию,
+// без дублирования impl). Остальное переопределяем мок-функциями.
+vi.mock("@x10/worker-ingest", async () => {
+  const actual = await vi.importActual<typeof import("@x10/worker-ingest")>("@x10/worker-ingest");
+  return {
+    ...actual,
+    listEnabledRssSources: listMock,
+    fetchRss: fetchMock,
+    markIfNew: markMock,
+    markSourcePolled: markPolledMock,
+    simhash64: () => "fp",
+  };
+});
 vi.mock("@x10/db", () => ({ createDb: vi.fn(() => ({})) }));
 
 import { createPipelineInngest } from "../src/inngest/client";
@@ -48,7 +56,7 @@ function makeStep(events: Emitted[]) {
 function getHandler(fn: unknown): (args: { step: unknown }) => Promise<{
   sources: number;
   emitted: number;
-  perSource: Array<{ name: string; emitted: number; error?: string }>;
+  perSource: Array<{ name: string; emitted: number; skipped?: boolean; error?: string }>;
 }> {
   return (fn as { fn: (args: { step: unknown }) => Promise<never> }).fn;
 }
@@ -123,5 +131,51 @@ describe("ingest-rss — multi-source", () => {
 
     expect(events).toHaveLength(25);
     expect(r.perSource[0]?.emitted).toBe(25);
+  });
+
+  it("gating: несозревший источник (свежий lastPolledAt) пропущен, fetch не зовётся", async () => {
+    const recent = new Date(Date.now() - 60_000).toISOString(); // 1 мин назад < 15 мин
+    listMock.mockResolvedValue([
+      {
+        id: "slow",
+        name: "Slow",
+        url: "https://slow/rss",
+        pollIntervalSec: 900,
+        lastPolledAt: recent,
+      },
+    ]);
+
+    const events: Emitted[] = [];
+    const r = await getHandler(createIngestRssFunction(inngest(), BINDINGS))({
+      step: makeStep(events),
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(markPolledMock).not.toHaveBeenCalled();
+    expect(events).toHaveLength(0);
+    expect(r.perSource.find((s) => s.name === "Slow")?.skipped).toBe(true);
+  });
+
+  it("gating: созревший источник поллится и фиксирует lastPolledAt", async () => {
+    const old = new Date(Date.now() - 20 * 60_000).toISOString(); // 20 мин назад > 15
+    listMock.mockResolvedValue([
+      {
+        id: "due",
+        name: "Due",
+        url: "https://due/rss",
+        pollIntervalSec: 900,
+        lastPolledAt: old,
+      },
+    ]);
+    fetchMock.mockResolvedValue([item("d")]);
+
+    const events: Emitted[] = [];
+    await getHandler(createIngestRssFunction(inngest(), BINDINGS))({
+      step: makeStep(events),
+    });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(events).toHaveLength(1);
+    expect(markPolledMock).toHaveBeenCalledOnce();
   });
 });

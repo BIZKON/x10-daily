@@ -62,7 +62,7 @@
 
 ## 2. ⚠️ Грабли / нюансы (НЕ наступить)
 
-1. **`TG_OPS_CHAT_ID` ещё не задан** → ops-алерты только в логах. Чтобы включить Telegram: добавить `TG_OPS_CHAT_ID=<id>` в `.env.production` (числовой user-id для лички с `@Sekretar_Syrov_IP_bot`, или `-100…` приватного канала, где бот админ) → `docker compose -f docker-compose.prod.yml up -d pipeline` (пересоздать контейнер, чтобы подхватил env; rebuild НЕ нужен). `DAILY_BUDGET_USD`/`DAILY_BUDGET_WARN_USD` менять не надо — дефолты схемы = $15/$9.
+1. ✅ **`TG_OPS_CHAT_ID=247247870` ЗАДАН** (@profysales, личка Константина) + проверен тестовым сообщением (доставлено). Прокинут через compose `environment:` (поимённо — НЕ env_file!) + значение в `.env.production`. `DAILY_BUDGET_USD`/`WARN` тоже добавлены в compose с дефолтами 15/9 (настраиваются из `.env` без правки кода). ⚠️ Бот не пишет первым — юзер должен был хоть раз нажать Start боту (Константин уже общался → ОК). Менять chat: правка `.env.production` + `docker compose -f docker-compose.prod.yml up -d pipeline` (без rebuild).
 2. **Дневной расход считается по `pipeline_runs`, день — МСК (UTC+3).** budget-gate: `sum(cost_usd) WHERE created_at >= МСК-полночь`. Сброс в полночь МСК. Сейчас (session 20) при тесте было ~$0.32/день.
 3. **Миграции hand-written** (как 0001-0006, без snapshots в meta/). `0007_cost_alerts` + запись в `_journal.json`. НЕ запускать `db:generate` (диффнет против устаревшего 0000-snapshot → мусор). Новую миграцию писать руками + журнал.
 4. **Poll gating сменил каденс:** источники теперь поллятся раз в 15 мин (poll_interval_sec=900), не каждые 5. Хочешь чаще конкретный источник — `UPDATE sources SET poll_interval_sec=300 WHERE name=...`.
@@ -84,7 +84,7 @@
 
 ## 4. Осталось (пост-M0)
 
-- **`TG_OPS_CHAT_ID`** — задать, чтобы $-алерты шли в Telegram (см. §2.1). Сейчас в логах.
+- ✅ ~~`TG_OPS_CHAT_ID`~~ — задан (247247870, @profysales) + проверен. $-алерты идут в личку.
 - **Autonomous контур:** VK/Дзен posting (API-ключи + OAuth), AudioAgent (ElevenLabs + WS-прокси на Render). RSS — сделано (session 19).
 - **Dedicated `@x10_daily_test_bot`** (сейчас одолжен `@Sekretar_Syrov_IP_bot`; он же → auth-бот Mini App).
 - **Домен** x10.media (РФ-доступный DNS).

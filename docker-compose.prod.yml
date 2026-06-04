@@ -213,3 +213,14 @@ volumes:
   redis-data:
   caddy-data:
   caddy-config:
+
+networks:
+  # IPv6 включён намеренно: api.telegram.org из этой РФ-сети доступен ТОЛЬКО по
+  # IPv6 — IPv4 (149.154.x) молча фильтруется (даже с хоста `curl -4` → timeout).
+  # Контейнеру pipeline нужен IPv6, иначе post-to-tg падает с ETIMEDOUT.
+  # Docker 29: ip6tables включён по умолчанию → авто-выдаёт ULA-подсеть и делает
+  # NAT66 (masquerade в хостовый IPv6). На хосте требуется (см.
+  # /etc/sysctl.d/99-x10-ipv6.conf): net.ipv6.conf.all.forwarding=1 +
+  # net.ipv6.conf.eth0.accept_ra=2 (иначе forwarding сносит RA-маршрут eth0).
+  default:
+    enable_ipv6: true

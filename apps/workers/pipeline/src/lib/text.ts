@@ -21,3 +21,77 @@ export function normalizeNewlines(text: string): string {
     .replace(/\n{3,}/g, "\n\n") // 3+ переносов → максимум один пустой абзац
     .trim();
 }
+
+/**
+ * Английские структурные ЛЕЙБЛЫ, которые модель печатает как заголовки секций
+ * в русском посте (session 20 fix #2). Это невидимая внутренняя структура — в
+ * опубликованном тексте её быть не должно. Два источника:
+ *  - стадии framework (social-amplify): BAB Before/After/Bridge, PAS, AIDA, STAR, SLAY;
+ *  - блоки Smart Brevity (voice.md): "Yes, but", "What's next", "Why it matters" и т.п.
+ * Промпт просит не печатать их, но это гарантирующий слой.
+ */
+const STRUCTURAL_LABELS = [
+  // framework stages
+  "before",
+  "after",
+  "bridge",
+  "problem",
+  "agitation",
+  "solution",
+  "attention",
+  "interest",
+  "desire",
+  "action",
+  "situation",
+  "task",
+  "result",
+  "story",
+  "lesson",
+  "actionable advice",
+  "you",
+  // Smart Brevity (Axios) блоки
+  "yes, but",
+  "yes but",
+  "bottom line",
+  "the bottom line",
+  "what's next",
+  "whats next",
+  "what is next",
+  "why it matters",
+  "the big picture",
+  "big picture",
+  "by the numbers",
+  "between the lines",
+  "go deeper",
+  "what they're saying",
+  "what they are saying",
+  "teaser",
+  "lede",
+];
+
+/**
+ * Срезает английские структурные лейблы в НАЧАЛЕ строк — и инлайн
+ * («Before. Текст» → «Текст»), и отдельной строкой («Before.» → пусто).
+ * Только bounded-набор английских терминов → русский контент не трогает
+ * (английское слово + точка в начале строки в русском посте = именно артефакт).
+ */
+export function stripStructuralLabels(text: string): string {
+  const group = [...STRUCTURAL_LABELS]
+    .sort((a, b) => b.length - a.length)
+    .map((l) => l.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
+  // лейбл занимает всю строку (только пунктуация после) → убрать строку целиком
+  const wholeLine = new RegExp(`^[ \\t]*(?:${group})[ \\t]*[.:)\\u2014-]*[ \\t]*$`, "gim");
+  // лейбл + пунктуация + пробел + контент → убрать только лейбл
+  const inline = new RegExp(`^[ \\t]*(?:${group})[ \\t]*[.:)\\u2014-]+[ \\t]+`, "gim");
+  return text.replace(wholeLine, "").replace(inline, "");
+}
+
+/**
+ * Полная очистка текста поста перед публикацией: настоящие переносы строк +
+ * срез английских структурных лейблов + повторная нормализация (схлопнуть
+ * пустые строки после удаления лейблов-строк). Идемпотентна.
+ */
+export function cleanPostText(text: string): string {
+  return normalizeNewlines(stripStructuralLabels(normalizeNewlines(text)));
+}

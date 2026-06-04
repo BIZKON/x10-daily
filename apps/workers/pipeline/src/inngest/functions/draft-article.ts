@@ -21,7 +21,7 @@ import {
 } from "../../events";
 import { claimAlert, getTodaySpendUsd, mskDayString, recordRun } from "../../lib/cost-ledger";
 import { sendOpsAlert } from "../../lib/ops-alert";
-import { normalizeNewlines } from "../../lib/text";
+import { cleanPostText } from "../../lib/text";
 import { persistArticle, serializeDraftForNumbers } from "../../persist";
 import type { PipelineInngest } from "../client";
 
@@ -178,9 +178,10 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
         step.run("score", () => PreviewScoreAgent.run({ draft: brevity.output.compressed }, ctx)),
       ]);
 
-      // Чиним литеральные "\n" от LLM → настоящие переносы (см. lib/text.ts).
-      // Единый источник текста TG-поста: channels + metadata + return.
-      const socialPost = normalizeNewlines(social.output.post);
+      // Чистим текст TG-поста: настоящие переносы строк + срез английских
+      // структурных лейблов (Before/After/Bridge, Yes but, …). См. lib/text.ts.
+      // Единый источник текста поста: channels + metadata + return.
+      const socialPost = cleanPostText(social.output.post);
 
       const totalCost =
         draft.costUsd +

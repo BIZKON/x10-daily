@@ -3,7 +3,7 @@ import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
 import { articleReadyEvent } from "../../events";
 import { callTelegram } from "../../lib/telegram";
-import { normalizeNewlines } from "../../lib/text";
+import { cleanPostText } from "../../lib/text";
 import type { PipelineInngest } from "../client";
 
 /**
@@ -69,9 +69,9 @@ export function createPostToTgFunction(
         return r;
       });
 
-      // Защитный слой: чиним литеральные "\n" даже у уже сохранённых channels-строк
-      // (на случай постов, записанных до фикса). Идемпотентно. См. lib/text.ts.
-      const text = normalizeNewlines(row.text);
+      // Защитный слой: чистим текст (переносы + английские лейблы) даже у уже
+      // сохранённых channels-строк (посты, записанные до фикса). Идемпотентно.
+      const text = cleanPostText(row.text);
       const visualRef = row.visualRef;
 
       const result = await step.run("send-tg", async () => {

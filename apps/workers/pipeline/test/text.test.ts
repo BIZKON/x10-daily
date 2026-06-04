@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeNewlines } from "../src/lib/text";
+import { cleanPostText, normalizeNewlines, stripStructuralLabels } from "../src/lib/text";
 
 /**
  * Фикс артефакта LLM: литеральные "\n" (бэкслеш+n) вместо переносов строк →
@@ -43,5 +43,53 @@ describe("normalizeNewlines", () => {
 
   it("хвостовые пробелы перед переносом убираются, текст триммится", () => {
     expect(normalizeNewlines("  a   \nb  ")).toBe("a\nb");
+  });
+});
+
+describe("stripStructuralLabels — английские лейблы стадий/блоков", () => {
+  it("инлайн BAB-лейблы (Before/After/Bridge) срезаются, контент остаётся", () => {
+    expect(stripStructuralLabels("BEFORE. Автономные агенты тестировались вне рынка.")).toBe(
+      "Автономные агенты тестировались вне рынка.",
+    );
+    expect(stripStructuralLabels("BRIDGE. MOEX строит инфраструктуру.")).toBe(
+      "MOEX строит инфраструктуру.",
+    );
+  });
+
+  it("Smart Brevity лейблы (Yes, but / What's next) срезаются", () => {
+    expect(stripStructuralLabels("Yes, but. Виртуальная среда не равна рынку.")).toBe(
+      "Виртуальная среда не равна рынку.",
+    );
+    expect(stripStructuralLabels("What's next: запуск осенью.")).toBe("запуск осенью.");
+  });
+
+  it("лейбл отдельной строкой удаляется целиком", () => {
+    expect(stripStructuralLabels("AFTER.\nТекст абзаца.")).toBe("\nТекст абзаца.");
+  });
+
+  it("русские заголовки (Следим:) и обычный текст НЕ трогаются", () => {
+    expect(stripStructuralLabels("Следим: откроет ли MOEX песочницу.")).toBe(
+      "Следим: откроет ли MOEX песочницу.",
+    );
+    expect(stripStructuralLabels("Москва. Главное за день.")).toBe("Москва. Главное за день.");
+  });
+});
+
+describe("cleanPostText — полный конвейер очистки поста", () => {
+  it("кейс из прода (MOEX): литеральные \\n + BAB/Yes-but лейблы → чистая проза", () => {
+    const raw =
+      "5 из 50 ИИ-агентов обогнали IMOEX.\\n\\nBEFORE. Агенты тестировались вне рынка.\\n\\nAFTER. Хакатон стал первым тестом.\\n\\nBRIDGE. MOEX строит инфраструктуру.\\n\\nYes, but. Виртуальная среда не равна рынку.\\n\\nСледим: откроет ли MOEX песочницу.";
+    const out = cleanPostText(raw);
+    expect(out).not.toContain("\\n");
+    expect(out).not.toMatch(/^(BEFORE|AFTER|BRIDGE|Yes, but)/m);
+    expect(out).toContain("Агенты тестировались вне рынка.");
+    expect(out).toContain("Следим: откроет ли MOEX песочницу.");
+    // абзацы разделены пустой строкой
+    expect(out.split("\n\n").length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("идемпотентна на уже чистом посте", () => {
+    const clean = "Заголовок-крючок.\n\nПервый абзац.\n\nЧитать на x10daily.";
+    expect(cleanPostText(clean)).toBe(clean);
   });
 });

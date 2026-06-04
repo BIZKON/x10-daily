@@ -73,6 +73,13 @@ describe("stripStructuralLabels — английские лейблы стади
     );
     expect(stripStructuralLabels("Москва. Главное за день.")).toBe("Москва. Главное за день.");
   });
+
+  it("стэкнутые лейблы в одной строке срезаются полностью (audit L13, фикс-точка)", () => {
+    expect(stripStructuralLabels("Before. After. Текст абзаца.")).toBe("Текст абзаца.");
+    // идемпотентность: повторный прогон ничего не меняет
+    const once = stripStructuralLabels("Before. After. Текст абзаца.");
+    expect(stripStructuralLabels(once)).toBe(once);
+  });
 });
 
 describe("cleanPostText — полный конвейер очистки поста", () => {

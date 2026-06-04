@@ -2,139 +2,148 @@ import { z } from "zod";
 
 const urlOrEmpty = z.union([z.url(), z.literal("")]);
 
-const baseSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+const baseSchema = z
+  .object({
+    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
-  DATABASE_URL: z.string().min(1, "DATABASE_URL required"),
-  DIRECT_DATABASE_URL: z.string().optional(),
+    DATABASE_URL: z.string().min(1, "DATABASE_URL required"),
+    DIRECT_DATABASE_URL: z.string().optional(),
 
-  /**
-   * AI Gateway — OpenAI-совместимый прокси для LLM моделей (Claude, GPT, Gemini)
-   * через российскую инфру Timeweb. Подтверждено session 14 на основе скрина
-   * раздела «Подключение» в ЛК:
-   *   base_url: https://api.timeweb.ai/v1
-   *   SDK:      openai (Python/JS), не @anthropic-ai/sdk
-   *   models:   "anthropic/claude-opus-4-7", "anthropic/claude-sonnet-4-6", ...
-   *
-   * Используется как primary в production. Schema fields:
-   *  - AI_GATEWAY_BASE_URL — base URL OpenAI-compat endpoint
-   *  - AI_GATEWAY_API_KEY — Timeweb proxy key
-   *
-   * Старые ANTHROPIC_API_KEY / ANTHROPIC_ZDR_CONFIRMED сохранены как fallback
-   * для прямого подключения к anthropic.com (если когда-нибудь понадобится).
-   */
-  AI_GATEWAY_BASE_URL: urlOrEmpty.default("https://api.timeweb.ai/v1"),
-  AI_GATEWAY_API_KEY: z.string().min(1).optional(),
+    /**
+     * AI Gateway — OpenAI-совместимый прокси для LLM моделей (Claude, GPT, Gemini)
+     * через российскую инфру Timeweb. Подтверждено session 14 на основе скрина
+     * раздела «Подключение» в ЛК:
+     *   base_url: https://api.timeweb.ai/v1
+     *   SDK:      openai (Python/JS), не @anthropic-ai/sdk
+     *   models:   "anthropic/claude-opus-4-7", "anthropic/claude-sonnet-4-6", ...
+     *
+     * Используется как primary в production. Schema fields:
+     *  - AI_GATEWAY_BASE_URL — base URL OpenAI-compat endpoint
+     *  - AI_GATEWAY_API_KEY — Timeweb proxy key
+     *
+     * Старые ANTHROPIC_API_KEY / ANTHROPIC_ZDR_CONFIRMED сохранены как fallback
+     * для прямого подключения к anthropic.com (если когда-нибудь понадобится).
+     */
+    AI_GATEWAY_BASE_URL: urlOrEmpty.default("https://api.timeweb.ai/v1"),
+    AI_GATEWAY_API_KEY: z.string().min(1).optional(),
 
-  /** Legacy: direct Anthropic API (без proxy). Сейчас не используется в prod. */
-  ANTHROPIC_API_KEY: z.string().min(1).optional(),
-  /**
-   * ZDR-контракт нужен ТОЛЬКО при прямом подключении к anthropic.com
-   * (когда AI Gateway не используется). При работе через Timeweb 152-ФЗ
-   * покрывается DPA с провайдером.
-   */
-  ANTHROPIC_ZDR_CONFIRMED: z.enum(["true", "false"]).optional(),
+    /** Legacy: direct Anthropic API (без proxy). Сейчас не используется в prod. */
+    ANTHROPIC_API_KEY: z.string().min(1).optional(),
+    /**
+     * ZDR-контракт нужен ТОЛЬКО при прямом подключении к anthropic.com
+     * (когда AI Gateway не используется). При работе через Timeweb 152-ФЗ
+     * покрывается DPA с провайдером.
+     */
+    ANTHROPIC_ZDR_CONFIRMED: z.enum(["true", "false"]).optional(),
 
-  /**
-   * Model IDs в Timeweb используют префикс `anthropic/` (например
-   * `anthropic/claude-sonnet-4-6`). При direct Anthropic префикс опускается.
-   */
-  ANTHROPIC_MODEL_OPUS: z.string().default("anthropic/claude-opus-4-7"),
-  ANTHROPIC_MODEL_SONNET: z.string().default("anthropic/claude-sonnet-4-6"),
-  ANTHROPIC_MODEL_HAIKU: z.string().default("anthropic/claude-haiku-4-5"),
+    /**
+     * Model IDs в Timeweb используют префикс `anthropic/` (например
+     * `anthropic/claude-sonnet-4-6`). При direct Anthropic префикс опускается.
+     */
+    ANTHROPIC_MODEL_OPUS: z.string().default("anthropic/claude-opus-4-7"),
+    ANTHROPIC_MODEL_SONNET: z.string().default("anthropic/claude-sonnet-4-6"),
+    ANTHROPIC_MODEL_HAIKU: z.string().default("anthropic/claude-haiku-4-5"),
 
-  ELEVENLABS_API_KEY: z.string().optional(),
-  ELEVENLABS_PROXY_URL: urlOrEmpty.optional(),
+    ELEVENLABS_API_KEY: z.string().optional(),
+    ELEVENLABS_PROXY_URL: urlOrEmpty.optional(),
 
-  MASKER_BASE_URL: urlOrEmpty.optional(),
-  MASKER_API_KEY: z.string().optional(),
+    MASKER_BASE_URL: urlOrEmpty.optional(),
+    MASKER_API_KEY: z.string().optional(),
 
-  /**
-   * Telegram bot token (формат `<id>:<secret>`) — корень доверия для
-   * initData / Login Widget verification (HIGH-2 из docs/SECURITY-AUDIT.md).
-   * Required в production: без него Telegram-сессии не выпускаются.
-   */
-  TELEGRAM_BOT_TOKEN: z
-    .string()
-    .regex(/^\d+:[A-Za-z0-9_-]+$/, "TELEGRAM_BOT_TOKEN должен быть формата `<id>:<secret>`")
-    .optional(),
-  TELEGRAM_WEBAPP_URL: urlOrEmpty.optional(),
-  /**
-   * HTTP/HTTPS-прокси для api.telegram.org из workers/pipeline. На Timeweb
-   * ru-1 (РФ-ЦОД) прямой fetch к api.telegram.org молча умирает по таймауту
-   * (TelegramNetworkError). См. timeweb-telegram-deploy skill §4.
-   * Формат: http://user:pass@host:port (HTTP CONNECT) — undici.ProxyAgent.
-   * Пусто → прямой fetch (для dev / non-РФ-хостинга).
-   */
-  TELEGRAM_PROXY_URL: urlOrEmpty.optional(),
-  /**
-   * Walking Skeleton (ТЗ #1, N5): тестовый канал для автономного постинга.
-   * Формат: `@channel_username` или numeric chat_id (`-1001234567890`).
-   * Required в production только если AUTONOMOUS_POSTING_TG=true.
-   */
-  TG_TEST_CHANNEL_ID: z.string().optional(),
-  /**
-   * Пост-M0 hardening (session 20): чат для $-алертов автономного конвейера
-   * (личка с ботом или приватный ops-канал). Формат как у TG_TEST_CHANNEL_ID.
-   * Опционален — если пуст, алерты пишутся только в логи (console.warn), без
-   * отправки в Telegram. Намеренно ОТДЕЛЬНЫЙ от контент-канала, чтобы ops-шум
-   * не попадал в публикации. См. apps/workers/pipeline/src/lib/ops-alert.ts.
-   */
-  TG_OPS_CHAT_ID: z.string().optional(),
+    /**
+     * Telegram bot token (формат `<id>:<secret>`) — корень доверия для
+     * initData / Login Widget verification (HIGH-2 из docs/SECURITY-AUDIT.md).
+     * Required в production: без него Telegram-сессии не выпускаются.
+     */
+    TELEGRAM_BOT_TOKEN: z
+      .string()
+      .regex(/^\d+:[A-Za-z0-9_-]+$/, "TELEGRAM_BOT_TOKEN должен быть формата `<id>:<secret>`")
+      .optional(),
+    TELEGRAM_WEBAPP_URL: urlOrEmpty.optional(),
+    /**
+     * HTTP/HTTPS-прокси для api.telegram.org из workers/pipeline. На Timeweb
+     * ru-1 (РФ-ЦОД) прямой fetch к api.telegram.org молча умирает по таймауту
+     * (TelegramNetworkError). См. timeweb-telegram-deploy skill §4.
+     * Формат: http://user:pass@host:port (HTTP CONNECT) — undici.ProxyAgent.
+     * Пусто → прямой fetch (для dev / non-РФ-хостинга).
+     */
+    TELEGRAM_PROXY_URL: urlOrEmpty.optional(),
+    /**
+     * Walking Skeleton (ТЗ #1, N5): тестовый канал для автономного постинга.
+     * Формат: `@channel_username` или numeric chat_id (`-1001234567890`).
+     * Required в production только если AUTONOMOUS_POSTING_TG=true.
+     */
+    TG_TEST_CHANNEL_ID: z.string().optional(),
+    /**
+     * Пост-M0 hardening (session 20): чат для $-алертов автономного конвейера
+     * (личка с ботом или приватный ops-канал). Формат как у TG_TEST_CHANNEL_ID.
+     * Опционален — если пуст, алерты пишутся только в логи (console.warn), без
+     * отправки в Telegram. Намеренно ОТДЕЛЬНЫЙ от контент-канала, чтобы ops-шум
+     * не попадал в публикации. См. apps/workers/pipeline/src/lib/ops-alert.ts.
+     */
+    TG_OPS_CHAT_ID: z.string().optional(),
 
-  /**
-   * Пост-M0 hardening (session 20): жёсткий дневной потолок $-расхода на LLM.
-   * draft-article в начале каждого запуска суммирует расход за календарный день
-   * МСК (pipeline_runs.cost_usd) и при >= DAILY_BUDGET_USD ПРОПУСКАЕТ статью
-   * (агенты не запускаются) до полуночи МСК — чтобы бурст источников не съел
-   * бюджет. Дешёвый IngestAgent-гейт (Haiku) продолжает работать. Часовой
-   * rateLimit (50/час ≈ $22.5/час) остаётся как второй контур.
-   * coerce.number — env приходит строкой. Default 15 (CLAUDE.md §4: ~$6/день —
-   * норма full-AI-бюджета; $15 — щедрый headroom, в ~36× ниже теоретического
-   * рунавея часового лимита).
-   */
-  DAILY_BUDGET_USD: z.coerce.number().nonnegative().default(15),
-  /**
-   * Предупредительный порог: при пересечении шлётся warn-алерт (один раз в день).
-   * Должен быть < DAILY_BUDGET_USD. Default 9 (60% потолка).
-   */
-  DAILY_BUDGET_WARN_USD: z.coerce.number().nonnegative().default(9),
+    /**
+     * Пост-M0 hardening (session 20): жёсткий дневной потолок $-расхода на LLM.
+     * draft-article в начале каждого запуска суммирует расход за календарный день
+     * МСК (pipeline_runs.cost_usd) и при >= DAILY_BUDGET_USD ПРОПУСКАЕТ статью
+     * (агенты не запускаются) до полуночи МСК — чтобы бурст источников не съел
+     * бюджет. Дешёвый IngestAgent-гейт (Haiku) продолжает работать. Часовой
+     * rateLimit (50/час ≈ $22.5/час) остаётся как второй контур.
+     * coerce.number — env приходит строкой. Default 15 (CLAUDE.md §4: ~$6/день —
+     * норма full-AI-бюджета; $15 — щедрый headroom, в ~36× ниже теоретического
+     * рунавея часового лимита).
+     * .positive (audit L5): 0/пустая-строка→0 молча отключила бы конвейер
+     * (spend >= 0 всегда true → fail-closed). Требуем > 0 → fail-fast на старте.
+     */
+    DAILY_BUDGET_USD: z.coerce.number().positive().default(15),
+    /**
+     * Предупредительный порог: при пересечении шлётся warn-алерт (один раз в день).
+     * Должен быть < DAILY_BUDGET_USD (enforced .refine ниже). Default 9 (60% потолка).
+     */
+    DAILY_BUDGET_WARN_USD: z.coerce.number().nonnegative().default(9),
 
-  /**
-   * HMAC-secret для подписи JWT-сессий (HS256). Минимум 32 байта.
-   * Required в production. Утечка → атакующий выпускает токены от имени любого
-   * пользователя; ротация → инвалидация всех активных сессий (юзеры перелогинятся
-   * через initData без боли). См. apps/api/src/lib/jwt.ts.
-   */
-  X10_JWT_SECRET: z
-    .string()
-    .min(32, "X10_JWT_SECRET минимум 32 символа (HS256 security)")
-    .optional(),
+    /**
+     * HMAC-secret для подписи JWT-сессий (HS256). Минимум 32 байта.
+     * Required в production. Утечка → атакующий выпускает токены от имени любого
+     * пользователя; ротация → инвалидация всех активных сессий (юзеры перелогинятся
+     * через initData без боли). См. apps/api/src/lib/jwt.ts.
+     */
+    X10_JWT_SECRET: z
+      .string()
+      .min(32, "X10_JWT_SECRET минимум 32 символа (HS256 security)")
+      .optional(),
 
-  /**
-   * TTL сессии в секундах. Default 24h. Перелогин дешёвый (TG initData
-   * бесплатный), поэтому короткий TTL ОК.
-   */
-  X10_JWT_TTL_SECONDS: z.coerce.number().int().positive().default(86400),
+    /**
+     * TTL сессии в секундах. Default 24h. Перелогин дешёвый (TG initData
+     * бесплатный), поэтому короткий TTL ОК.
+     */
+    X10_JWT_TTL_SECONDS: z.coerce.number().int().positive().default(86400),
 
-  MAX_BOT_TOKEN: z.string().optional(),
-  MAX_WEBAPP_URL: urlOrEmpty.optional(),
+    MAX_BOT_TOKEN: z.string().optional(),
+    MAX_WEBAPP_URL: urlOrEmpty.optional(),
 
-  CLOUDFLARE_ACCOUNT_ID: z.string().optional(),
-  CLOUDFLARE_API_TOKEN: z.string().optional(),
-  CLOUDFLARE_R2_ACCESS_KEY: z.string().optional(),
-  CLOUDFLARE_R2_SECRET_KEY: z.string().optional(),
+    CLOUDFLARE_ACCOUNT_ID: z.string().optional(),
+    CLOUDFLARE_API_TOKEN: z.string().optional(),
+    CLOUDFLARE_R2_ACCESS_KEY: z.string().optional(),
+    CLOUDFLARE_R2_SECRET_KEY: z.string().optional(),
 
-  RESEND_API_KEY: z.string().optional(),
+    RESEND_API_KEY: z.string().optional(),
 
-  NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
-  NEXT_PUBLIC_POSTHOG_HOST: urlOrEmpty.default("https://eu.posthog.com"),
+    NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
+    NEXT_PUBLIC_POSTHOG_HOST: urlOrEmpty.default("https://eu.posthog.com"),
 
-  SENTRY_DSN: urlOrEmpty.optional(),
+    SENTRY_DSN: urlOrEmpty.optional(),
 
-  INNGEST_EVENT_KEY: z.string().optional(),
-  INNGEST_SIGNING_KEY: z.string().optional(),
-});
+    INNGEST_EVENT_KEY: z.string().optional(),
+    INNGEST_SIGNING_KEY: z.string().optional(),
+  })
+  .refine((e) => e.DAILY_BUDGET_WARN_USD < e.DAILY_BUDGET_USD, {
+    // audit L4: warn-порог должен быть строго ниже жёсткого потолка, иначе
+    // предупредительный контур сливается с exhausted или недостижим. Fail-fast.
+    message: "DAILY_BUDGET_WARN_USD должен быть < DAILY_BUDGET_USD",
+    path: ["DAILY_BUDGET_WARN_USD"],
+  });
 
 export type Env = z.infer<typeof baseSchema>;
 

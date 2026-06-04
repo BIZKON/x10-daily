@@ -39,6 +39,7 @@ function readBindings(): PipelineBindings {
 
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
     TG_TEST_CHANNEL_ID: process.env.TG_TEST_CHANNEL_ID,
+    TELEGRAM_PROXY_URL: process.env.TELEGRAM_PROXY_URL,
 
     TG_OPS_CHAT_ID: process.env.TG_OPS_CHAT_ID,
     DAILY_BUDGET_USD: process.env.DAILY_BUDGET_USD,

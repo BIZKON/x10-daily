@@ -314,10 +314,11 @@ describe("draft-article pipeline", () => {
     expect(PreviewScoreAgent.run).toHaveBeenCalledOnce();
     expect(persistArticle).toHaveBeenCalledOnce();
 
-    // budget-gate + 8 шагов B2 + persist/record-run/save-tg-channel/budget-warn-alert.
-    expect(step.run).toHaveBeenCalledTimes(12);
+    // now + budget-gate + 8 шагов B2 + persist/record-run/save-tg-channel/budget-warn-alert.
+    expect(step.run).toHaveBeenCalledTimes(13);
     const stepIds = step.run.mock.calls.map((c) => c[0]);
     expect(stepIds).toEqual([
+      "now",
       "budget-gate",
       "draft",
       "numbers",
@@ -408,10 +409,11 @@ describe("draft-article pipeline", () => {
     };
 
     expect(FactCheckAgent.run).toHaveBeenCalledOnce();
-    // budget-gate + 9 шагов B2 (с factcheck) + persist/record-run/save-tg-channel/budget-warn-alert.
-    expect(step.run).toHaveBeenCalledTimes(13);
+    // now + budget-gate + 9 шагов B2 (с factcheck) + persist/record-run/save-tg-channel/budget-warn-alert.
+    expect(step.run).toHaveBeenCalledTimes(14);
     const stepIds = step.run.mock.calls.map((c) => c[0]);
     expect(stepIds).toEqual([
+      "now",
       "budget-gate",
       "draft",
       "numbers",
@@ -474,6 +476,12 @@ describe("draft-article pipeline", () => {
     expect(HookGenAgent.run).not.toHaveBeenCalled();
     expect(SocialAmplifyAgent.run).not.toHaveBeenCalled();
     expect(PreviewScoreAgent.run).not.toHaveBeenCalled();
+    // audit M1: стоимость halt'а (draft+numbers+tov+brevity+factcheck) пишется
+    // в ledger ДО throw — иначе невидима для дневного потолка.
+    expect(recordRun).toHaveBeenCalledOnce();
+    const haltRow = recordRun.mock.calls[0]![1] as { status: string; costUsd: number };
+    expect(haltRow.status).toBe("halted");
+    expect(haltRow.costUsd).toBeCloseTo(0.01 + 0.001 + 0.008 + 0.007 + 0.02, 6);
   });
 
   it("political=false (default): FactCheck НЕ запускается, шагов 8", async () => {
@@ -490,8 +498,8 @@ describe("draft-article pipeline", () => {
       factcheck: { status: string } | null;
     };
     expect(FactCheckAgent.run).not.toHaveBeenCalled();
-    // budget-gate + 8 (без factcheck) + persist/record-run/save-tg-channel/budget-warn-alert.
-    expect(step.run).toHaveBeenCalledTimes(12);
+    // now + budget-gate + 8 (без factcheck) + persist/record-run/save-tg-channel/budget-warn-alert.
+    expect(step.run).toHaveBeenCalledTimes(13);
     expect(result.factcheck).toBeNull();
   });
 
@@ -542,8 +550,12 @@ describe("draft-article pipeline", () => {
     expect(claimAlert).toHaveBeenCalledWith(expect.anything(), "2026-06-04", "exhausted", 15);
     expect(sendOpsAlert).toHaveBeenCalledOnce();
     expect(sendOpsAlert.mock.calls[0]![1]).toMatch(/бюджет исчерпан/);
-    // Только budget-gate + budget-exhausted-alert.
-    expect(step.run.mock.calls.map((c) => c[0])).toEqual(["budget-gate", "budget-exhausted-alert"]);
+    // Только now + budget-gate + budget-exhausted-alert.
+    expect(step.run.mock.calls.map((c) => c[0])).toEqual([
+      "now",
+      "budget-gate",
+      "budget-exhausted-alert",
+    ]);
   });
 
   it("budget warn: расход пересёк DAILY_BUDGET_WARN_USD → warn-алерт один раз", async () => {

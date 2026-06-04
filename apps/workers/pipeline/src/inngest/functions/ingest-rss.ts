@@ -85,31 +85,47 @@ export function createIngestRssFunction(
         // fetch + mark всего фида в ОДНОМ step (Inngest мемоизирует → markIfNew
         // не повторяется при ретрае функции). Возвращаем только свежие items.
         const res = await step.run(`ingest-${src.id}`, async () => {
+          // fresh объявлен ВНЕ try (audit L9): при сбое markIfNew в середине
+          // цикла возвращаем уже накопленное, а не теряем помеченные items.
+          const fresh: NormalizedItem[] = [];
+          let fetched = 0;
           try {
             const items = await fetchRss(src.url, { fetchImpl: opts.fetchImpl });
-            const fresh: NormalizedItem[] = [];
+            fetched = items.length;
             for (const item of items) {
               if (fresh.length >= MAX_EMIT_PER_SOURCE) break;
-              const fp = simhash64(`${item.title}\n${item.text}`);
-              const isNew = await markIfNew(db, {
-                sourceId: src.id,
-                externalId: item.externalId,
-                fingerprint: fp,
-              });
-              if (isNew) fresh.push(item);
+              try {
+                const fp = simhash64(`${item.title}\n${item.text}`);
+                const isNew = await markIfNew(db, {
+                  sourceId: src.id,
+                  // seen_items.external_id — varchar(256); длинный guid иначе
+                  // ронял бы весь фид «value too long» на каждом тике (audit L9).
+                  externalId: item.externalId.slice(0, 256),
+                  fingerprint: fp,
+                });
+                if (isNew) fresh.push(item);
+              } catch (e) {
+                // Битый item не должен отбрасывать остальной фид.
+                console.warn(
+                  `ingest-rss: ${src.name} item ${item.externalId.slice(0, 64)} пропущен — ${
+                    e instanceof Error ? e.message : String(e)
+                  }`,
+                );
+              }
             }
-            // Успешный полл — фиксируем время, чтобы gating отсчитывал интервал.
-            await markSourcePolled(db, src.id, now);
-            return {
-              fetched: items.length,
-              fresh,
-              capped: fresh.length >= MAX_EMIT_PER_SOURCE,
-              error: null as string | null,
-            };
+            const capped = fresh.length >= MAX_EMIT_PER_SOURCE;
+            // lastPolledAt продвигаем ТОЛЬКО если НЕ упёрлись в кап (audit M3):
+            // иначе остаток (>25 свежих) ждал бы pollIntervalSec вместо
+            // следующего тика и на бурсте выкатывался бы из окна RSS. Capped-
+            // источник остаётся due → дренируется каждый тик, как до session 20.
+            if (!capped) await markSourcePolled(db, src.id, now);
+            return { fetched, fresh, capped, error: null as string | null };
           } catch (e) {
+            // fetch упал (или системная ошибка) — возвращаем уже накопленное
+            // (если что-то успели пометить), lastPolledAt НЕ трогаем → ретрай.
             return {
-              fetched: 0,
-              fresh: [] as NormalizedItem[],
+              fetched,
+              fresh,
               capped: false,
               error: e instanceof Error ? e.message : String(e),
             };
@@ -123,7 +139,7 @@ export function createIngestRssFunction(
         }
         if (res.capped) {
           console.warn(
-            `ingest-rss: ${src.name} упёрся в кап ${MAX_EMIT_PER_SOURCE} свежих/тик — остаток отложен до следующего тика.`,
+            `ingest-rss: ${src.name} упёрся в кап ${MAX_EMIT_PER_SOURCE} свежих/тик — lastPolledAt НЕ продвинут, остаток дренируется на следующем тике (~5 мин).`,
           );
         }
 

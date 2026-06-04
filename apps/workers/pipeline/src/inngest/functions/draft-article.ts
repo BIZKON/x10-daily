@@ -54,6 +54,12 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
         );
       }
 
+      // Один мемоизированный timestamp на весь ран (audit L6): и budget-gate
+      // (день расхода), и алерты (день claim) считают МСК-день от одного `now`,
+      // иначе на границе полуночи МСК claim осядет не на тот день.
+      const nowMs = await step.run("now", async () => Date.now());
+      const now = new Date(nowMs);
+
       // $-budget hard cap (session 20 hardening). Суммируем расход за
       // календарный день МСК (pipeline_runs.cost_usd) ДО запуска агентов. При
       // достижении потолка — НЕ драфтим (агенты ~$0.45 не запускаются), шлём
@@ -63,18 +69,13 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
       // IngestAgent-гейт (process-source-item) продолжает работать.
       const budget = await step.run("budget-gate", async () => {
         const db = createDb(env.DATABASE_URL);
-        const spentUsd = await getTodaySpendUsd(db, new Date());
+        const spentUsd = await getTodaySpendUsd(db, now);
         return { spentUsd };
       });
       if (budget.spentUsd >= env.DAILY_BUDGET_USD) {
         await step.run("budget-exhausted-alert", async () => {
           const db = createDb(env.DATABASE_URL);
-          const claimed = await claimAlert(
-            db,
-            mskDayString(new Date()),
-            "exhausted",
-            budget.spentUsd,
-          );
+          const claimed = await claimAlert(db, mskDayString(now), "exhausted", budget.spentUsd);
           if (claimed) {
             await sendOpsAlert(
               env,
@@ -156,6 +157,34 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
           ),
         )) as FactCheckStep;
         if (fc.output.status === "halt") {
+          // audit M1: halt — штатный исход на политике, но draft+numbers+tov+
+          // brevity+factcheck(Opus) УЖЕ потрачены. Пишем строку расхода ДО throw
+          // (record-before-branch, как reject в process-source-item), иначе
+          // halt-стоимость невидима для дневного потолка → его обход.
+          const halted = [draft, numbers, tov, brevity, fc];
+          const haltCost = halted.reduce((s, r) => s + r.costUsd, 0);
+          const haltUsage = halted.reduce(
+            (a, r) => ({
+              inputTokens: a.inputTokens + (r.usage?.inputTokens ?? 0),
+              outputTokens: a.outputTokens + (r.usage?.outputTokens ?? 0),
+              cachedInputTokens: a.cachedInputTokens + (r.usage?.cachedInputTokens ?? 0),
+            }),
+            { inputTokens: 0, outputTokens: 0, cachedInputTokens: 0 },
+          );
+          await step.run("record-run-halted", async () => {
+            const db = createDb(env.DATABASE_URL);
+            await recordRun(db, {
+              articleId: null,
+              agent: "draft",
+              status: "halted",
+              costUsd: haltCost,
+              modelUsed: draft.modelUsed,
+              inputTokens: haltUsage.inputTokens,
+              outputTokens: haltUsage.outputTokens,
+              cachedInputTokens: haltUsage.cachedInputTokens,
+              output: { halted: true, haltReason: fc.output.haltReason },
+            });
+          });
           throw new Error(`FactCheck halt: ${fc.output.haltReason ?? "противоречия в источниках"}`);
         }
         factcheck = fc;
@@ -314,9 +343,9 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
       // и при пересечении предупредительной планки шлём уведомление один раз/день.
       await step.run("budget-warn-alert", async () => {
         const db = createDb(env.DATABASE_URL);
-        const spentUsd = await getTodaySpendUsd(db, new Date());
+        const spentUsd = await getTodaySpendUsd(db, now);
         if (spentUsd < env.DAILY_BUDGET_WARN_USD) return { warned: false, spentUsd };
-        const claimed = await claimAlert(db, mskDayString(new Date()), "warn", spentUsd);
+        const claimed = await claimAlert(db, mskDayString(now), "warn", spentUsd);
         if (claimed) {
           await sendOpsAlert(
             env,

@@ -28,6 +28,7 @@ vi.mock("@x10/worker-ingest", async () => {
 });
 vi.mock("@x10/db", () => ({ createDb: vi.fn(() => ({})) }));
 
+import { isSourceDue } from "@x10/worker-ingest";
 import { createPipelineInngest } from "../src/inngest/client";
 import { createIngestRssFunction } from "../src/inngest/functions/ingest-rss";
 
@@ -177,5 +178,43 @@ describe("ingest-rss — multi-source", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(events).toHaveLength(1);
     expect(markPolledMock).toHaveBeenCalledOnce();
+  });
+});
+
+// audit L20: isSourceDue была задокументирована как unit-тестируемая, но прямого
+// теста не было. Реальная функция (importActual в мок-фабрике @x10/worker-ingest).
+describe("isSourceDue", () => {
+  const src = (lastPolledAt: string | null, pollIntervalSec = 900) => ({
+    id: "s",
+    name: "S",
+    url: "u",
+    pollIntervalSec,
+    lastPolledAt,
+  });
+
+  it("null lastPolledAt → due (ещё не поллили)", () => {
+    expect(isSourceDue(src(null), new Date())).toBe(true);
+  });
+
+  it("невалидный lastPolledAt → due (не застреваем)", () => {
+    expect(isSourceDue(src("не-дата"), new Date())).toBe(true);
+  });
+
+  it("свежий полл (< интервала) → not due", () => {
+    const now = new Date("2026-06-04T12:00:00Z");
+    const recent = new Date(now.getTime() - 60_000).toISOString(); // 1 мин назад
+    expect(isSourceDue(src(recent), now)).toBe(false);
+  });
+
+  it("старый полл (≥ интервала) → due", () => {
+    const now = new Date("2026-06-04T12:00:00Z");
+    const old = new Date(now.getTime() - 20 * 60_000).toISOString(); // 20 мин > 15
+    expect(isSourceDue(src(old), now)).toBe(true);
+  });
+
+  it("ровно на границе интервала → due", () => {
+    const now = new Date("2026-06-04T12:00:00Z");
+    const exact = new Date(now.getTime() - 900_000).toISOString(); // ровно 900 с
+    expect(isSourceDue(src(exact), now)).toBe(true);
   });
 });

@@ -84,7 +84,16 @@ export function stripStructuralLabels(text: string): string {
   const wholeLine = new RegExp(`^[ \\t]*(?:${group})[ \\t]*[.:)\\u2014-]*[ \\t]*$`, "gim");
   // лейбл + пунктуация + пробел + контент → убрать только лейбл
   const inline = new RegExp(`^[ \\t]*(?:${group})[ \\t]*[.:)\\u2014-]+[ \\t]+`, "gim");
-  return text.replace(wholeLine, "").replace(inline, "");
+  // Цикл до фикс-точки (audit L13): «Before. After. Текст» одним проходом оставил
+  // бы второй лейбл. Идемпотентность важна и для L14 (re-clean в post-to-tg не
+  // должен расходиться с сохранённым в channels.text).
+  let prev: string;
+  let out = text;
+  do {
+    prev = out;
+    out = out.replace(wholeLine, "").replace(inline, "");
+  } while (out !== prev);
+  return out;
 }
 
 /**

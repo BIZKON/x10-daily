@@ -31,6 +31,12 @@ export interface PipelineBindings {
   // ---- Telegram posting (ТЗ #1, N5 — реальный sendMessage в тестовый канал) ----
   TELEGRAM_BOT_TOKEN?: string;
   TG_TEST_CHANNEL_ID?: string;
+  /**
+   * HTTP/HTTPS-прокси для api.telegram.org (escape-hatch, если IPv6/NAT66
+   * отвалится). Пуст → прямой fetch (IPv6). Потребители: post-to-tg, ops-alert.
+   * audit M2: раньше был только в Zod-схеме, но не доходил до воркера.
+   */
+  TELEGRAM_PROXY_URL?: string;
 
   // ---- $-мониторинг автономного конвейера (session 20 hardening) ----
   /** Чат для $-алертов (отдельный от контент-канала). Пуст → алерты в логи. */

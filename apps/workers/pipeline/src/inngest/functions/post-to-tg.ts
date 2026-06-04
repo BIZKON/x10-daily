@@ -1,5 +1,5 @@
 import { and, channels, createDb, eq } from "@x10/db";
-import { loadEnv } from "@x10/config";
+import { loadPipelineEnv } from "../../env";
 import { fetch as undiciFetch, ProxyAgent } from "undici";
 import { articleReadyEvent } from "../../events";
 import type { PipelineInngest } from "../client";
@@ -50,7 +50,7 @@ export function createPostToTgFunction(
         return { skipped: true, reason: "channel-mismatch", channel: event.data.channel };
       }
 
-      const env = loadEnv(bindings as unknown as Record<string, string | undefined>);
+      const env = loadPipelineEnv(bindings);
       const token = env.TELEGRAM_BOT_TOKEN;
       const chatId = env.TG_TEST_CHANNEL_ID;
       if (!token) {

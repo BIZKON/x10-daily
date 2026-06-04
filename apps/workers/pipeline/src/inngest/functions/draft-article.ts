@@ -10,7 +10,7 @@ import {
   createMasker,
   type AgentContext,
 } from "@x10/agents";
-import { loadEnv } from "@x10/config";
+import { loadPipelineEnv } from "../../env";
 import { channels, createDb } from "@x10/db";
 import { persistArticle, serializeDraftForNumbers } from "../../persist";
 import {
@@ -44,7 +44,7 @@ export function createDraftArticleFunction(
       rateLimit: { limit: 50, period: "1h" },
     },
     async ({ event, step }) => {
-      const env = loadEnv(bindings as unknown as Record<string, string | undefined>);
+      const env = loadPipelineEnv(bindings);
       const apiKey = env.AI_GATEWAY_API_KEY ?? env.ANTHROPIC_API_KEY;
       if (!apiKey) {
         throw new Error(

@@ -1,5 +1,5 @@
 import { ScoreWeeklyAgent, createMasker, type AgentContext } from "@x10/agents";
-import { loadEnv } from "@x10/config";
+import { loadPipelineEnv } from "../../env";
 import { scoreWeeklyRequestedEvent } from "../../events";
 import type { PipelineInngest } from "../client";
 import type { PipelineBindings } from "../../bindings";
@@ -25,7 +25,7 @@ export function createRunWeeklyScoreFunction(
       concurrency: { limit: 1 },
     },
     async ({ event, step }) => {
-      const env = loadEnv(bindings as unknown as Record<string, string | undefined>);
+      const env = loadPipelineEnv(bindings);
       const apiKey = env.AI_GATEWAY_API_KEY ?? env.ANTHROPIC_API_KEY;
       if (!apiKey) {
         throw new Error(

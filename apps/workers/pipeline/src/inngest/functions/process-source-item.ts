@@ -1,5 +1,5 @@
 import { IngestAgent, createMasker, type AgentContext } from "@x10/agents";
-import { loadEnv } from "@x10/config";
+import { loadPipelineEnv } from "../../env";
 import {
   DEFAULT_CATEGORY,
   DEFAULT_SECTION,
@@ -28,7 +28,7 @@ export function createProcessSourceItemFunction(
       concurrency: { limit: 10 },
     },
     async ({ event, step }) => {
-      const env = loadEnv(bindings as unknown as Record<string, string | undefined>);
+      const env = loadPipelineEnv(bindings);
       const apiKey = env.AI_GATEWAY_API_KEY ?? env.ANTHROPIC_API_KEY;
       if (!apiKey) {
         throw new Error(

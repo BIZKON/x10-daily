@@ -1,5 +1,5 @@
 import { createDb } from "@x10/db";
-import { loadEnv } from "@x10/config";
+import { loadPipelineEnv } from "../../env";
 import {
   ensureSource,
   fetchVcRss,
@@ -41,7 +41,7 @@ export function createIngestVcRssFunction(
       concurrency: { limit: 1 },
     },
     async ({ step }) => {
-      const env = loadEnv(bindings as unknown as Record<string, string | undefined>);
+      const env = loadPipelineEnv(bindings);
       const db = createDb(env.DATABASE_URL);
 
       const sourceId = await step.run("ensure-source", () =>

@@ -121,6 +121,12 @@ services:
       AI_GATEWAY_API_KEY: "${AI_GATEWAY_API_KEY}"
       TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"
       TG_TEST_CHANNEL_ID: "${TG_TEST_CHANNEL_ID:-}"
+      # $-мониторинг (session 20): чат ops-алертов + дневной потолок/warn.
+      # Дефолты дублируют схему @x10/config (15/9) — настраиваются из .env без
+      # правки кода. TG_OPS_CHAT_ID пуст → алерты в логи.
+      TG_OPS_CHAT_ID: "${TG_OPS_CHAT_ID:-}"
+      DAILY_BUDGET_USD: "${DAILY_BUDGET_USD:-15}"
+      DAILY_BUDGET_WARN_USD: "${DAILY_BUDGET_WARN_USD:-9}"
       # loadEnv (общий для api+pipeline) требует X10_JWT_SECRET в productionRequired.
       # Pipeline сессии не выпускает, но env-валидатор общий → ключ обязателен.
       X10_JWT_SECRET: "${X10_JWT_SECRET}"

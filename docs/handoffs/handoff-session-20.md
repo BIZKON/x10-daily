@@ -91,6 +91,14 @@
 - **⚠️ Пред-существующий баг (исправлен `4d3c624`):** API `getEnv` требовал `INNGEST_SIGNING_KEY` (глобальный productionRequired) → throw в проде ДО auth → **все** `/v1/admin/*` GET отдавали **500** (admin работал только в demo!). API только ШЛЁТ Inngest-события (EVENT_KEY); вебхуки serve'ит pipeline → signing key не нужен. Фикс: `API_REQUIRED_KEYS` override. Теперь admin-чтения в проде живые (endpoint'ы → 401 без токена, данные с токеном).
 - **Отложено из аудита** (латентное/косметика): **M4** (`cost_alerts.delivered_at` для надёжной дослыки алертов при краше/сбое TG — единственный medium, что не взяли), L1 (per-agent ledger для всех terminal-fail), L2 (soft-cap overshoot ≤ concurrency×$0.45 — задокументировать), L3 (record-run идемпотентность), L7-L8, L10-L12, L15-L18.
 
+### Стоп-кран автопостинга `/posting` (HEAD `dd28edb`, миграция `0008`)
+- **DB singleton `posting_control`** (id='global'): `paused` (ручной kill-switch) + `quiet_enabled` + `quiet_start_hour`/`quiet_end_hour` (МСК). Миграция 0008 засеяла **тихие часы 21→09 ВКЛЮЧЕНЫ** (по требованию — ночью не постить).
+- `@x10/db`: `getPostingControl`/`setPostingControl` + чистая `isPostingPaused` (окно с переносом через полночь; manual приоритетнее; start==end → игнор).
+- **Гейты (полная пауза):** `ingest-rss` пропускает весь тик (ни fetch/генерации/трат; `console.warn`) + `post-to-tg` не публикует (страховка boundary). Читается на лету — без редеплоя.
+- API `GET`/`PUT /v1/admin/posting-control` (role-gated). Админка **/posting** (сайдбар «Постинг»): баннер статуса + форма (пауза-сейчас, тихие часы, с/до часа) + server action.
+- ⚠️ Тумблер `enabled` в `/pipeline-config` воркеры НЕ читают (декоративный) — для остановки постинга только `/posting`.
+- Проверено живьём: МСК 00:26 → лог `ingest-rss: тик пропущен — постинг на паузе (quiet-hours)`.
+
 ## 4. Осталось (пост-M0)
 
 - ✅ ~~`TG_OPS_CHAT_ID`~~ — задан (247247870, @profysales) + проверен. $-алерты идут в личку.
@@ -106,11 +114,13 @@
 
 > Прочитай (в порядке): `docs/handoffs/handoff-session-20.md` + `handoff-session-19.md` + memory `project_x10_deploy_state.md` + CLAUDE.md. Если трогаем Timeweb-инфру — skill `timeweb-telegram-deploy`.
 >
-> Состояние: M0 + walking-skeleton ЖИВ и АВТОНОМЕН на Timeweb. Cron `ingest-rss` (*/5, gating 15 мин) → 5 RSS → IngestAgent gate → draft (B2 через AI Gateway) → post-to-tg → «Деловой вестник» (-1003773645085). HEAD `5f8d137`. ⚠️ api.telegram.org только по IPv6 (NAT66). **Дневной $-потолок $15/$9** (budget-gate по pipeline_runs); ops-алерты в логах (TG_OPS_CHAT_ID не задан). Форматирование TG починено.
+> Состояние: M0 + walking-skeleton ЖИВ и АВТОНОМЕН на Timeweb. Cron `ingest-rss` (*/5, gating) → 5 RSS → IngestAgent gate → draft (B2 через AI Gateway) → post-to-tg → «Деловой вестник» (-1003773645085). **HEAD `dd28edb`.** ⚠️ api.telegram.org только по IPv6 (NAT66).
+>
+> Session 20 итог: дневной $-потолок $15/$9 (budget-gate по pipeline_runs) + ops-алерты в Telegram (TG_OPS_CHAT_ID=247247870 задан); poll_interval gating; фикс форматирования TG (литеральные \\n + английские лейблы); $-дашборд админки **/cost**; мульти-агентный аудит (29 находок, фиксы M1/M2/M3+LOW); пред-существующий API-баг INNGEST_SIGNING_KEY (admin-чтения 500→живые); **стоп-кран автопостинга /posting** (ручная пауза + тихие часы 21→09 МСК ВКЛЮЧЕНЫ — ночью не постит, проверено живьём). Миграции до 0008.
 >
 > VM: `ssh root@37.77.105.82`, репо `/opt/x10-daily`, передеплой `./deploy.sh`. НЕ создавай/удаляй VM циклично (Timeweb fraud-detection).
 >
-> Выбери: (a) задать TG_OPS_CHAT_ID + включить $-алерты в Telegram; (b) VK/Дзен posting; (c) AudioAgent; (d) dedicated @x10_daily_test_bot + auth Mini App; (e) домен x10.media; (f) дашборд pipeline_runs / Sentry.
+> Выбери: (a) M4 из аудита — надёжная дослыка ops-алертов (cost_alerts.delivered_at); (b) VK/Дзен posting (нужны API-ключи + OAuth); (c) AudioAgent (ElevenLabs + WS-прокси Render); (d) dedicated @x10_daily_test_bot + auth Mini App; (e) домен x10.media; (f) Sentry / S3-аватары; (g) остальные LOW из аудита (L1/L2/L3 — см. whjv1en1d.output).
 
 ---
 

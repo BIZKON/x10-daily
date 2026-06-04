@@ -64,6 +64,9 @@ export function createPostToTgFunction(
       });
       const pause = isPostingPaused(gate.ctrl, new Date(gate.nowMs));
       if (pause.paused) {
+        console.warn(
+          `post-to-tg: публикация ${event.data.articleId} пропущена — постинг на паузе (${pause.reason}).`,
+        );
         return {
           skipped: true as const,
           reason: `posting-paused:${pause.reason}`,

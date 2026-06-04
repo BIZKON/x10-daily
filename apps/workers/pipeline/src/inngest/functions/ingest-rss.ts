@@ -68,6 +68,7 @@ export function createIngestRssFunction(
       const control = await step.run("posting-control", () => getPostingControl(db));
       const pause = isPostingPaused(control, now);
       if (pause.paused) {
+        console.warn(`ingest-rss: тик пропущен — постинг на паузе (${pause.reason}).`);
         return {
           skipped: true as const,
           reason: `posting-paused:${pause.reason}`,

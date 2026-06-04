@@ -40,8 +40,11 @@ const segmentSchema = z.object({
 });
 
 const outputSchema = z.object({
-  channel: z.enum(HOOK_CHANNELS),
-  framework: z.enum(SOCIAL_FRAMEWORKS),
+  // channel/framework — advisory-метаданные (в pipelineMetadata, на текст поста
+  // не влияют). .catch: Timeweb AI Gateway не строго энфорсит tool-enum'ы →
+  // дефолтим, чтобы отклонение метки не роняло конвейер. `post` (контент) строгий.
+  channel: z.enum(HOOK_CHANNELS).catch("tg-x10"),
+  framework: z.enum(SOCIAL_FRAMEWORKS).catch("PAS"),
   /** Полный готовый к публикации текст поста, с переносами строк под канал. */
   post: z.string(),
   /** Открывающая строка (hook). */

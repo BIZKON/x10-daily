@@ -6,7 +6,7 @@ import type { z } from "zod";
  * стабильный mapping для агентских структурированных выходов.
  *
  * Поддерживает: object, string, number, boolean, array, enum, literal, optional,
- * nullable, union (string-литералов → enum).
+ * nullable, default, catch, union (string-литералов → enum).
  */
 
 type JsonSchema = Record<string, unknown>;
@@ -47,7 +47,8 @@ function walk(schema: z.ZodType): JsonSchema {
       return { type: "array", items: walk(element) };
     }
     case "enum": {
-      const values = (schema as unknown as { def: { entries: Record<string, string> } }).def.entries;
+      const values = (schema as unknown as { def: { entries: Record<string, string> } }).def
+        .entries;
       return { type: "string", enum: Object.values(values) };
     }
     case "literal": {
@@ -56,7 +57,13 @@ function walk(schema: z.ZodType): JsonSchema {
     }
     case "optional":
     case "nullable":
-    case "default": {
+    case "default":
+    case "catch": {
+      // catch — обёртка-резильентность: при невалидном значении возвращает
+      // fallback. В tool-схему отдаём ВНУТРЕННИЙ тип (с enum-hint'ом), чтобы
+      // модель всё равно видела допустимые значения; catch ловит редкие
+      // отклонения уже на парсинге ответа (Timeweb proxy не строго
+      // энфорсит tool-enum'ы).
       const inner = (schema as unknown as { def: { innerType: z.ZodType } }).def.innerType;
       return walk(inner);
     }

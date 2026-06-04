@@ -29,8 +29,8 @@ const scoreSchema = z
   .max(10);
 
 const fixSchema = z.object({
-  /** На какой критерий тянет этот фикс. */
-  criterion: z.enum(SCORE_CRITERIA),
+  /** На какой критерий тянет этот фикс. .catch: advisory-метка, отклонение enum'а не должно ронять score. */
+  criterion: z.enum(SCORE_CRITERIA).catch("hookStrength"),
   /** Краткое описание что не так. */
   issue: z.string(),
   /** Конкретная правка (before/after или указание). */

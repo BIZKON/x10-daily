@@ -36,7 +36,9 @@ const inputSchema = z.object({
 });
 
 const hookSchema = z.object({
-  pattern: z.enum(HOOK_PATTERNS),
+  // .catch: Timeweb AI Gateway не строго энфорсит tool-enum'ы; pattern —
+  // advisory-метка для редактора, отклонение модели → дефолт, не падаем.
+  pattern: z.enum(HOOK_PATTERNS).catch("number-led"),
   /** Сам текст хука — ≤ 140 знаков, содержит число или собственное имя. */
   text: z.string(),
   /** Зачем именно этот паттерн — для редактора при выборе. */

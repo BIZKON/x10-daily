@@ -76,12 +76,17 @@ function looksLikeInjection(text: string | null): boolean {
 const outputSchema = z
   .object({
     decision: z.enum(INGEST_DECISION),
-    /** brief §5: обязательная категория первого уровня. null только для reject/duplicate. */
-    category: z.enum(INGEST_CATEGORIES).nullable(),
+    /**
+     * brief §5: обязательная категория первого уровня. null только для reject/duplicate.
+     * .catch(null): Timeweb AI Gateway не строго энфорсит tool-enum'ы — при
+     * отклонении модели даём null, process-source-item подставит DEFAULT_CATEGORY.
+     * Таксономический промах не должен ронять весь конвейер.
+     */
+    category: z.enum(INGEST_CATEGORIES).nullable().catch(null),
     /** brief §1: "taxes.news", "practice.stories" и т.д. — опционально. */
     subcategory: z.string().nullable(),
-    /** brief §3: шаблон материала для DraftAgent. null только для reject/duplicate. */
-    template: z.enum(INGEST_TEMPLATES).nullable(),
+    /** brief §3: шаблон материала для DraftAgent. null только для reject/duplicate. .catch → DEFAULT_TEMPLATE. */
+    template: z.enum(INGEST_TEMPLATES).nullable().catch(null),
     /** brief §5: открытый набор тегов. */
     tags: z.array(z.string()).default([]),
     /** Краткий topic — что произошло. Используется как event.topic для DraftAgent. */
@@ -90,8 +95,8 @@ const outputSchema = z
     context: z.string().nullable(),
     /** 0..1 — насколько релевантно деловой аудитории Х10. accept требует ≥ 0.6. */
     relevanceScore: z.number().min(0).max(1),
-    /** Заполняется если decision=reject. */
-    rejectReason: z.enum(REJECT_REASON).nullable(),
+    /** Заполняется если decision=reject. .catch(null): отклонение enum'а — не повод падать. */
+    rejectReason: z.enum(REJECT_REASON).nullable().catch(null),
     /** Если decision=duplicate — ссылка на дубликат из recentTeases. */
     duplicateOf: z.string().nullable(),
     /** Флаг что тема политически чувствительная — DraftAgent потом запустит FactCheck. */

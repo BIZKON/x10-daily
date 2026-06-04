@@ -26,6 +26,7 @@
 | `fe4e581` | feat(pipeline): дневной $-потолок + cost-ledger + ops-алерты |
 | `dc3db20` | feat(ingest): poll_interval gating источников |
 | `5f8d137` | fix(agents): TG-посты слипались — литеральные `\n` вместо переносов |
+| `08ca51c` | fix(agents): английские лейблы в постах (BEFORE/AFTER/BRIDGE, Yes but) |
 
 ### $-потолок + ledger ([draft-article.ts](../../apps/workers/pipeline/src/inngest/functions/draft-article.ts), [cost-ledger.ts](../../apps/workers/pipeline/src/lib/cost-ledger.ts))
 - `pipeline_runs` была определена в схеме, но **в неё никто не писал** — теперь это источник истины по $.
@@ -45,8 +46,17 @@
 - `now` мемоизирован в step (детерминизм при ретрае).
 
 ### фикс форматирования TG ([text.ts](../../apps/workers/pipeline/src/lib/text.ts), social-amplify.ts, hookgen.ts)
+**Заход #1 (`5f8d137`) — литеральные `\n`:**
 - **Корень:** в TS-шаблоне `\\n` рендерится в 2 символа `\n`, и агенту было буквально написано «post — текст с `\n` как переносы». Модель то ставила настоящий перенос, то печатала `\n` как текст → «то нормально, то сплошняком».
-- Промпты поправлены (просим НАСТОЯЩИЕ переносы). `normalizeNewlines` (гарантия): литеральные `\n`/`\r\n`/`\t` → реальные, схлоп 3+, trim. Применён в `draft-article` (channels+metadata) и защитно в `post-to-tg` на `row.text` (чинит даже старые строки на отправке).
+- Промпты поправлены (просим НАСТОЯЩИЕ переносы). `normalizeNewlines`: литеральные `\n`/`\r\n`/`\t` → реальные, схлоп 3+, trim.
+
+**Заход #2 (`08ca51c`) — английские ЛЕЙБЛЫ в тексте поста:**
+- **Корень:** модель печатала в `post` названия стадий framework BAB (`BEFORE.`/`AFTER.`/`BRIDGE.`) как заголовки секций + блоки Smart Brevity латиницей (`Yes, but`/`What's next` — из `voice.md`, где они описаны как заголовки). + правила канала `tg-x10` НЕ запрещали англицизмы (в отличие от tg-rybakov/vk) → `sandbox` и т.п.
+- Промпт `social-amplify`: post — чистой русской прозой, framework НЕВИДИМ (имена стадий только в `segments`), без латинских заголовков-меток, контраст по-русски («Но…» вместо «Yes, but»); анти-англицизм добавлен в `tg-x10`.
+- `stripStructuralLabels` (bounded-набор английских лейблов в начале строк, инлайн + отдельной строкой) + `cleanPostText = normalizeNewlines + strip`.
+- ⚠️ `voice.md` (строки 28/94) всё ещё описывает Smart Brevity блоки английскими именами — НЕ трогал (канон ToV); social-prompt override + stripper перекрывают для публикуемого поста. При добавлении VK/Дзен/newsletter — учесть.
+
+`cleanPostText` применён в `draft-article` (channels+metadata+return) и защитно в `post-to-tg` на `row.text` (чинит даже старые строки на отправке). Проверено: задеплоенный `cleanPostText` в контейнере срезает реальный артефакт; 52/52 unit-тестов (вкл. точный кейс из прода).
 
 ---
 

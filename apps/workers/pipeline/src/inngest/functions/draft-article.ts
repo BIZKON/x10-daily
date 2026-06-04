@@ -21,6 +21,7 @@ import {
 } from "../../events";
 import { claimAlert, getTodaySpendUsd, mskDayString, recordRun } from "../../lib/cost-ledger";
 import { sendOpsAlert } from "../../lib/ops-alert";
+import { normalizeNewlines } from "../../lib/text";
 import { persistArticle, serializeDraftForNumbers } from "../../persist";
 import type { PipelineInngest } from "../client";
 
@@ -177,6 +178,10 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
         step.run("score", () => PreviewScoreAgent.run({ draft: brevity.output.compressed }, ctx)),
       ]);
 
+      // Чиним литеральные "\n" от LLM → настоящие переносы (см. lib/text.ts).
+      // Единый источник текста TG-поста: channels + metadata + return.
+      const socialPost = normalizeNewlines(social.output.post);
+
       const totalCost =
         draft.costUsd +
         numbers.costUsd +
@@ -240,7 +245,7 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
         social: {
           channel: social.output.channel,
           framework: social.output.framework,
-          post: social.output.post,
+          post: socialPost,
           hookLine: social.output.hookLine,
           twistLine: social.output.twistLine,
           wordCount: social.output.wordCount,
@@ -298,7 +303,7 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
           .values({
             articleId: persisted.id,
             channel: "tg",
-            text: social.output.post,
+            text: socialPost,
             visualRef: null,
           })
           .onConflictDoNothing();
@@ -366,7 +371,7 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
         social: {
           channel: social.output.channel,
           framework: social.output.framework,
-          post: social.output.post,
+          post: socialPost,
           hookLine: social.output.hookLine,
           twistLine: social.output.twistLine,
           wordCount: social.output.wordCount,

@@ -21,13 +21,7 @@ export const HOOK_PATTERNS = [
 ] as const;
 export type HookPattern = (typeof HOOK_PATTERNS)[number];
 
-export const HOOK_CHANNELS = [
-  "tg-rybakov",
-  "tg-x10",
-  "vk",
-  "zen",
-  "linkedin",
-] as const;
+export const HOOK_CHANNELS = ["tg-rybakov", "tg-x10", "vk", "zen", "linkedin"] as const;
 export type HookChannel = (typeof HOOK_CHANNELS)[number];
 
 const inputSchema = z.object({
@@ -89,7 +83,7 @@ ${CHANNEL_LINES}
 
 ДЛЯ КАНАЛОВ linkedin / tg-rybakov / tg-x10 — допускается формат «двухстрочка»:
 строка 1 (≤40 знаков) утверждение → строка 2 (≤40 знаков) переворот/контраст.
-Это пакуется в hook.text через перенос строки "\\n".
+В hook.text это НАСТОЯЩИЙ перенос строки между строками (не последовательность из обратного слэша и n как текст).
 
 Возвращай через tool_use x10_emit_hookgen.`;
 

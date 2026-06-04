@@ -82,6 +82,15 @@
 
 ---
 
+## 4b. Продолжение session 20 — дашборд + аудит + фиксы (HEAD `4d3c624`, задеплоено)
+
+Коммиты: `5cba4e9` (дашборд), `3ff4238` (аудит-фиксы), `4d3c624` (API env fix).
+
+- **$-дашборд `/cost`** в админке (`apps/admin`): расход за день МСК vs потолок (бар + warn-маркер), 7-дневный график (чистый CSS, без client-JS), accept-rate гейта, по агентам, последние раны. API `GET /v1/admin/pipeline-runs/stats` (role-gated, агрегаты `pipeline_runs`, day=Europe/Moscow). Фетчер форвардит session-токен. Проверено live (demo + прод-SQL).
+- **Мульти-агентный аудit** (Workflow, 38 агентов, 29 находок, 0 active critical/high; отчёт — tmp `…/tasks/whjv1en1d.output`). Применены: **M1** (halt пишет ledger перед throw — закрыл обход потолка), **M2** (`TELEGRAM_PROXY_URL` проброшен в bindings/server/compose), **M3** (gating×cap: `markSourcePolled` НЕ на capped-поллах → дренаж не 3× медленнее), L4 (.refine WARN<CAP), L5 (`DAILY_BUDGET_USD` .positive), L6 (memoized `nowMs`), L9 (per-item try + `externalId.slice(256)`), L13/14 (`cleanPostText` идемпотентна), L19 (.env.example), L20 (тесты `isSourceDue`).
+- **⚠️ Пред-существующий баг (исправлен `4d3c624`):** API `getEnv` требовал `INNGEST_SIGNING_KEY` (глобальный productionRequired) → throw в проде ДО auth → **все** `/v1/admin/*` GET отдавали **500** (admin работал только в demo!). API только ШЛЁТ Inngest-события (EVENT_KEY); вебхуки serve'ит pipeline → signing key не нужен. Фикс: `API_REQUIRED_KEYS` override. Теперь admin-чтения в проде живые (endpoint'ы → 401 без токена, данные с токеном).
+- **Отложено из аудита** (латентное/косметика): **M4** (`cost_alerts.delivered_at` для надёжной дослыки алертов при краше/сбое TG — единственный medium, что не взяли), L1 (per-agent ledger для всех terminal-fail), L2 (soft-cap overshoot ≤ concurrency×$0.45 — задокументировать), L3 (record-run идемпотентность), L7-L8, L10-L12, L15-L18.
+
 ## 4. Осталось (пост-M0)
 
 - ✅ ~~`TG_OPS_CHAT_ID`~~ — задан (247247870, @profysales) + проверен. $-алерты идут в личку.

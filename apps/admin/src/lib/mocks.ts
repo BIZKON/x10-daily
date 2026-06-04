@@ -17,6 +17,7 @@ import type {
   AdminPipelineConfig,
   ArticleDetail,
   PipelineAgent,
+  PipelineRunStats,
   QueueItem,
   QueueResponse,
 } from "./api";
@@ -35,8 +36,7 @@ const QUEUE_ITEMS: QueueItem[] = [
     template: "card-news",
     tags: ["ЦБ", "ставка", "малый-бизнес"],
     tease: "ЦБ держит 17% — четвёртое заседание подряд",
-    lede:
-      "Совет директоров ЦБ сохранил ключевую ставку на уровне 17%. Кредитное окно для МСП остаётся закрытым минимум до сентября.",
+    lede: "Совет директоров ЦБ сохранил ключевую ставку на уровне 17%. Кредитное окно для МСП остаётся закрытым минимум до сентября.",
     wordCount: 270,
     readSeconds: 30,
     createdAt: "2026-05-26T06:14:00.000Z",
@@ -53,8 +53,7 @@ const QUEUE_ITEMS: QueueItem[] = [
     template: "deep-dive",
     tags: ["маркетплейсы", "wildberries", "логистика"],
     tease: "Wildberries собирает логистическую империю",
-    lede:
-      "Маркетплейс купил три такси-сервиса за квартал. Что это даёт WB, что теряют продавцы, и какие 5 уроков для российского ритейла.",
+    lede: "Маркетплейс купил три такси-сервиса за квартал. Что это даёт WB, что теряют продавцы, и какие 5 уроков для российского ритейла.",
     wordCount: 1820,
     readSeconds: 545,
     createdAt: "2026-05-26T11:42:00.000Z",
@@ -102,8 +101,7 @@ export const MOCK_ARTICLE_DETAIL: ArticleDetail = {
   coverImageUrl: null,
   status: "ready",
   tease: "ЦБ держит 17% — четвёртое заседание подряд",
-  lede:
-    "Совет директоров ЦБ сохранил ключевую ставку на уровне 17%. Кредитное окно для МСП остаётся закрытым минимум до сентября.",
+  lede: "Совет директоров ЦБ сохранил ключевую ставку на уровне 17%. Кредитное окно для МСП остаётся закрытым минимум до сентября.",
   whyItMatters:
     "При ставке 17% IRR проектов МСП в среднем ниже стоимости долга. Время оборотки собственным капиталом, а не банковским.",
   body: [
@@ -117,7 +115,11 @@ export const MOCK_ARTICLE_DETAIL: ArticleDetail = {
       items: [
         { label: "Ключевая ставка", value: "17%", source: "https://www.cbr.ru/press/keypr/" },
         { label: "Инфляция апрель", value: "8.9%", source: "https://rosstat.gov.ru/" },
-        { label: "Кредитов МСП за квартал", value: "−14%", source: "https://www.cbr.ru/statistics/" },
+        {
+          label: "Кредитов МСП за квартал",
+          value: "−14%",
+          source: "https://www.cbr.ru/statistics/",
+        },
       ],
     },
     {
@@ -178,7 +180,7 @@ export const MOCK_ARTICLE_DETAIL: ArticleDetail = {
         {
           criterion: "hookStrength",
           issue: "tease не содержит дельты или контр-факта",
-          suggestion: 'Заменить на «ЦБ держит 17% — кредитное окно закрыто до сентября»',
+          suggestion: "Заменить на «ЦБ держит 17% — кредитное окно закрыто до сентября»",
         },
       ],
     },
@@ -217,8 +219,7 @@ export const MOCK_ARTICLE_DETAIL: ArticleDetail = {
     social: {
       channel: "tg-x10",
       framework: "BAB",
-      post:
-        "ЦБ держит ставку 17%.\n\nЧетвёртое заседание подряд без изменений.\n\nЧто это значит для бизнеса:\n— Кредитное окно для МСП закрыто до сентября\n— IRR проектов ниже стоимости долга\n— Время оборотки собственным капиталом\n\nЧитать полностью на x10daily.",
+      post: "ЦБ держит ставку 17%.\n\nЧетвёртое заседание подряд без изменений.\n\nЧто это значит для бизнеса:\n— Кредитное окно для МСП закрыто до сентября\n— IRR проектов ниже стоимости долга\n— Время оборотки собственным капиталом\n\nЧитать полностью на x10daily.",
       hookLine: "ЦБ держит ставку 17%",
       twistLine: "Четвёртое заседание подряд",
       wordCount: 38,
@@ -258,8 +259,7 @@ export const MOCK_AUTHORS: AdminAuthor[] = [
     slug: "igor-rybakov",
     name: "Игорь Рыбаков",
     role: "Сооснователь Технониколь · грандмастер Х10",
-    bio:
-      "Сооснователь Технониколь, основатель Х10. Главный авторский голос медиа: ежедневные реакции, авторские эссе, разборы. Без регалий в шапке, без инфобиза.",
+    bio: "Сооснователь Технониколь, основатель Х10. Главный авторский голос медиа: ежедневные реакции, авторские эссе, разборы. Без регалий в шапке, без инфобиза.",
     avatarUrl: null,
     bylineColor: "linear-gradient(135deg, #E63946, #D4A24C)",
     isStaff: true,
@@ -472,8 +472,7 @@ export const MOCK_EVENTS: AdminEvent[] = [
 export const MOCK_DIGEST_LATEST: AdminDigest = {
   id: "40000000-0000-0000-0000-000000000001",
   issueDate: new Date().toISOString().slice(0, 10),
-  intro:
-    "Понедельник, утренний разбор. Ставка ЦБ, маркетплейсы, Рыбаков о стартапах. Поехали.",
+  intro: "Понедельник, утренний разбор. Ставка ЦБ, маркетплейсы, Рыбаков о стартапах. Поехали.",
   topArticleIds: QUEUE_ITEMS.map((q) => q.id),
   tomorrow: "Завтра разберём УСН 350 млн и реакцию рынка на ставку.",
   sentAt: null,
@@ -538,3 +537,52 @@ export const MOCK_PIPELINE_CONFIGS: AdminPipelineConfig[] = [
   mockConfig("score"),
   mockConfig("newsletter"),
 ];
+
+/* ----------------------------------------------------------------
+ * $-дашборд (session 20) — demo fixture. Статичные timestamp'ы (без Date.now)
+ * чтобы не запекать время в prerender (см. api.ts NEXT_PHASE guard).
+ * ---------------------------------------------------------------- */
+export const MOCK_PIPELINE_RUN_STATS: PipelineRunStats = {
+  budget: { capUsd: 15, warnUsd: 9, todaySpendUsd: 4.21, todayRuns: 38, pct: 28 },
+  byAgent: [
+    { agent: "ingest", runs: 34, spendUsd: 0.39 },
+    { agent: "draft", runs: 8, spendUsd: 3.82 },
+  ],
+  series7d: [
+    { day: "2026-05-29", spendUsd: 5.4, runs: 41 },
+    { day: "2026-05-30", spendUsd: 6.1, runs: 47 },
+    { day: "2026-05-31", spendUsd: 3.2, runs: 22 },
+    { day: "2026-06-01", spendUsd: 7.8, runs: 58 },
+    { day: "2026-06-02", spendUsd: 9.3, runs: 64 },
+    { day: "2026-06-03", spendUsd: 5.9, runs: 44 },
+    { day: "2026-06-04", spendUsd: 4.21, runs: 38 },
+  ],
+  gateToday: { accepted: 8, skipped: 26 },
+  recent: [
+    {
+      agent: "draft",
+      status: "succeeded",
+      costUsd: 0.47,
+      modelUsed: "anthropic/claude-sonnet-4-6",
+      articleId: "11111111-1111-4111-8111-111111111111",
+      createdAt: "2026-06-04T18:02:24.000Z",
+    },
+    {
+      agent: "ingest",
+      status: "skipped",
+      costUsd: 0.0011,
+      modelUsed: "anthropic/claude-haiku-4-5",
+      articleId: null,
+      createdAt: "2026-06-04T18:00:12.000Z",
+    },
+    {
+      agent: "ingest",
+      status: "succeeded",
+      costUsd: 0.0013,
+      modelUsed: "anthropic/claude-haiku-4-5",
+      articleId: null,
+      createdAt: "2026-06-04T17:55:03.000Z",
+    },
+  ],
+  alertsToday: [],
+};

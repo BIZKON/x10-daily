@@ -192,7 +192,9 @@ export async function fetchArticleDetail(id: string): Promise<ArticleDetail | nu
   }
 }
 
-export async function publishArticle(id: string): Promise<{ ok: boolean; status?: string; error?: string }> {
+export async function publishArticle(
+  id: string,
+): Promise<{ ok: boolean; status?: string; error?: string }> {
   const base = getBaseUrl();
   if (!base) return { ok: false, error: "X10_API_BASE_URL не задан" };
   try {
@@ -335,9 +337,9 @@ export async function fetchAdminKlamps(): Promise<{ items: AdminKlamp[] } | null
   return { items: MOCK_KLAMPS };
 }
 
-export async function fetchAdminEvents(scope: "upcoming" | "all" = "all"): Promise<
-  { items: AdminEvent[] } | null
-> {
+export async function fetchAdminEvents(
+  scope: "upcoming" | "all" = "all",
+): Promise<{ items: AdminEvent[] } | null> {
   const real = await getJson<{ items: AdminEvent[] }>(`/v1/events?scope=${scope}&limit=100`);
   if (real) return real;
   if (!isDemoMode()) return null;
@@ -411,7 +413,9 @@ export async function adminMutate<T = unknown>(
 }
 
 /** Fetch single author by slug — для edit-form. */
-export async function fetchAdminAuthorBySlug(slug: string): Promise<{ author: AdminAuthor } | null> {
+export async function fetchAdminAuthorBySlug(
+  slug: string,
+): Promise<{ author: AdminAuthor } | null> {
   const real = await getJson<{ author: AdminAuthor }>(
     `/v1/authors/${encodeURIComponent(slug)}?articlesLimit=0`,
   );
@@ -454,9 +458,9 @@ export async function fetchAdminDigestByDate(date: string): Promise<AdminDigest 
  * ---------------------------------------------------------------- */
 
 /** Список всех 12 агентов с effective config. Backend всегда возвращает 12. */
-export async function fetchAdminPipelineConfigs(): Promise<
-  { items: AdminPipelineConfig[] } | null
-> {
+export async function fetchAdminPipelineConfigs(): Promise<{
+  items: AdminPipelineConfig[];
+} | null> {
   const real = await getJson<{ items: AdminPipelineConfig[] }>("/v1/admin/pipeline-config");
   if (real) return real;
   if (!isDemoMode()) return null;
@@ -475,4 +479,51 @@ export async function fetchAdminPipelineConfigByAgent(
   if (!isDemoMode()) return null;
   const { MOCK_PIPELINE_CONFIGS } = await import("./mocks");
   return MOCK_PIPELINE_CONFIGS.find((c) => c.agent === agent) ?? null;
+}
+
+/* ----------------------------------------------------------------
+ * $-дашборд автономного конвейера (session 20) — агрегаты pipeline_runs.
+ * Endpoint role-gated (EDITOR_ROLES) → форвардим session-токен (как adminMutate).
+ * ---------------------------------------------------------------- */
+
+export type PipelineRunStats = {
+  budget: {
+    capUsd: number;
+    warnUsd: number;
+    todaySpendUsd: number;
+    todayRuns: number;
+    pct: number;
+  };
+  byAgent: Array<{ agent: PipelineAgent; runs: number; spendUsd: number }>;
+  series7d: Array<{ day: string; spendUsd: number; runs: number }>;
+  gateToday: { accepted: number; skipped: number };
+  recent: Array<{
+    agent: PipelineAgent;
+    status: string;
+    costUsd: number;
+    modelUsed: string | null;
+    articleId: string | null;
+    createdAt: string;
+  }>;
+  alertsToday: Array<{ kind: "warn" | "exhausted"; spendUsd: number; createdAt: string }>;
+};
+
+export async function fetchPipelineRunStats(): Promise<PipelineRunStats | null> {
+  const base = getBaseUrl();
+  if (!base) {
+    if (!isDemoMode()) return null;
+    const { MOCK_PIPELINE_RUN_STATS } = await import("./mocks");
+    return MOCK_PIPELINE_RUN_STATS;
+  }
+  // Endpoint требует EDITOR_ROLES → форвардим session cookie как Bearer.
+  const token = await getSessionToken();
+  try {
+    const res = await fetchWithTimeout(`${base}/v1/admin/pipeline-runs/stats`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as PipelineRunStats;
+  } catch {
+    return null;
+  }
 }

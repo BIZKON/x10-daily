@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, articles, desc, eq, sql } from "@x10/db";
+import { and, articles, costAlerts, desc, eq, pipelineRuns, sql } from "@x10/db";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../app";
@@ -96,6 +96,121 @@ export const adminRoute = new Hono<AppEnv>()
   })
 
   /**
+   * GET /v1/admin/pipeline-runs/stats
+   * $-дашборд автономного конвейера (session 20). Агрегаты по pipeline_runs:
+   * расход за день МСК vs потолок, разбивка по агентам, 7-дневный ряд, accept-rate
+   * гейта, последние раны, алерты дня. Day-boundary — Europe/Moscow (UTC+3), как
+   * в budget-gate (cost-ledger.ts mskDayStartUtc).
+   */
+  .get("/pipeline-runs/stats", async (c) => {
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
+
+    const mskToday = sql`date_trunc('day', now() AT TIME ZONE 'Europe/Moscow') AT TIME ZONE 'Europe/Moscow'`;
+    const msk7dStart = sql`(date_trunc('day', now() AT TIME ZONE 'Europe/Moscow') - interval '6 days') AT TIME ZONE 'Europe/Moscow'`;
+    const dayExpr = sql<string>`to_char(date_trunc('day', ${pipelineRuns.createdAt} AT TIME ZONE 'Europe/Moscow'), 'YYYY-MM-DD')`;
+
+    const [todayAgg, byAgentRows, seriesRows, gateRows, recentRows, alertRows] = await Promise.all([
+      db
+        .select({
+          spend: sql<string>`coalesce(sum(${pipelineRuns.costUsd}), 0)`,
+          runs: sql<number>`count(*)::int`,
+        })
+        .from(pipelineRuns)
+        .where(sql`${pipelineRuns.createdAt} >= ${mskToday}`),
+      db
+        .select({
+          agent: pipelineRuns.agent,
+          runs: sql<number>`count(*)::int`,
+          spend: sql<string>`coalesce(sum(${pipelineRuns.costUsd}), 0)`,
+        })
+        .from(pipelineRuns)
+        .where(sql`${pipelineRuns.createdAt} >= ${mskToday}`)
+        .groupBy(pipelineRuns.agent),
+      db
+        .select({
+          day: dayExpr,
+          spend: sql<string>`coalesce(sum(${pipelineRuns.costUsd}), 0)`,
+          runs: sql<number>`count(*)::int`,
+        })
+        .from(pipelineRuns)
+        .where(sql`${pipelineRuns.createdAt} >= ${msk7dStart}`)
+        .groupBy(dayExpr)
+        .orderBy(dayExpr),
+      db
+        .select({
+          status: pipelineRuns.status,
+          runs: sql<number>`count(*)::int`,
+        })
+        .from(pipelineRuns)
+        .where(sql`${pipelineRuns.agent} = 'ingest' AND ${pipelineRuns.createdAt} >= ${mskToday}`)
+        .groupBy(pipelineRuns.status),
+      db
+        .select({
+          agent: pipelineRuns.agent,
+          status: pipelineRuns.status,
+          costUsd: pipelineRuns.costUsd,
+          modelUsed: pipelineRuns.modelUsed,
+          articleId: pipelineRuns.articleId,
+          createdAt: pipelineRuns.createdAt,
+        })
+        .from(pipelineRuns)
+        .orderBy(desc(pipelineRuns.createdAt))
+        .limit(20),
+      db
+        .select({
+          kind: costAlerts.thresholdKind,
+          spendUsd: costAlerts.spendUsd,
+          createdAt: costAlerts.createdAt,
+        })
+        .from(costAlerts)
+        .where(
+          sql`${costAlerts.alertDate} = to_char(now() AT TIME ZONE 'Europe/Moscow', 'YYYY-MM-DD')`,
+        )
+        .orderBy(desc(costAlerts.createdAt)),
+    ]);
+
+    const capUsd = env.DAILY_BUDGET_USD;
+    const warnUsd = env.DAILY_BUDGET_WARN_USD;
+    const todaySpendUsd = Number(todayAgg[0]?.spend ?? 0);
+    const iso = (v: unknown) => (v instanceof Date ? v.toISOString() : String(v));
+
+    return c.json({
+      budget: {
+        capUsd,
+        warnUsd,
+        todaySpendUsd,
+        todayRuns: todayAgg[0]?.runs ?? 0,
+        pct: capUsd > 0 ? Math.min(100, Math.round((todaySpendUsd / capUsd) * 100)) : 0,
+      },
+      byAgent: byAgentRows.map((r) => ({
+        agent: r.agent,
+        runs: r.runs,
+        spendUsd: Number(r.spend),
+      })),
+      series7d: seriesRows.map((r) => ({ day: r.day, spendUsd: Number(r.spend), runs: r.runs })),
+      gateToday: {
+        accepted: gateRows.find((g) => g.status === "succeeded")?.runs ?? 0,
+        skipped: gateRows.find((g) => g.status === "skipped")?.runs ?? 0,
+      },
+      recent: recentRows.map((r) => ({
+        agent: r.agent,
+        status: r.status,
+        costUsd: Number(r.costUsd),
+        modelUsed: r.modelUsed,
+        articleId: r.articleId,
+        createdAt: iso(r.createdAt),
+      })),
+      alertsToday: alertRows.map((r) => ({
+        kind: r.kind,
+        spendUsd: Number(r.spendUsd),
+        createdAt: iso(r.createdAt),
+      })),
+    });
+  })
+
+  /**
    * GET /v1/admin/article/:id
    * Полная статья с pipeline metadata для UI ревью.
    * В отличие от /v1/articles/:slug — доступна на любом status (не только published).
@@ -106,11 +221,7 @@ export const adminRoute = new Hono<AppEnv>()
     await requireRole(c, db, EDITOR_ROLES);
     const { id } = c.req.valid("param");
 
-    const [row] = await db
-      .select()
-      .from(articles)
-      .where(eq(articles.id, id))
-      .limit(1);
+    const [row] = await db.select().from(articles).where(eq(articles.id, id)).limit(1);
 
     if (!row) return c.json({ error: "not_found", id }, 404);
     return c.json(row);

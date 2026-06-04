@@ -9,6 +9,7 @@ import {
   Users,
   UsersRound,
   Video,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -19,8 +20,7 @@ import { usePathname } from "next/navigation";
  */
 export function Sidebar() {
   const pathname = usePathname();
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
+  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-fence bg-card">
@@ -37,38 +37,13 @@ export function Sidebar() {
         <NavItem href="/" label="Очередь" icon={FileCheck2} active={isActive("/")} />
 
         <NavSection label="Контент" />
-        <NavItem
-          href="/authors"
-          label="Авторы"
-          icon={Users}
-          active={isActive("/authors")}
-        />
-        <NavItem
-          href="/klamps"
-          label="Клампы"
-          icon={UsersRound}
-          active={isActive("/klamps")}
-        />
-        <NavItem
-          href="/events"
-          label="События"
-          icon={Calendar}
-          active={isActive("/events")}
-        />
-        <NavItem
-          href="/digests"
-          label="Дайджесты"
-          icon={Mic}
-          active={isActive("/digests")}
-        />
+        <NavItem href="/authors" label="Авторы" icon={Users} active={isActive("/authors")} />
+        <NavItem href="/klamps" label="Клампы" icon={UsersRound} active={isActive("/klamps")} />
+        <NavItem href="/events" label="События" icon={Calendar} active={isActive("/events")} />
+        <NavItem href="/digests" label="Дайджесты" icon={Mic} active={isActive("/digests")} />
 
         <NavSection label="Настройки" />
-        <NavItem
-          href="/rubrics"
-          label="Рубрики"
-          icon={Layers}
-          active={isActive("/rubrics")}
-        />
+        <NavItem href="/rubrics" label="Рубрики" icon={Layers} active={isActive("/rubrics")} />
         <NavItem href="/video" label="Видео" icon={Video} active={isActive("/video")} />
         <NavItem
           href="/pipeline-config"
@@ -76,6 +51,7 @@ export function Sidebar() {
           icon={Cpu}
           active={isActive("/pipeline-config")}
         />
+        <NavItem href="/cost" label="Расходы" icon={Wallet} active={isActive("/cost")} />
       </nav>
 
       <div className="border-t border-fence px-5 py-4 text-[11px] text-haze">

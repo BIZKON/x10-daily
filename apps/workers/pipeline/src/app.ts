@@ -8,6 +8,7 @@ import { createDraftArticleFunction } from "./inngest/functions/draft-article";
 import { createIngestRssFunction } from "./inngest/functions/ingest-rss";
 import { createPostToTgFunction } from "./inngest/functions/post-to-tg";
 import { createProcessSourceItemFunction } from "./inngest/functions/process-source-item";
+import { createRetryOpsAlertsFunction } from "./inngest/functions/retry-ops-alerts";
 import { createRunWeeklyScoreFunction } from "./inngest/functions/run-weekly-score";
 
 export type AppEnv = {
@@ -51,6 +52,7 @@ export function createApp() {
         createRunWeeklyScoreFunction(client, c.env),
         createIngestRssFunction(client, c.env),
         createPostToTgFunction(client, c.env),
+        createRetryOpsAlertsFunction(client, c.env),
       ],
     });
     // inngest/hono возвращает HTTP-handler (c) => Response. Просто проксируем.

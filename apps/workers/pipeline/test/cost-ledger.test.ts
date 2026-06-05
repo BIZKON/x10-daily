@@ -3,8 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import {
   claimAlert,
   getTodaySpendUsd,
+  listPendingAlerts,
+  markAlertDelivered,
   mskDayStartUtc,
   mskDayString,
+  recordAlertAttempt,
   recordRun,
 } from "../src/lib/cost-ledger";
 
@@ -82,22 +85,115 @@ describe("recordRun", () => {
   });
 });
 
-describe("claimAlert (идемпотентность)", () => {
+describe("claimAlert (идемпотентность + message)", () => {
   function dbReturning(rows: Array<{ id: string }>) {
-    return {
+    let captured: Record<string, unknown> | undefined;
+    const db = {
       insert: () => ({
-        values: () => ({
-          onConflictDoNothing: () => ({ returning: async () => rows }),
+        values: (v: Record<string, unknown>) => {
+          captured = v;
+          return { onConflictDoNothing: () => ({ returning: async () => rows }) };
+        },
+      }),
+    } as unknown as Database;
+    return { db, captured: () => captured };
+  }
+
+  it("вставка прошла (строка вернулась) → id; message сохранён", async () => {
+    const { db, captured } = dbReturning([{ id: "row-1" }]);
+    expect(await claimAlert(db, "2026-06-04", "warn", 9.5, "⚠️ warn")).toBe("row-1");
+    expect(captured()!.message).toBe("⚠️ warn");
+    expect(captured()!.spendUsd).toBe("9.500000");
+  });
+
+  it("конфликт (пусто) → null (уже заклеймлен сегодня)", async () => {
+    const { db } = dbReturning([]);
+    expect(await claimAlert(db, "2026-06-04", "exhausted", 15, "🛑")).toBeNull();
+  });
+});
+
+describe("markAlertDelivered / recordAlertAttempt", () => {
+  function dbUpdate() {
+    let captured: Record<string, unknown> | undefined;
+    let whereCalled = false;
+    const db = {
+      update: () => ({
+        set: (v: Record<string, unknown>) => {
+          captured = v;
+          return {
+            where: async () => {
+              whereCalled = true;
+            },
+          };
+        },
+      }),
+    } as unknown as Database;
+    return { db, captured: () => captured, whereCalled: () => whereCalled };
+  }
+
+  it("markAlertDelivered ставит deliveredAt (Date) с фильтром по id", async () => {
+    const { db, captured, whereCalled } = dbUpdate();
+    await markAlertDelivered(db, "row-1");
+    expect(captured()!.deliveredAt).toBeInstanceOf(Date);
+    expect(whereCalled()).toBe(true);
+  });
+
+  it("recordAlertAttempt инкрементит attempts и пишет lastError", async () => {
+    const { db, captured } = dbUpdate();
+    await recordAlertAttempt(db, "row-1", "ETIMEDOUT");
+    // attempts — SQL-выражение (attempts + 1), не число.
+    expect(captured()!.attempts).toBeDefined();
+    expect(captured()!.lastError).toBe("ETIMEDOUT");
+  });
+});
+
+describe("listPendingAlerts", () => {
+  function dbSelect(rows: Array<{ id: string; message: string | null }>) {
+    let limitArg: number | undefined;
+    const db = {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            orderBy: () => ({
+              limit: async (n: number) => {
+                limitArg = n;
+                return rows;
+              },
+            }),
+          }),
         }),
       }),
     } as unknown as Database;
+    return { db, limitArg: () => limitArg };
   }
 
-  it("вставка прошла (строка вернулась) → true", async () => {
-    expect(await claimAlert(dbReturning([{ id: "x" }]), "2026-06-04", "warn", 9.5)).toBe(true);
+  it("возвращает строки с message; передаёт limit", async () => {
+    const { db, limitArg } = dbSelect([
+      { id: "a", message: "alert A" },
+      { id: "b", message: "alert B" },
+    ]);
+    const pending = await listPendingAlerts(
+      db,
+      { maxAttempts: 12, windowMs: 1000, limit: 20 },
+      new Date(),
+    );
+    expect(pending).toEqual([
+      { id: "a", message: "alert A" },
+      { id: "b", message: "alert B" },
+    ]);
+    expect(limitArg()).toBe(20);
   });
 
-  it("конфликт (пусто) → false (уже заклеймлен сегодня)", async () => {
-    expect(await claimAlert(dbReturning([]), "2026-06-04", "exhausted", 15)).toBe(false);
+  it("отсеивает строки без message (тип-сужение)", async () => {
+    const { db } = dbSelect([
+      { id: "a", message: null },
+      { id: "b", message: "ok" },
+    ]);
+    const pending = await listPendingAlerts(
+      db,
+      { maxAttempts: 12, windowMs: 1000, limit: 20 },
+      new Date(),
+    );
+    expect(pending).toEqual([{ id: "b", message: "ok" }]);
   });
 });

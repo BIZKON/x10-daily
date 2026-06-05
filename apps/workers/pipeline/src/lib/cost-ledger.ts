@@ -1,4 +1,16 @@
-import { type Database, type NewPipelineRun, costAlerts, gte, pipelineRuns, sql } from "@x10/db";
+import {
+  type Database,
+  type NewPipelineRun,
+  and,
+  asc,
+  costAlerts,
+  eq,
+  gte,
+  isNull,
+  lt,
+  pipelineRuns,
+  sql,
+} from "@x10/db";
 
 /**
  * $-ledger автономного конвейера (session 20 hardening).
@@ -74,20 +86,70 @@ export async function recordRun(db: Database, entry: LedgerEntry): Promise<void>
 export type AlertKind = "warn" | "exhausted";
 
 /**
- * Идемпотентно «занять» алерт за (день МСК, порог). Возвращает true ровно один
- * раз — на первой вставке; конкурентные раны/ретраи получают false (конфликт по
- * uniqueIndex). Звонящий шлёт уведомление только при true.
+ * Идемпотентно «занять» алерт за (день МСК, порог) и сохранить его текст.
+ * Возвращает id новой строки ровно один раз — на первой вставке; конкурентные
+ * раны/ретраи получают null (конфликт по uniqueIndex). Сохранённый `message`
+ * позволяет sweeper'у (retry-ops-alerts) дослать алерт verbatim, не пересобирая
+ * текст из env-порогов (которые к моменту ретрая могли измениться). M4: клейм
+ * НЕ означает доставку — её подтверждает markAlertDelivered.
  */
 export async function claimAlert(
   db: Database,
   day: string,
   kind: AlertKind,
   spendUsd: number,
-): Promise<boolean> {
+  message: string,
+): Promise<string | null> {
   const inserted = await db
     .insert(costAlerts)
-    .values({ alertDate: day, thresholdKind: kind, spendUsd: spendUsd.toFixed(6) })
+    .values({ alertDate: day, thresholdKind: kind, spendUsd: spendUsd.toFixed(6), message })
     .onConflictDoNothing()
     .returning({ id: costAlerts.id });
-  return inserted.length > 0;
+  return inserted[0]?.id ?? null;
+}
+
+/** Подтвердить доставку алерта в TG — выводит строку из очереди sweeper'а. */
+export async function markAlertDelivered(db: Database, id: string): Promise<void> {
+  await db.update(costAlerts).set({ deliveredAt: new Date() }).where(eq(costAlerts.id, id));
+}
+
+/** Зафиксировать НЕудачную попытку доставки: attempts += 1 + текст ошибки. */
+export async function recordAlertAttempt(db: Database, id: string, error: string): Promise<void> {
+  await db
+    .update(costAlerts)
+    .set({ attempts: sql`${costAlerts.attempts} + 1`, lastError: error })
+    .where(eq(costAlerts.id, id));
+}
+
+export type PendingAlert = { id: string; message: string };
+
+/**
+ * Недоставленные алерты для дослыки (retry-ops-alerts). Ограничено:
+ *  - `delivered_at IS NULL` — ещё не доставлены (частичный индекс);
+ *  - `attempts < maxAttempts` — не дёргаем вечно сломанный алерт;
+ *  - `created_at >= now - windowMs` — старые уже неактуальны, оставляем как есть;
+ *  - `message IS NOT NULL` — нечего слать без текста (строки до M4).
+ * Старейшие — первыми (FIFO). `now` инъектируется для детерминизма Inngest-ретрая.
+ */
+export async function listPendingAlerts(
+  db: Database,
+  opts: { maxAttempts: number; windowMs: number; limit: number },
+  now: Date,
+): Promise<PendingAlert[]> {
+  const since = new Date(now.getTime() - opts.windowMs);
+  const rows = await db
+    .select({ id: costAlerts.id, message: costAlerts.message })
+    .from(costAlerts)
+    .where(
+      and(
+        isNull(costAlerts.deliveredAt),
+        lt(costAlerts.attempts, opts.maxAttempts),
+        gte(costAlerts.createdAt, since),
+        sql`${costAlerts.message} is not null`,
+      ),
+    )
+    .orderBy(asc(costAlerts.createdAt))
+    .limit(opts.limit);
+  // message гарантированно не null по where, но тип — string | null; сужаем.
+  return rows.flatMap((r) => (r.message ? [{ id: r.id, message: r.message }] : []));
 }

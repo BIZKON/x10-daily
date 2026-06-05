@@ -208,19 +208,20 @@ vi.mock("@x10/db", async () => {
 
 // $-ledger / алерты мокаем — БД-логика проверяется отдельно в cost-ledger.test.ts.
 // Здесь нас интересует только что draft-article корректно вызывает gate/record/alert.
-const { getTodaySpendUsd, recordRun, claimAlert } = vi.hoisted(() => ({
+const { getTodaySpendUsd, recordRun } = vi.hoisted(() => ({
   getTodaySpendUsd: vi.fn(),
   recordRun: vi.fn(),
-  claimAlert: vi.fn(),
 }));
 vi.mock("../src/lib/cost-ledger", () => ({
   getTodaySpendUsd,
   recordRun,
-  claimAlert,
   mskDayString: () => "2026-06-04",
 }));
-const { sendOpsAlert } = vi.hoisted(() => ({ sendOpsAlert: vi.fn() }));
-vi.mock("../src/lib/ops-alert", () => ({ sendOpsAlert }));
+// M4: claim+send+бухгалтерия инкапсулированы в deliverOpsAlert (его логика —
+// в ops-alert.test.ts). Здесь проверяем только что draft-article зовёт его с
+// правильными порогами/текстом и уважает warn-границу.
+const { deliverOpsAlert } = vi.hoisted(() => ({ deliverOpsAlert: vi.fn() }));
+vi.mock("../src/lib/ops-alert", () => ({ deliverOpsAlert }));
 
 import {
   BrevityAgent,
@@ -271,8 +272,7 @@ describe("draft-article pipeline", () => {
     // Дефолт: расход за день 0 → под потолком, конвейер идёт целиком.
     getTodaySpendUsd.mockResolvedValue(0);
     recordRun.mockResolvedValue(undefined);
-    claimAlert.mockResolvedValue(false);
-    sendOpsAlert.mockResolvedValue(undefined);
+    deliverOpsAlert.mockResolvedValue({ claimed: false, delivered: false });
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -520,7 +520,7 @@ describe("draft-article pipeline", () => {
   it("budget hard-cap: при расходе ≥ DAILY_BUDGET_USD драфт пропускается, агенты НЕ запускаются", async () => {
     // Default DAILY_BUDGET_USD = 15. Расход за день уже 15 → стоп.
     getTodaySpendUsd.mockResolvedValue(15);
-    claimAlert.mockResolvedValue(true); // первый exhausted-алерт за день
+    deliverOpsAlert.mockResolvedValue({ claimed: true, delivered: true });
 
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
     const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
@@ -546,10 +546,16 @@ describe("draft-article pipeline", () => {
     expect(DraftAgent.run).not.toHaveBeenCalled();
     expect(NumbersAgent.run).not.toHaveBeenCalled();
     expect(persistArticle).not.toHaveBeenCalled();
-    // exhausted-алерт заклеймлен и отправлен один раз.
-    expect(claimAlert).toHaveBeenCalledWith(expect.anything(), "2026-06-04", "exhausted", 15);
-    expect(sendOpsAlert).toHaveBeenCalledOnce();
-    expect(sendOpsAlert.mock.calls[0]![1]).toMatch(/бюджет исчерпан/);
+    // exhausted-алерт доставлен один раз с правильными порогом/текстом.
+    expect(deliverOpsAlert).toHaveBeenCalledOnce();
+    const exhaustedCall = deliverOpsAlert.mock.calls[0]![2] as {
+      day: string;
+      kind: string;
+      spendUsd: number;
+      message: string;
+    };
+    expect(exhaustedCall).toMatchObject({ day: "2026-06-04", kind: "exhausted", spendUsd: 15 });
+    expect(exhaustedCall.message).toMatch(/бюджет исчерпан/);
     // Только now + budget-gate + budget-exhausted-alert.
     expect(step.run.mock.calls.map((c) => c[0])).toEqual([
       "now",
@@ -561,7 +567,7 @@ describe("draft-article pipeline", () => {
   it("budget warn: расход пересёк DAILY_BUDGET_WARN_USD → warn-алерт один раз", async () => {
     // 1-й вызов (gate, в начале) — под потолком; 2-й (warn-пересчёт, в конце) — ≥ warn (9).
     getTodaySpendUsd.mockResolvedValueOnce(5).mockResolvedValueOnce(9.5);
-    claimAlert.mockResolvedValue(true);
+    deliverOpsAlert.mockResolvedValue({ claimed: true, delivered: true });
 
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
     const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
@@ -576,14 +582,20 @@ describe("draft-article pipeline", () => {
 
     expect(DraftAgent.run).toHaveBeenCalledOnce(); // под потолком — драфт прошёл
     expect(recordRun).toHaveBeenCalledOnce();
-    expect(claimAlert).toHaveBeenCalledWith(expect.anything(), "2026-06-04", "warn", 9.5);
-    expect(sendOpsAlert).toHaveBeenCalledOnce();
-    expect(sendOpsAlert.mock.calls[0]![1]).toMatch(/расход за день/);
+    expect(deliverOpsAlert).toHaveBeenCalledOnce();
+    const warnCall = deliverOpsAlert.mock.calls[0]![2] as {
+      kind: string;
+      spendUsd: number;
+      message: string;
+    };
+    expect(warnCall).toMatchObject({ kind: "warn", spendUsd: 9.5 });
+    expect(warnCall.message).toMatch(/расход за день/);
   });
 
-  it("budget warn НЕ дублируется: claimAlert=false → алерт не шлётся", async () => {
-    getTodaySpendUsd.mockResolvedValueOnce(5).mockResolvedValueOnce(9.5);
-    claimAlert.mockResolvedValue(false); // уже заклеймлен сегодня
+  it("budget warn НЕ шлётся ниже порога: расход < DAILY_BUDGET_WARN_USD", async () => {
+    // gate — под потолком; warn-пересчёт = 8 (< warn 9) → ранний выход, алерта нет.
+    // (Идемпотентность повторного warn — в ops-alert.test.ts через claim=null.)
+    getTodaySpendUsd.mockResolvedValueOnce(5).mockResolvedValueOnce(8);
 
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
     const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
@@ -596,7 +608,6 @@ describe("draft-article pipeline", () => {
 
     await handler({ event: EVENT, step });
 
-    expect(claimAlert).toHaveBeenCalledOnce();
-    expect(sendOpsAlert).not.toHaveBeenCalled();
+    expect(deliverOpsAlert).not.toHaveBeenCalled();
   });
 });

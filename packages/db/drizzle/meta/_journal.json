@@ -64,6 +64,13 @@
       "when": 1780492572448,
       "tag": "0008_posting_control",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1780578972448,
+      "tag": "0009_cost_alerts_delivery",
+      "breakpoints": true
     }
   ]
 }

@@ -19,8 +19,8 @@ import {
   articleReadyEvent,
   topicIngestedEvent,
 } from "../../events";
-import { claimAlert, getTodaySpendUsd, mskDayString, recordRun } from "../../lib/cost-ledger";
-import { sendOpsAlert } from "../../lib/ops-alert";
+import { getTodaySpendUsd, mskDayString, recordRun } from "../../lib/cost-ledger";
+import { deliverOpsAlert } from "../../lib/ops-alert";
 import { cleanPostText } from "../../lib/text";
 import { persistArticle, serializeDraftForNumbers } from "../../persist";
 import type { PipelineInngest } from "../client";
@@ -75,15 +75,17 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
       if (budget.spentUsd >= env.DAILY_BUDGET_USD) {
         await step.run("budget-exhausted-alert", async () => {
           const db = createDb(env.DATABASE_URL);
-          const claimed = await claimAlert(db, mskDayString(now), "exhausted", budget.spentUsd);
-          if (claimed) {
-            await sendOpsAlert(
-              env,
-              `🛑 X10 pipeline: дневной бюджет исчерпан — $${budget.spentUsd.toFixed(2)} ≥ cap $${env.DAILY_BUDGET_USD}. ` +
-                "Драфт статей остановлен до полуночи МСК. Гейт (Haiku) продолжает работать.",
-            );
-          }
-          return { claimed };
+          const message =
+            `🛑 X10 pipeline: дневной бюджет исчерпан — $${budget.spentUsd.toFixed(2)} ≥ cap $${env.DAILY_BUDGET_USD}. ` +
+            "Драфт статей остановлен до полуночи МСК. Гейт (Haiku) продолжает работать.";
+          // M4: claim + быстрая попытка доставки. Провал send → строка остаётся
+          // в очереди, cron retry-ops-alerts дослыает (алерт не теряется молча).
+          return deliverOpsAlert(db, env, {
+            day: mskDayString(now),
+            kind: "exhausted",
+            spendUsd: budget.spentUsd,
+            message,
+          });
         });
         return {
           skipped: true as const,
@@ -345,15 +347,17 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
         const db = createDb(env.DATABASE_URL);
         const spentUsd = await getTodaySpendUsd(db, now);
         if (spentUsd < env.DAILY_BUDGET_WARN_USD) return { warned: false, spentUsd };
-        const claimed = await claimAlert(db, mskDayString(now), "warn", spentUsd);
-        if (claimed) {
-          await sendOpsAlert(
-            env,
-            `⚠️ X10 pipeline: расход за день $${spentUsd.toFixed(2)} ≥ warn $${env.DAILY_BUDGET_WARN_USD} ` +
-              `(cap $${env.DAILY_BUDGET_USD}). До жёсткого стопа осталось ~$${(env.DAILY_BUDGET_USD - spentUsd).toFixed(2)}.`,
-          );
-        }
-        return { warned: claimed, spentUsd };
+        const message =
+          `⚠️ X10 pipeline: расход за день $${spentUsd.toFixed(2)} ≥ warn $${env.DAILY_BUDGET_WARN_USD} ` +
+          `(cap $${env.DAILY_BUDGET_USD}). До жёсткого стопа осталось ~$${(env.DAILY_BUDGET_USD - spentUsd).toFixed(2)}.`;
+        // M4: claim + быстрая попытка; недоставленный warn дослыает sweeper.
+        const r = await deliverOpsAlert(db, env, {
+          day: mskDayString(now),
+          kind: "warn",
+          spendUsd: spentUsd,
+          message,
+        });
+        return { warned: r.claimed, delivered: r.delivered, spentUsd };
       });
 
       await step.sendEvent("notify-ready", {

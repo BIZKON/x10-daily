@@ -61,10 +61,11 @@ vi.mock("@x10/worker-ingest", async () => {
 vi.mock("../src/lib/cost-ledger", () => ({
   getTodaySpendUsd: vi.fn(async () => 0),
   recordRun: vi.fn(async () => undefined),
-  claimAlert: vi.fn(async () => false),
   mskDayString: () => "2026-06-04",
 }));
-vi.mock("../src/lib/ops-alert", () => ({ sendOpsAlert: vi.fn(async () => undefined) }));
+vi.mock("../src/lib/ops-alert", () => ({
+  deliverOpsAlert: vi.fn(async () => ({ claimed: false, delivered: false })),
+}));
 
 // Все LLM-агенты в цепочке. Outputs минимально валидные.
 vi.mock("@x10/agents", async () => {

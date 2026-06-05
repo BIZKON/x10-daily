@@ -102,10 +102,20 @@ export const costAlertKind = pgEnum("cost_alert_kind", ["warn", "exhausted"]);
 /**
  * Идемпотентность $-алертов: «один алерт на (день, порог)». Запись клеймится
  * через INSERT ... ON CONFLICT DO NOTHING на uniqueIndex(alert_date,
- * threshold_kind) — алерт шлётся только если INSERT реально вставил строку,
+ * threshold_kind) — клейм шлётся только если INSERT реально вставил строку,
  * поэтому ретраи Inngest-шага и параллельные draft-article-раны не дублируют
  * уведомление. `alert_date` — календарный день МСК (YYYY-MM-DD), сбрасывает
  * счётчик в полночь МСК. См. apps/workers/pipeline/src/lib/cost-ledger.ts.
+ *
+ * M4 (session 21): «заклеймлен» ≠ «доставлен». Раньше claim и отправка в TG
+ * были связаны — если send падал (хиккап сети / краш между claim и send), строка
+ * уже существовала → claimAlert навсегда возвращал false → алерт терялся молча
+ * (отказ самого механизма безопасности). Теперь:
+ *  - `message` — готовый текст, чтобы sweeper дослал его verbatim (без зависимости
+ *    от env-порогов на момент ретрая);
+ *  - `delivered_at` NULL = заклеймлен, но ещё НЕ доставлен в TG;
+ *  - `attempts`/`last_error` — счётчик неудачных попыток (кап ретраев) + диагностика.
+ * Cron `retry-ops-alerts` периодически дослыает строки с delivered_at IS NULL.
  */
 export const costAlerts = pgTable(
   "cost_alerts",
@@ -114,9 +124,23 @@ export const costAlerts = pgTable(
     alertDate: date("alert_date").notNull(),
     thresholdKind: costAlertKind("threshold_kind").notNull(),
     spendUsd: numeric("spend_usd", { precision: 10, scale: 6 }).notNull().default("0"),
+    /** Готовый текст алерта — sweeper дослыает его как есть. NULL у строк до M4. */
+    message: text("message"),
+    /** Момент подтверждённой доставки в TG. NULL = ещё в очереди на дослыку. */
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    /** Число НЕУДАЧНЫХ попыток доставки — кап ретраев (не дёргать вечно). */
+    attempts: integer("attempts").notNull().default(0),
+    /** Текст последней ошибки доставки (диагностика). */
+    lastError: text("last_error"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
   },
-  (t) => [uniqueIndex("cost_alerts_date_kind_uidx").on(t.alertDate, t.thresholdKind)],
+  (t) => [
+    uniqueIndex("cost_alerts_date_kind_uidx").on(t.alertDate, t.thresholdKind),
+    // Частичный индекс для дешёвого поиска недоставленных алертов sweeper'ом.
+    index("cost_alerts_pending_idx")
+      .on(t.createdAt)
+      .where(sql`delivered_at is null`),
+  ],
 );
 
 export type CostAlert = typeof costAlerts.$inferSelect;

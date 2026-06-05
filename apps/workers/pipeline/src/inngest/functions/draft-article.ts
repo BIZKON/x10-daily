@@ -214,6 +214,24 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
       // Единый источник текста поста: channels + metadata + return.
       const socialPost = cleanPostText(social.output.post);
 
+      // VK-вариант поста (session 21) — ТОЛЬКО если VK сконфигурирован (токен +
+      // owner). Иначе не тратим лишний Sonnet-вызов. SocialAmplifyAgent знает
+      // per-channel правила VK (PAS, 1-2 эмодзи, термины проще — аудитория шире).
+      const vkEnabled = Boolean(env.VK_ACCESS_TOKEN && env.VK_OWNER_ID);
+      const vkSocial = vkEnabled
+        ? await step.run("social-vk", () =>
+            SocialAmplifyAgent.run(
+              {
+                draft: brevity.output.compressed,
+                channel: "vk",
+                authorName: event.data.authorName ?? null,
+              },
+              ctx,
+            ),
+          )
+        : null;
+      const vkPost = vkSocial ? cleanPostText(vkSocial.output.post) : null;
+
       const totalCost =
         draft.costUsd +
         numbers.costUsd +
@@ -222,7 +240,8 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
         (factcheck?.costUsd ?? 0) +
         hookgen.costUsd +
         social.costUsd +
-        score.costUsd;
+        score.costUsd +
+        (vkSocial?.costUsd ?? 0);
 
       // $-ledger (session 20): агрегируем токены и per-agent $ для одной строки
       // pipeline_runs (agent='draft'). Источник дневного расхода для budget-gate.
@@ -235,6 +254,7 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
         social,
         score,
         ...(factcheck ? [factcheck] : []),
+        ...(vkSocial ? [vkSocial] : []),
       ];
       const aggUsage = agentResults.reduce(
         (a, r) => ({
@@ -253,6 +273,7 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
         social: social.costUsd,
         score: score.costUsd,
         ...(factcheck ? { factcheck: factcheck.costUsd } : {}),
+        ...(vkSocial ? { socialVk: vkSocial.costUsd } : {}),
       };
 
       const pipelineMetadata = {
@@ -283,6 +304,15 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
           wordCount: social.output.wordCount,
           lineCount: social.output.lineCount,
         },
+        socialVk:
+          vkSocial && vkPost
+            ? {
+                channel: vkSocial.output.channel,
+                framework: vkSocial.output.framework,
+                post: vkPost,
+                wordCount: vkSocial.output.wordCount,
+              }
+            : null,
         factcheck: factcheck
           ? {
               status: factcheck.output.status,
@@ -340,6 +370,29 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
           })
           .onConflictDoNothing();
       });
+
+      // VK-ветка (session 21): тот же приём, что и для TG — сохраняем VK-вариант
+      // в channels(channel='vk') и шлём article.ready(channel='vk'). post-to-vk
+      // ловит event и делает wall.post. Шаги существуют ТОЛЬКО когда VK
+      // сконфигурирован (vkPost != null), иначе VK-событие не эмитится вовсе.
+      if (vkPost) {
+        await step.run("save-vk-channel", async () => {
+          const db = createDb(env.DATABASE_URL);
+          await db
+            .insert(channels)
+            .values({
+              articleId: persisted.id,
+              channel: "vk",
+              text: vkPost,
+              visualRef: null,
+            })
+            .onConflictDoNothing();
+        });
+        await step.sendEvent("notify-ready-vk", {
+          name: articleReadyEvent.event,
+          data: { articleId: persisted.id, channel: "vk" as const },
+        });
+      }
 
       // Warn-алерт (session 20): пересчитываем расход за день (уже с этой статьёй)
       // и при пересечении предупредительной планки шлём уведомление один раз/день.

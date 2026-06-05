@@ -84,6 +84,31 @@ const baseSchema = z
     TG_OPS_CHAT_ID: z.string().optional(),
 
     /**
+     * VK posting (session 21): автопостинг на стену VK-сообщества. Оба пусты →
+     * VK-ветка конвейера отключена (draft-article не генерит VK-вариант, не
+     * платит за лишний Sonnet-вызов; post-to-vk скипает). VK API РФ-доступен по
+     * обычному HTTPS — ни IPv6, ни прокси не нужны (в отличие от Telegram). См.
+     * apps/workers/pipeline/src/lib/vk.ts.
+     */
+    VK_ACCESS_TOKEN: z.string().optional(),
+    /**
+     * owner_id стены VK: "-123456" сообщество (from_group=1), "123456" юзер.
+     * union с literal("") ОБЯЗАТЕЛЕН (review session 21): .optional() пропускает
+     * только undefined, НЕ пустую строку — а compose инъектит `${VK_OWNER_ID:-}`
+     * = "" когда оператор не задал переменную (дефолтный «VK выключен»). Без
+     * union пустая строка падала бы на regex → loadEnv throw → крах ВСЕГО
+     * pipeline-воркера (loadPipelineEnv зовётся в начале каждой Inngest-функции).
+     */
+    VK_OWNER_ID: z
+      .union([
+        z
+          .string()
+          .regex(/^-?\d+$/, "VK_OWNER_ID — числовой id стены (отрицательный для сообщества)"),
+        z.literal(""),
+      ])
+      .optional(),
+
+    /**
      * Пост-M0 hardening (session 20): жёсткий дневной потолок $-расхода на LLM.
      * draft-article в начале каждого запуска суммирует расход за календарный день
      * МСК (pipeline_runs.cost_usd) и при >= DAILY_BUDGET_USD ПРОПУСКАЕТ статью

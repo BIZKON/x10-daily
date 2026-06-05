@@ -610,4 +610,72 @@ describe("draft-article pipeline", () => {
 
     expect(deliverOpsAlert).not.toHaveBeenCalled();
   });
+
+  it("VK сконфигурирован → второй SocialAmplify (channel=vk) + save-vk-channel + article.ready(vk)", async () => {
+    const VK_BINDINGS = { ...BINDINGS, VK_ACCESS_TOKEN: "vk-tok", VK_OWNER_ID: "-123456" };
+    const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
+    const fn = createDraftArticleFunction(inngest, VK_BINDINGS as unknown as PipelineBindings);
+    const step = makeStep();
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
+
+    await handler({ event: EVENT, step });
+
+    // SocialAmplify вызван дважды: tg-x10 (основной) + vk.
+    const socialCalls = vi.mocked(SocialAmplifyAgent.run).mock.calls;
+    expect(socialCalls).toHaveLength(2);
+    expect(socialCalls.some((c) => (c[0] as { channel?: string }).channel === "vk")).toBe(true);
+
+    // Шаги social-vk + save-vk-channel присутствуют.
+    const stepIds = step.run.mock.calls.map((c) => c[0]);
+    expect(stepIds).toContain("social-vk");
+    expect(stepIds).toContain("save-vk-channel");
+
+    // Отправлен article.ready(channel=vk).
+    const vkEvent = step.sendEvent.mock.calls.find((c) => c[0] === "notify-ready-vk");
+    expect(vkEvent).toBeDefined();
+    expect((vkEvent![1] as { data: { channel: string } }).data.channel).toBe("vk");
+  });
+
+  it("VK НЕ сконфигурирован → один SocialAmplify (tg), без vk-события/шагов", async () => {
+    // BINDINGS без VK_* → vkEnabled=false.
+    const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
+    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
+    const step = makeStep();
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
+
+    await handler({ event: EVENT, step });
+
+    expect(vi.mocked(SocialAmplifyAgent.run)).toHaveBeenCalledOnce();
+    const stepIds = step.run.mock.calls.map((c) => c[0]);
+    expect(stepIds).not.toContain("social-vk");
+    expect(stepIds).not.toContain("save-vk-channel");
+    expect(step.sendEvent.mock.calls.find((c) => c[0] === "notify-ready-vk")).toBeUndefined();
+  });
+
+  it("частичный VK-конфиг (токен есть, owner пуст) → VK-ветка ВЫКЛ (review [9])", async () => {
+    // vkEnabled = Boolean(TOKEN && OWNER): пустой owner → false → VK не активна,
+    // лишний Sonnet-вызов не делается, vk-событие не шлётся.
+    const PARTIAL = { ...BINDINGS, VK_ACCESS_TOKEN: "vk-tok", VK_OWNER_ID: "" };
+    const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
+    const fn = createDraftArticleFunction(inngest, PARTIAL as unknown as PipelineBindings);
+    const step = makeStep();
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
+
+    await handler({ event: EVENT, step });
+
+    expect(vi.mocked(SocialAmplifyAgent.run)).toHaveBeenCalledOnce();
+    expect(step.sendEvent.mock.calls.find((c) => c[0] === "notify-ready-vk")).toBeUndefined();
+  });
 });

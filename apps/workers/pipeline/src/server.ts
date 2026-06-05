@@ -44,6 +44,9 @@ function readBindings(): PipelineBindings {
     TG_OPS_CHAT_ID: process.env.TG_OPS_CHAT_ID,
     DAILY_BUDGET_USD: process.env.DAILY_BUDGET_USD,
     DAILY_BUDGET_WARN_USD: process.env.DAILY_BUDGET_WARN_USD,
+
+    VK_ACCESS_TOKEN: process.env.VK_ACCESS_TOKEN,
+    VK_OWNER_ID: process.env.VK_OWNER_ID,
   };
 }
 

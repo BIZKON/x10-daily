@@ -50,4 +50,35 @@ describe("loadPipelineEnv — production requiredKeys override", () => {
     expect(PIPELINE_REQUIRED_KEYS).toContain("INNGEST_EVENT_KEY");
     expect(PIPELINE_REQUIRED_KEYS).toContain("INNGEST_SIGNING_KEY");
   });
+
+  /**
+   * review session 21 [1] (CRITICAL). docker-compose инъектит `${VK_OWNER_ID:-}`
+   * = "" (present-but-empty) когда оператор не задал VK — дефолтный «VK выключен».
+   * `.optional()` пропускает ТОЛЬКО undefined, не пустую строку → без union с
+   * literal("") regex VK_OWNER_ID падал бы на "", а loadPipelineEnv зовётся в
+   * начале КАЖДОЙ Inngest-функции → крах всего pipeline-воркера на старте.
+   */
+  it("пустая строка VK_* (дефолтный «VK выключен» из compose) НЕ роняет loadEnv", () => {
+    const env = loadPipelineEnv({
+      ...PROD_PIPELINE_BINDINGS,
+      VK_ACCESS_TOKEN: "",
+      VK_OWNER_ID: "",
+    } as unknown as PipelineBindings);
+    expect(env.VK_OWNER_ID).toBe("");
+    expect(env.VK_ACCESS_TOKEN).toBe("");
+  });
+
+  it("валидный VK_OWNER_ID проходит; нечисловой мусор — падает (fail-fast)", () => {
+    const ok = loadPipelineEnv({
+      ...PROD_PIPELINE_BINDINGS,
+      VK_OWNER_ID: "-123456",
+    } as unknown as PipelineBindings);
+    expect(ok.VK_OWNER_ID).toBe("-123456");
+    expect(() =>
+      loadPipelineEnv({
+        ...PROD_PIPELINE_BINDINGS,
+        VK_OWNER_ID: "not-a-number",
+      } as unknown as PipelineBindings),
+    ).toThrow(/VK_OWNER_ID/);
+  });
 });

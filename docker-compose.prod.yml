@@ -129,6 +129,10 @@ services:
       TG_OPS_CHAT_ID: "${TG_OPS_CHAT_ID:-}"
       DAILY_BUDGET_USD: "${DAILY_BUDGET_USD:-15}"
       DAILY_BUDGET_WARN_USD: "${DAILY_BUDGET_WARN_USD:-9}"
+      # VK posting (session 21): оба пусты → VK-ветка отключена (draft-article не
+      # генерит VK-вариант, post-to-vk скипает). Задать в .env → активируется.
+      VK_ACCESS_TOKEN: "${VK_ACCESS_TOKEN:-}"
+      VK_OWNER_ID: "${VK_OWNER_ID:-}"
       # loadEnv (общий для api+pipeline) требует X10_JWT_SECRET в productionRequired.
       # Pipeline сессии не выпускает, но env-валидатор общий → ключ обязателен.
       X10_JWT_SECRET: "${X10_JWT_SECRET}"

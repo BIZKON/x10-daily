@@ -7,6 +7,7 @@ import { createAssembleNewsletterFunction } from "./inngest/functions/assemble-n
 import { createDraftArticleFunction } from "./inngest/functions/draft-article";
 import { createIngestRssFunction } from "./inngest/functions/ingest-rss";
 import { createPostToTgFunction } from "./inngest/functions/post-to-tg";
+import { createPostToVkFunction } from "./inngest/functions/post-to-vk";
 import { createProcessSourceItemFunction } from "./inngest/functions/process-source-item";
 import { createRetryOpsAlertsFunction } from "./inngest/functions/retry-ops-alerts";
 import { createRunWeeklyScoreFunction } from "./inngest/functions/run-weekly-score";
@@ -52,6 +53,7 @@ export function createApp() {
         createRunWeeklyScoreFunction(client, c.env),
         createIngestRssFunction(client, c.env),
         createPostToTgFunction(client, c.env),
+        createPostToVkFunction(client, c.env),
         createRetryOpsAlertsFunction(client, c.env),
       ],
     });

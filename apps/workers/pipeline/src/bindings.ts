@@ -45,4 +45,10 @@ export interface PipelineBindings {
   DAILY_BUDGET_USD?: string;
   /** Warn-порог $-расхода (< DAILY_BUDGET_USD). */
   DAILY_BUDGET_WARN_USD?: string;
+
+  // ---- VK posting (session 21 — автопостинг на стену сообщества) ----
+  /** VK access token (community/user с правом wall). Пуст → VK-ветка отключена. */
+  VK_ACCESS_TOKEN?: string;
+  /** owner_id стены VK: "-123456" сообщество, "123456" юзер. */
+  VK_OWNER_ID?: string;
 }

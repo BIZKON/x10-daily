@@ -56,16 +56,34 @@ function walk(schema: z.ZodType): JsonSchema {
       return { type: "string", enum: values };
     }
     case "optional":
-    case "nullable":
     case "default":
     case "catch": {
       // catch — обёртка-резильентность: при невалидном значении возвращает
       // fallback. В tool-схему отдаём ВНУТРЕННИЙ тип (с enum-hint'ом), чтобы
       // модель всё равно видела допустимые значения; catch ловит редкие
       // отклонения уже на парсинге ответа (Timeweb proxy не строго
-      // энфорсит tool-enum'ы).
+      // энфорсит tool-enum'ы). optional/default → поле необязательно (isOptional).
       const inner = (schema as unknown as { def: { innerType: z.ZodType } }).def.innerType;
       return walk(inner);
+    }
+    case "nullable": {
+      // nullable: поле ОСТАЁТСЯ required (присутствует), но значение может быть null.
+      // Отражаем null в типе (и в enum, если есть) — иначе вшитая в промпт схема
+      // (DeepSeek-путь, response_format json_object) говорит модели «non-null»,
+      // противореча инструкции вернуть null (напр. factcheck.haltReason=null при
+      // passed, numbers.source=null без ссылки). Session 23 review. На Claude-пути —
+      // просто более точная tool-схема.
+      const inner = (schema as unknown as { def: { innerType: z.ZodType } }).def.innerType;
+      const innerSchema = walk(inner);
+      const out: JsonSchema = { ...innerSchema };
+      const t = innerSchema.type;
+      if (typeof t === "string") out.type = [t, "null"];
+      else if (Array.isArray(t)) out.type = t.includes("null") ? t : [...t, "null"];
+      else out.type = ["string", "null"];
+      if (Array.isArray(innerSchema.enum) && !innerSchema.enum.includes(null)) {
+        out.enum = [...innerSchema.enum, null];
+      }
+      return out;
     }
     case "union": {
       const options = (schema as unknown as { def: { options: z.ZodType[] } }).def.options;

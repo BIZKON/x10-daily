@@ -31,8 +31,13 @@ const claimSchema = z.object({
   claim: z.string(),
   /** Где в draft встретилось — для UI: «tease», «lede», «body[2]». */
   location: z.string(),
-  verdict: z.enum(FACTCHECK_VERDICT),
-  confidence: z.enum(FACTCHECK_CONFIDENCE),
+  // enum-resilience (session 23): DeepSeek через response_format json_object НЕ
+  // энфорсит enum (json_schema на gateway недоступен) — изредка возвращает близкое,
+  // но не точное значение. .catch → консервативный дефолт вместо hard Zod-fail.
+  // verdict/confidence — только метаданные claim'а (halt решает status ниже), дефолт
+  // безопасно консервативный (не «supported»).
+  verdict: z.enum(FACTCHECK_VERDICT).catch("unsupported"),
+  confidence: z.enum(FACTCHECK_CONFIDENCE).catch("low"),
   /** URL'ы из sources которые поддерживают (если verdict=supported|partially-supported). */
   supportingSourceUrls: z.array(z.string()),
   /** URL'ы из sources которые противоречат (если verdict=contradicted|partially-supported). */
@@ -51,7 +56,10 @@ const outputSchema = z.object({
    * review-needed — есть unsupported или partially-supported low/medium confidence
    * halt         — есть contradicted claim, либо unsupported high-stake claim (цифра/имя/дата)
    */
-  status: z.enum(FACTCHECK_STATUS),
+  // enum-resilience: неизвестный/глючный status → "halt" (консервативно — НЕ
+  // публикуем непроверённую политику, чем рискнуть ложным "passed"; draft-article
+  // бросает на status==="halt"). Валидные значения парсятся как есть.
+  status: z.enum(FACTCHECK_STATUS).catch("halt"),
   /** Краткая суммарная причина для status=halt или review-needed. Обязательна если не passed. */
   haltReason: z.string().nullable(),
 });

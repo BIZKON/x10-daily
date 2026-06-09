@@ -17,10 +17,12 @@ describe("enum resilience — Timeweb gateway не энфорсит tool-enum'ы
   it("zodToToolSchema сохраняет enum-hint сквозь .catch (модель всё равно видит допустимые)", () => {
     const schema = z.object({ c: z.enum(["a", "b", "c"]).nullable().catch(null) });
     const json = zodToToolSchema(schema) as {
-      properties: { c: { type: string; enum?: string[] } };
+      properties: { c: { type: unknown; enum?: unknown[] } };
     };
-    expect(json.properties.c.type).toBe("string");
-    expect(json.properties.c.enum).toEqual(["a", "b", "c"]);
+    // session 23: nullable отражается в схеме — type и enum включают null (модель
+    // видит и допустимые значения, и что поле может быть null). Enum-hint сохранён.
+    expect(json.properties.c.type).toEqual(["string", "null"]);
+    expect(json.properties.c.enum).toEqual(["a", "b", "c", null]);
   });
 
   it("IngestAgent: невалидные category/template из модели → null (не падаем), decision строгий", async () => {

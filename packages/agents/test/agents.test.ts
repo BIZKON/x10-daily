@@ -934,3 +934,47 @@ describe("masker × agent integration", () => {
     expect(result.output.items).toHaveLength(0);
   });
 });
+
+describe("DeepSeek path (response_format json_object, session 23)", () => {
+  it("model=deepseek/* → response_format (без tools/tool_choice), парс из message.content", async () => {
+    const { client, spy } = mockOpenAI({
+      toolName: "x10_emit_numbers",
+      toolInput: { items: [], hasUnsourcedNumbers: false },
+      contentMode: true,
+      model: "deepseek/deepseek-chat",
+    });
+    const result = await NumbersAgent.run(
+      { text: "ЦБ сохранил ставку 21%", sources: SOURCES },
+      { apiKey: "test", client, models: { HAIKU: "deepseek/deepseek-chat" } },
+    );
+    expect(result.output.hasUnsourcedNumbers).toBe(false);
+    expect(result.modelUsed).toBe("deepseek/deepseek-chat");
+    const call = spy.mock.calls[0]![0] as {
+      response_format?: { type: string };
+      tools?: unknown;
+      tool_choice?: unknown;
+      messages: Array<{ role: string; content: string }>;
+    };
+    expect(call.response_format).toEqual({ type: "json_object" });
+    expect(call.tools).toBeUndefined();
+    expect(call.tool_choice).toBeUndefined();
+    // JSON Schema вшита в system-промпт (модель следует ей, Zod добивает).
+    expect(getSystemText(call)).toContain("JSON Schema");
+  });
+
+  it("Claude-путь (без models) по-прежнему tools + tool_choice, без response_format", async () => {
+    const { client, spy } = mockOpenAI({
+      toolName: "x10_emit_numbers",
+      toolInput: { items: [], hasUnsourcedNumbers: false },
+    });
+    await NumbersAgent.run({ text: "x", sources: [] }, { apiKey: "test", client });
+    const call = spy.mock.calls[0]![0] as {
+      tools?: unknown;
+      tool_choice?: unknown;
+      response_format?: unknown;
+    };
+    expect(call.tools).toBeDefined();
+    expect(call.tool_choice).toBeDefined();
+    expect(call.response_format).toBeUndefined();
+  });
+});

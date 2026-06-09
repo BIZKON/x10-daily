@@ -56,13 +56,15 @@ export type Agent<I, O> = {
 const TOOL_NAME_PREFIX = "x10_emit_";
 
 /**
- * defineAgent — фабрика декларативных LLM-агентов через function calling.
- *
- * Архитектура (после session 17 — OpenAI Chat Completions API через Timeweb):
- *   1. system prompt + user input → /v1/chat/completions с tools[].
- *   2. tool_choice пинит модель на единственную функцию x10_emit_<name>.
- *   3. JSON Schema из outputSchema (Zod) служит structured-output контрактом.
- *   4. Распарсенный tool_calls[0].function.arguments → output через outputSchema.parse.
+ * defineAgent — фабрика декларативных LLM-агентов (OpenAI Chat Completions через
+ * Timeweb AI Gateway). Structured output — провайдер-conditional (см. run):
+ *   - Anthropic/Claude: forced tool_choice на функцию x10_emit_<name>; ответ из
+ *     tool_calls[0].function.arguments.
+ *   - DeepSeek (model начинается с "deepseek"): response_format=json_object +
+ *     JSON Schema в system-промпте; ответ из message.content. Причина — DeepSeek
+ *     function-calling бьёт JSON на крупных вложенных выводах (session 23), а
+ *     thinking-варианты вовсе отвергают tool_choice (HTTP 400).
+ * В обоих путях JSON → outputSchema.parse (Zod) — единый контракт.
  *
  * Anthropic prompt caching (cache_control: ephemeral) не поддерживается через
  * OpenAI-compat API. Timeweb может применять prefix caching автоматически
@@ -93,41 +95,74 @@ export function defineAgent<I, O>(def: AgentDefinition<I, O>): Agent<I, O> {
         session = masked.session;
       }
 
-      const response = await client.chat.completions.create({
-        model,
-        max_tokens: maxTokens,
-        messages: [
-          { role: "system", content: systemText },
-          { role: "user", content: userText },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: toolName,
-              description: `Emit the structured ${def.name} output.`,
-              parameters: outputJsonSchema as Record<string, unknown>,
-            },
-          },
-        ],
-        tool_choice: {
-          type: "function",
-          function: { name: toolName },
-        },
-      });
+      // Провайдер-conditional structured output (session 23):
+      //  - Anthropic/Claude: forced tool_choice на единственную функцию
+      //    x10_emit_<name> — надёжно, оставляем как было.
+      //  - DeepSeek: function-calling НЕнадёжен для крупных вложенных выводов
+      //    (модель дописывает текст после JSON / бьёт массивы — ToV 0/10), а
+      //    thinking-варианты вовсе отвергают tool_choice (HTTP 400). Поэтому
+      //    response_format=json_object (API гарантирует валидный JSON) + JSON Schema
+      //    в system-промпте; ответ берём из message.content. Соответствие схеме
+      //    добивается outputSchema.parse + ретраем вызывающего (Inngest-step).
+      const isDeepSeek = model.startsWith("deepseek");
 
-      const choice = response.choices[0];
-      const toolCall = choice?.message?.tool_calls?.[0];
-      if (!toolCall || toolCall.type !== "function") {
-        throw new Error(`Agent ${def.name}: модель не вернула function tool_call`);
+      let response: OpenAI.Chat.Completions.ChatCompletion;
+      let rawArgs: string;
+
+      if (isDeepSeek) {
+        const jsonSystem =
+          `${systemText}\n\nФОРМАТ ОТВЕТА (обязательно): верни СТРОГО валидный JSON-объект ` +
+          "по этой JSON Schema. Только JSON — без markdown, без ```, без любого текста до или после.\n" +
+          `JSON Schema:\n${JSON.stringify(outputJsonSchema)}`;
+        response = await client.chat.completions.create({
+          model,
+          max_tokens: maxTokens,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: jsonSystem },
+            { role: "user", content: userText },
+          ],
+        });
+        const content = response.choices[0]?.message?.content;
+        if (!content) {
+          throw new Error(
+            `Agent ${def.name}: модель ${model} вернула пустой content (response_format=json_object)`,
+          );
+        }
+        rawArgs = content;
+      } else {
+        response = await client.chat.completions.create({
+          model,
+          max_tokens: maxTokens,
+          messages: [
+            { role: "system", content: systemText },
+            { role: "user", content: userText },
+          ],
+          tools: [
+            {
+              type: "function",
+              function: {
+                name: toolName,
+                description: `Emit the structured ${def.name} output.`,
+                parameters: outputJsonSchema as Record<string, unknown>,
+              },
+            },
+          ],
+          tool_choice: { type: "function", function: { name: toolName } },
+        });
+        const toolCall = response.choices[0]?.message?.tool_calls?.[0];
+        if (!toolCall || toolCall.type !== "function") {
+          throw new Error(`Agent ${def.name}: модель не вернула function tool_call`);
+        }
+        rawArgs = toolCall.function.arguments;
       }
 
       let payload: unknown;
       try {
-        payload = JSON.parse(toolCall.function.arguments);
+        payload = JSON.parse(rawArgs);
       } catch (err) {
         throw new Error(
-          `Agent ${def.name}: tool_call.function.arguments не JSON: ${err instanceof Error ? err.message : err}`,
+          `Agent ${def.name}: ответ модели ${model} не JSON: ${err instanceof Error ? err.message : err}`,
         );
       }
 

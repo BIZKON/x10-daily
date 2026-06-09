@@ -10,6 +10,8 @@ export type MockResponse = {
   cachedInputTokens?: number;
   /** Override модели в response (по умолчанию "x10-mock"). */
   model?: string;
+  /** DeepSeek-путь: payload кладётся в message.content (response_format json_object), без tool_calls. */
+  contentMode?: boolean;
 };
 
 /**
@@ -32,21 +34,26 @@ export function mockOpenAI(response: MockResponse): {
     choices: [
       {
         index: 0,
-        message: {
-          role: "assistant",
-          content: null,
-          tool_calls: [
-            {
-              id: "call_test",
-              type: "function",
-              function: {
-                name: response.toolName,
-                arguments: JSON.stringify(response.toolInput),
-              },
+        message: response.contentMode
+          ? {
+              role: "assistant",
+              content: JSON.stringify(response.toolInput),
+            }
+          : {
+              role: "assistant",
+              content: null,
+              tool_calls: [
+                {
+                  id: "call_test",
+                  type: "function",
+                  function: {
+                    name: response.toolName,
+                    arguments: JSON.stringify(response.toolInput),
+                  },
+                },
+              ],
             },
-          ],
-        },
-        finish_reason: "tool_calls",
+        finish_reason: response.contentMode ? "stop" : "tool_calls",
       },
     ],
     usage: {

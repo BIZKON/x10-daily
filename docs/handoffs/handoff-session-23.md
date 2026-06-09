@@ -14,6 +14,7 @@
 - **Модель воркеров — пока Claude (дефолт).** Инфраструктура для свопа на DeepSeek V4 Flash задеплоена, но **DeepSeek на gateway сейчас 402** (не оплачен) → дефолт оставлен Claude, чтобы не положить конвейер. **Поведение LLM не изменилось.**
 - **7 Inngest-функций** (было 8: −post-to-tg, −post-to-vk, +drain-post-slots).
 - Миграция **0010** (channels-очередь). 159 тестов зелёные (pipeline 106), repo typecheck чист.
+- **Слот-постинг проверен LIVE:** ручной прогон real-handler `drain-post-slots` (прод DB+TG, IPv6) запостил статью в «Деловой вестник» — `message_id 136`, `posted_at`+`status=published`. Cron-firing на слоте — подтверждает фоновый монитор.
 
 ---
 
@@ -59,7 +60,7 @@
 - Верифицировано live:
   - Inngest-сервер: `functionCount=7`, app-url `http://pipeline:8787/inngest` (post-to-tg/vk сняты, drain есть).
   - Миграция 0010: колонки + `channels_pending_idx` на месте; **backfill корректен** — 131 строка, pending=1, и эта 1 создана 10:56 UTC (свежая, ПОСЛЕ миграции); 130 исторических помечены posted → **репоста backlog'а нет**.
-  - 1 свежая статья в очереди ждёт ближайшего слота **12:30 UTC (15:30 МСК)** → первый реальный слот-пост (наблюдается).
+  - **Слот-постинг подтверждён LIVE:** ручной прогон real-handler `drain-post-slots` (прод DB + реальный TG по IPv6) запостил статью `2895b87d` (порт в Архангельске, Forbes) в «Деловой вестник» — `send-tg ok message_id=136`, `channels.posted_at` + `articles.status=published` (11:16 UTC). Дубля нет (posted_at исключает из следующего select). Cron-расписание зарегистрировано; фактический firing на слоте 12:30 UTC подтверждает фоновый монитор.
 
 ---
 

@@ -41,13 +41,19 @@ export const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   [MODELS.SONNET]: { ...COST_PER_MTOK.SONNET },
   [MODELS.HAIKU]: { ...COST_PER_MTOK.HAIKU },
   // DeepSeek через Timeweb AI Gateway (session 23) — РФ-резидентно, тот же прокси
-  // и DPA, что и Claude (masker остаётся passthrough). V4 Flash — рабочая лошадка
-  // воркеров вместо Sonnet/Haiku; FactCheck (OPUS) остаётся на Claude.
-  // ⚠️ Цена Flash — ОЦЕНКА: LK показал V4 Pro 234.9/469.8 ₽/М (~6.7× к direct-
-  // тарифу DeepSeek); Flash ≈ 0.32× Pro → ~76/151 ₽/М. USD по курсу 80 ₽/$1.
-  // ПОДТВЕРДИТЬ точную цену Flash в LK Timeweb и поправить здесь при необходимости.
+  // и DPA, что и Claude (masker остаётся passthrough).
+  // ⚠️ ПРОВЕРЕНО ЖИВЬЁМ: `deepseek-v4-flash`/`-v4-pro` в gateway отдаются в
+  // THINKING-режиме, который НЕ поддерживает forced tool_choice (HTTP 400 "Thinking
+  // mode does not support this tool_choice") — а на нём держатся ВСЕ наши агенты.
+  // РАБОЧАЯ модель — `deepseek/deepseek-chat` (= V4 Flash NON-thinking, по докам
+  // DeepSeek): forced tool_choice ок, reasoning_content нет, быстрее/дешевле. Именно
+  // её ставим в MODEL_* при активации DeepSeek. Цена — ОЦЕНКА (тариф V4 Flash): LK
+  // показал V4 Pro 234.9/469.8 ₽/М; Flash ≈ 0.32× → ~76/151 ₽/М; USD по курсу 80 ₽/$1.
+  // Уточнить точную цену deepseek-chat в LK Timeweb.
+  "deepseek/deepseek-chat": { input: 0.95, output: 1.89 },
+  // Thinking-варианты — для справки. СЕЙЧАС несовместимы с нашим forced tool_choice
+  // (нужен переход define-agent на response_format json_schema). Не использовать в MODEL_*.
   "deepseek/deepseek-v4-flash": { input: 0.95, output: 1.89 },
-  // V4 Pro (reasoning) — на случай ручного override. 234.9/469.8 ₽/М ÷ 80.
   "deepseek/deepseek-v4-pro": { input: 2.94, output: 5.87 },
 };
 

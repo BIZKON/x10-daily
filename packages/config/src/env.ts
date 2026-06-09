@@ -37,12 +37,13 @@ const baseSchema = z
     ANTHROPIC_ZDR_CONFIRMED: z.enum(["true", "false"]).optional(),
 
     /**
-     * Override модели по tier'у (session 23). Пусто → дефолт MODELS[tier]
-     * (@x10/config/constants.ts). Напр. MODEL_SONNET=deepseek/deepseek-v4-flash +
-     * MODEL_HAIKU=deepseek/deepseek-v4-flash переводят воркер-агентов на DeepSeek
-     * без редеплоя кода (FactCheck=OPUS остаётся на Claude — MODEL_OPUS не задаём).
-     * Стоимость считается по фактической модели (MODEL_COSTS). Model-ID в Timeweb
-     * с префиксом провайдера: `anthropic/claude-...`, `deepseek/deepseek-...`.
+     * Override модели по tier'у (session 23). Пусто → дефолт MODELS[tier] (Claude).
+     * Активация DeepSeek (РФ-резидентно, тот же Timeweb-gateway):
+     *   MODEL_OPUS=MODEL_SONNET=MODEL_HAIKU=deepseek/deepseek-chat
+     * — это V4 Flash NON-thinking, единственный DeepSeek в gateway, совместимый с
+     * нашим forced tool_choice (thinking-варианты deepseek-v4-flash/-v4-pro → HTTP 400).
+     * Стоимость считается по фактической модели (MODEL_COSTS). Model-ID с префиксом
+     * провайдера: `anthropic/claude-...`, `deepseek/deepseek-...`.
      */
     MODEL_OPUS: z.string().default(""),
     MODEL_SONNET: z.string().default(""),

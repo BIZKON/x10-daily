@@ -1,4 +1,4 @@
-import { COST_PER_MTOK } from "@x10/config";
+import { COST_PER_MTOK, MODEL_COSTS } from "@x10/config";
 import { describe, expect, it } from "vitest";
 import { calculateCostUsd } from "../src/cost";
 
@@ -46,5 +46,16 @@ describe("calculateCostUsd", () => {
     const opus = calculateCostUsd("OPUS", { inputTokens: 1000, outputTokens: 500 });
     const sonnet = calculateCostUsd("SONNET", { inputTokens: 1000, outputTokens: 500 });
     expect(opus).toBeGreaterThan(sonnet);
+  });
+
+  it("modelId deepseek/deepseek-chat считается по MODEL_COSTS, не по tier (session 23)", () => {
+    // Прод-модель после активации DeepSeek. Считаться должна по MODEL_COSTS[deepseek-chat],
+    // а НЕ fallback на COST_PER_MTOK.SONNET — иначе дневной $-потолок завышает расход в ~13×.
+    const usage = { inputTokens: 1_000_000, outputTokens: 1_000_000 };
+    const ds = calculateCostUsd("SONNET", usage, "deepseek/deepseek-chat");
+    const claudeSonnet = calculateCostUsd("SONNET", usage);
+    const rate = MODEL_COSTS["deepseek/deepseek-chat"]!;
+    expect(ds).toBeCloseTo(rate.input + rate.output, 6);
+    expect(ds).toBeLessThan(claudeSonnet);
   });
 });

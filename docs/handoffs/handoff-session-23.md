@@ -15,6 +15,7 @@
 - **7 Inngest-функций** (было 8: −post-to-tg, −post-to-vk, +drain-post-slots).
 - Миграция **0010** (channels-очередь). 159 тестов зелёные (pipeline 106), repo typecheck чист.
 - **Слот-постинг проверен LIVE:** ручной прогон real-handler `drain-post-slots` (прод DB+TG, IPv6) запостил статью в «Деловой вестник» — `message_id 136`, `posted_at`+`status=published`. Cron-firing на слоте — подтверждает фоновый монитор.
+- **⚠️ UPDATE (позже в session 23): DeepSeek активация ПОПРОБОВАНА (после оплаты) и ОТКАЧЕНА.** Рабочий id — `deepseek/deepseek-chat` (V4 Flash non-thinking; thinking-варианты → HTTP 400 на forced tool_choice). Но deepseek-chat function-calling **системно валит ToVAgent (0/10)** на крупном вложенном выводе → конвейер бы встал. Откат на Claude, прод healthy. Жизнеспособный DeepSeek требует миграции define-agent на `response_format json_object`. Детали — memory `project_x10_deploy_state.md` + §4 ниже частично устарел (флип env недостаточен без фикса).
 
 ---
 

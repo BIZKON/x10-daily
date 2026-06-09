@@ -1,5 +1,6 @@
 import { ScoreWeeklyAgent, createMasker, type AgentContext } from "@x10/agents";
 import { loadPipelineEnv } from "../../env";
+import { modelsFromEnv } from "../../lib/agent-context";
 import { scoreWeeklyRequestedEvent } from "../../events";
 import type { PipelineInngest } from "../client";
 import type { PipelineBindings } from "../../bindings";
@@ -33,7 +34,12 @@ export function createRunWeeklyScoreFunction(
         );
       }
       const masker = createMasker(env);
-      const ctx: AgentContext = { apiKey, baseURL: env.AI_GATEWAY_BASE_URL, masker };
+      const ctx: AgentContext = {
+        apiKey,
+        baseURL: env.AI_GATEWAY_BASE_URL,
+        masker,
+        models: modelsFromEnv(env),
+      };
 
       const scored = await step.run("score-weekly", () =>
         ScoreWeeklyAgent.run(

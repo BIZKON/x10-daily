@@ -29,6 +29,28 @@ export const COST_PER_MTOK = {
   HAIKU: { input: 1.69, output: 13.5 },
 } as const;
 
+/**
+ * Цена по КОНКРЕТНОЙ модели (model-ID), а не по tier'у — нужна, когда модель
+ * tier'а переопределена через env (MODEL_SONNET/MODEL_HAIKU=deepseek/...).
+ * cost.ts (calculateCostUsd) резолвит стоимость по фактической модели: для
+ * Claude-id значения совпадают с COST_PER_MTOK[tier], для DeepSeek — отдельные
+ * тарифы Timeweb. Неизвестная модель → fallback на COST_PER_MTOK[tier] + warn.
+ */
+export const MODEL_COSTS: Record<string, { input: number; output: number }> = {
+  [MODELS.OPUS]: { ...COST_PER_MTOK.OPUS },
+  [MODELS.SONNET]: { ...COST_PER_MTOK.SONNET },
+  [MODELS.HAIKU]: { ...COST_PER_MTOK.HAIKU },
+  // DeepSeek через Timeweb AI Gateway (session 23) — РФ-резидентно, тот же прокси
+  // и DPA, что и Claude (masker остаётся passthrough). V4 Flash — рабочая лошадка
+  // воркеров вместо Sonnet/Haiku; FactCheck (OPUS) остаётся на Claude.
+  // ⚠️ Цена Flash — ОЦЕНКА: LK показал V4 Pro 234.9/469.8 ₽/М (~6.7× к direct-
+  // тарифу DeepSeek); Flash ≈ 0.32× Pro → ~76/151 ₽/М. USD по курсу 80 ₽/$1.
+  // ПОДТВЕРДИТЬ точную цену Flash в LK Timeweb и поправить здесь при необходимости.
+  "deepseek/deepseek-v4-flash": { input: 0.95, output: 1.89 },
+  // V4 Pro (reasoning) — на случай ручного override. 234.9/469.8 ₽/М ÷ 80.
+  "deepseek/deepseek-v4-pro": { input: 2.94, output: 5.87 },
+};
+
 export const PERF_BUDGETS = {
   LCP_MS: 2500,
   INP_MS: 200,

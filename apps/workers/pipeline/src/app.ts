@@ -5,9 +5,8 @@ import { getPipelineEnv } from "./env";
 import { createPipelineInngest } from "./inngest/client";
 import { createAssembleNewsletterFunction } from "./inngest/functions/assemble-newsletter";
 import { createDraftArticleFunction } from "./inngest/functions/draft-article";
+import { createDrainPostSlotsFunction } from "./inngest/functions/drain-post-slots";
 import { createIngestRssFunction } from "./inngest/functions/ingest-rss";
-import { createPostToTgFunction } from "./inngest/functions/post-to-tg";
-import { createPostToVkFunction } from "./inngest/functions/post-to-vk";
 import { createProcessSourceItemFunction } from "./inngest/functions/process-source-item";
 import { createRetryOpsAlertsFunction } from "./inngest/functions/retry-ops-alerts";
 import { createRunWeeklyScoreFunction } from "./inngest/functions/run-weekly-score";
@@ -52,8 +51,7 @@ export function createApp() {
         createAssembleNewsletterFunction(client, c.env),
         createRunWeeklyScoreFunction(client, c.env),
         createIngestRssFunction(client, c.env),
-        createPostToTgFunction(client, c.env),
-        createPostToVkFunction(client, c.env),
+        createDrainPostSlotsFunction(client, c.env),
         createRetryOpsAlertsFunction(client, c.env),
       ],
     });

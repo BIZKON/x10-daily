@@ -37,12 +37,16 @@ const baseSchema = z
     ANTHROPIC_ZDR_CONFIRMED: z.enum(["true", "false"]).optional(),
 
     /**
-     * Model IDs в Timeweb используют префикс `anthropic/` (например
-     * `anthropic/claude-sonnet-4-6`). При direct Anthropic префикс опускается.
+     * Override модели по tier'у (session 23). Пусто → дефолт MODELS[tier]
+     * (@x10/config/constants.ts). Напр. MODEL_SONNET=deepseek/deepseek-v4-flash +
+     * MODEL_HAIKU=deepseek/deepseek-v4-flash переводят воркер-агентов на DeepSeek
+     * без редеплоя кода (FactCheck=OPUS остаётся на Claude — MODEL_OPUS не задаём).
+     * Стоимость считается по фактической модели (MODEL_COSTS). Model-ID в Timeweb
+     * с префиксом провайдера: `anthropic/claude-...`, `deepseek/deepseek-...`.
      */
-    ANTHROPIC_MODEL_OPUS: z.string().default("anthropic/claude-opus-4-7"),
-    ANTHROPIC_MODEL_SONNET: z.string().default("anthropic/claude-sonnet-4-6"),
-    ANTHROPIC_MODEL_HAIKU: z.string().default("anthropic/claude-haiku-4-5"),
+    MODEL_OPUS: z.string().default(""),
+    MODEL_SONNET: z.string().default(""),
+    MODEL_HAIKU: z.string().default(""),
 
     ELEVENLABS_API_KEY: z.string().optional(),
     ELEVENLABS_PROXY_URL: urlOrEmpty.optional(),

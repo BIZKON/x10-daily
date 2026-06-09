@@ -33,8 +33,9 @@ const MAX_EMIT_PER_SOURCE = 25;
  * текущим фидом) → эмитятся только генуинно-новые items. MAX_EMIT_PER_SOURCE —
  * дополнительная страховка.
  *
- * Дальше по потоку: process-source-item (IngestAgent gate) → draft-article (B2)
- * → article.ready → post-to-tg. Эта функция не знает о шагах ниже.
+ * Дальше по потоку: process-source-item (IngestAgent gate) → draft-article (B2,
+ * сохраняет пост в channels-очередь) → drain-post-slots (постит по слотам). Эта
+ * функция не знает о шагах ниже.
  */
 export function createIngestRssFunction(
   inngest: PipelineInngest,

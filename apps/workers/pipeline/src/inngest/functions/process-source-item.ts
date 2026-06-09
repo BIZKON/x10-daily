@@ -2,6 +2,7 @@ import { type AgentContext, IngestAgent, createMasker } from "@x10/agents";
 import { createDb } from "@x10/db";
 import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
+import { modelsFromEnv } from "../../lib/agent-context";
 import {
   DEFAULT_CATEGORY,
   DEFAULT_SECTION,
@@ -38,7 +39,12 @@ export function createProcessSourceItemFunction(
         );
       }
       const masker = createMasker(env);
-      const ctx: AgentContext = { apiKey, baseURL: env.AI_GATEWAY_BASE_URL, masker };
+      const ctx: AgentContext = {
+        apiKey,
+        baseURL: env.AI_GATEWAY_BASE_URL,
+        masker,
+        models: modelsFromEnv(env),
+      };
 
       const ingest = await step.run("ingest", () =>
         IngestAgent.run(

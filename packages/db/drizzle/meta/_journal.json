@@ -71,6 +71,13 @@
       "when": 1780578972448,
       "tag": "0009_cost_alerts_delivery",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1780665372448,
+      "tag": "0010_channels_posting",
+      "breakpoints": true
     }
   ]
 }

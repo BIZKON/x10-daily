@@ -332,12 +332,9 @@ describe("draft-article pipeline", () => {
       "save-tg-channel",
       "budget-warn-alert",
     ]);
-    // Терминальный сигнал для post-to-tg.
-    expect(step.sendEvent).toHaveBeenCalledOnce();
-    expect(step.sendEvent.mock.calls[0]![1]).toMatchObject({
-      name: "article.ready",
-      data: { articleId: "art-uuid-1", channel: "tg" },
-    });
+    // Слот-постинг (session 23): draft больше НЕ шлёт article.ready — пост кладётся
+    // в channels-очередь (save-tg-channel выше), а drain-post-slots постит по слотам.
+    expect(step.sendEvent).not.toHaveBeenCalled();
 
     expect(result.articleId).toBe("art-uuid-1");
     expect(result.totalCostUsd).toBeCloseTo(
@@ -611,7 +608,7 @@ describe("draft-article pipeline", () => {
     expect(deliverOpsAlert).not.toHaveBeenCalled();
   });
 
-  it("VK сконфигурирован → второй SocialAmplify (channel=vk) + save-vk-channel + article.ready(vk)", async () => {
+  it("VK сконфигурирован → второй SocialAmplify (channel=vk) + save-vk-channel (очередь)", async () => {
     const VK_BINDINGS = { ...BINDINGS, VK_ACCESS_TOKEN: "vk-tok", VK_OWNER_ID: "-123456" };
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
     const fn = createDraftArticleFunction(inngest, VK_BINDINGS as unknown as PipelineBindings);
@@ -634,10 +631,8 @@ describe("draft-article pipeline", () => {
     expect(stepIds).toContain("social-vk");
     expect(stepIds).toContain("save-vk-channel");
 
-    // Отправлен article.ready(channel=vk).
-    const vkEvent = step.sendEvent.mock.calls.find((c) => c[0] === "notify-ready-vk");
-    expect(vkEvent).toBeDefined();
-    expect((vkEvent![1] as { data: { channel: string } }).data.channel).toBe("vk");
+    // Слот-постинг: vk-вариант кладётся в очередь (save-vk-channel), без события.
+    expect(step.sendEvent).not.toHaveBeenCalled();
   });
 
   it("VK НЕ сконфигурирован → один SocialAmplify (tg), без vk-события/шагов", async () => {
@@ -657,7 +652,7 @@ describe("draft-article pipeline", () => {
     const stepIds = step.run.mock.calls.map((c) => c[0]);
     expect(stepIds).not.toContain("social-vk");
     expect(stepIds).not.toContain("save-vk-channel");
-    expect(step.sendEvent.mock.calls.find((c) => c[0] === "notify-ready-vk")).toBeUndefined();
+    expect(step.sendEvent).not.toHaveBeenCalled();
   });
 
   it("частичный VK-конфиг (токен есть, owner пуст) → VK-ветка ВЫКЛ (review [9])", async () => {
@@ -676,6 +671,6 @@ describe("draft-article pipeline", () => {
     await handler({ event: EVENT, step });
 
     expect(vi.mocked(SocialAmplifyAgent.run)).toHaveBeenCalledOnce();
-    expect(step.sendEvent.mock.calls.find((c) => c[0] === "notify-ready-vk")).toBeUndefined();
+    expect(step.sendEvent).not.toHaveBeenCalled();
   });
 });

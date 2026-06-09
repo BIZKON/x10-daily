@@ -13,12 +13,8 @@ import {
 import { channels, createDb } from "@x10/db";
 import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
-import {
-  DEFAULT_SECTION,
-  DEFAULT_TEMPLATE,
-  articleReadyEvent,
-  topicIngestedEvent,
-} from "../../events";
+import { modelsFromEnv } from "../../lib/agent-context";
+import { DEFAULT_SECTION, DEFAULT_TEMPLATE, topicIngestedEvent } from "../../events";
 import { getTodaySpendUsd, mskDayString, recordRun } from "../../lib/cost-ledger";
 import { deliverOpsAlert } from "../../lib/ops-alert";
 import { cleanPostText } from "../../lib/text";
@@ -96,7 +92,12 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
       }
 
       const masker = createMasker(env);
-      const ctx: AgentContext = { apiKey, baseURL: env.AI_GATEWAY_BASE_URL, masker };
+      const ctx: AgentContext = {
+        apiKey,
+        baseURL: env.AI_GATEWAY_BASE_URL,
+        masker,
+        models: modelsFromEnv(env),
+      };
 
       const draft = await step.run("draft", () =>
         DraftAgent.run(
@@ -353,11 +354,10 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
         });
       });
 
-      // Walking Skeleton (ТЗ #1, N4→N5 шов): сохраняем готовый TG-пост в
-      // channels (Content Object per article per channel) и шлём article.ready.
-      // post-to-tg.ts ловит event, читает row из channels, делает реальный
-      // вызов api.telegram.org. Это вне B2-цепочки агентов — терминальный
-      // сигнал, не модификация pipeline'а.
+      // Слот-постинг (session 23): сохраняем готовый TG-пост в channels (Content
+      // Object per article per channel) как ОЧЕРЕДЬ (posted_at NULL). Немедленно
+      // НЕ постим — cron drain-post-slots забирает строку по слотам (4/день МСК)
+      // и делает реальный вызов api.telegram.org. Это вне B2-цепочки агентов.
       await step.run("save-tg-channel", async () => {
         const db = createDb(env.DATABASE_URL);
         await db
@@ -371,10 +371,9 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
           .onConflictDoNothing();
       });
 
-      // VK-ветка (session 21): тот же приём, что и для TG — сохраняем VK-вариант
-      // в channels(channel='vk') и шлём article.ready(channel='vk'). post-to-vk
-      // ловит event и делает wall.post. Шаги существуют ТОЛЬКО когда VK
-      // сконфигурирован (vkPost != null), иначе VK-событие не эмитится вовсе.
+      // VK-ветка (session 21): сохраняем VK-вариант в channels(channel='vk') как
+      // очередь. drain-post-slots постит его вместе с tg-вариантом в слот. Строка
+      // создаётся ТОЛЬКО когда VK сконфигурирован (vkPost != null).
       if (vkPost) {
         await step.run("save-vk-channel", async () => {
           const db = createDb(env.DATABASE_URL);
@@ -387,10 +386,6 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
               visualRef: null,
             })
             .onConflictDoNothing();
-        });
-        await step.sendEvent("notify-ready-vk", {
-          name: articleReadyEvent.event,
-          data: { articleId: persisted.id, channel: "vk" as const },
         });
       }
 
@@ -411,11 +406,6 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
           message,
         });
         return { warned: r.claimed, delivered: r.delivered, spentUsd };
-      });
-
-      await step.sendEvent("notify-ready", {
-        name: articleReadyEvent.event,
-        data: { articleId: persisted.id, channel: "tg" as const },
       });
 
       return {

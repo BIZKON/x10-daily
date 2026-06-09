@@ -12,6 +12,12 @@ export type AgentContext = {
   /** Base URL — по умолчанию читается из OPENAI_BASE_URL env. */
   baseURL?: string;
   masker?: Masker;
+  /**
+   * Override модели по tier'у (session 23). Пусто/не задано → дефолт MODELS[tier].
+   * Позволяет перевести агентов на другую модель (напр. DeepSeek V4 Flash) флипом
+   * env, не трогая код. Стоимость считается по фактической модели (см. cost.ts).
+   */
+  models?: Partial<Record<ModelTier, string>>;
   /** Override клиента — для тестов. Если задан, getOpenAIClient игнорируется. */
   client?: OpenAI;
 };
@@ -76,7 +82,7 @@ export function defineAgent<I, O>(def: AgentDefinition<I, O>): Agent<I, O> {
       const validated = def.inputSchema.parse(input);
       const client = ctx.client ?? getOpenAIClient({ apiKey: ctx.apiKey, baseURL: ctx.baseURL });
       const systemText = typeof def.system === "function" ? def.system() : def.system;
-      const model = MODELS[def.tier];
+      const model = ctx.models?.[def.tier] || MODELS[def.tier];
 
       const userTextRaw = formatInput(validated);
       let userText = userTextRaw;
@@ -148,7 +154,7 @@ export function defineAgent<I, O>(def: AgentDefinition<I, O>): Agent<I, O> {
       return {
         output,
         usage,
-        costUsd: calculateCostUsd(def.tier, usage),
+        costUsd: calculateCostUsd(def.tier, usage, model),
         modelUsed: model,
       };
     },

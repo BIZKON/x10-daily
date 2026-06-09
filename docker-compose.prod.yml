@@ -133,6 +133,12 @@ services:
       # генерит VK-вариант, post-to-vk скипает). Задать в .env → активируется.
       VK_ACCESS_TOKEN: "${VK_ACCESS_TOKEN:-}"
       VK_OWNER_ID: "${VK_OWNER_ID:-}"
+      # Override модели по tier'у (session 23): пусто → Claude (MODELS[tier]).
+      # MODEL_SONNET/MODEL_HAIKU=deepseek/deepseek-v4-flash → воркеры на DeepSeek
+      # (FactCheck=OPUS остаётся на Claude). $-ledger считается по факт. модели.
+      MODEL_OPUS: "${MODEL_OPUS:-}"
+      MODEL_SONNET: "${MODEL_SONNET:-}"
+      MODEL_HAIKU: "${MODEL_HAIKU:-}"
       # loadEnv (общий для api+pipeline) требует X10_JWT_SECRET в productionRequired.
       # Pipeline сессии не выпускает, но env-валидатор общий → ключ обязателен.
       X10_JWT_SECRET: "${X10_JWT_SECRET}"

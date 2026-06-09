@@ -2,8 +2,8 @@
  * Walking Skeleton e2e (ТЗ #1, N7 = DoD):
  *   cron-tick → vc.ru fetch (fixture) → dedup (seen_items) →
  *   source.item.received → process-source-item (IngestAgent gate) →
- *   article/topic.ingested → draft-article (B2 цепочка, агенты мокнуты) →
- *   article.ready → post-to-tg → assert: реальный sendMessage в TG (мок fetch).
+ *   article/topic.ingested → draft-article (B2 цепочка, агенты мокнуты, пост в
+ *   channels-очередь) → drain-post-slots → assert: реальный sendMessage в TG (мок fetch).
  *
  * Триггерится **только** cron-функция через её handler — без HTTP, без ручных
  * шагов. Между handler'ами event'ы передаются последовательно (имитация Inngest
@@ -24,7 +24,7 @@ const FAKE_SOURCE_ID = "00000000-0000-4000-8000-000000000aaa";
 // === Shared in-memory stores (через vi.hoisted чтобы доступны в mock factory) ===
 const { seenStore, channelsStore } = vi.hoisted(() => ({
   seenStore: new Set<string>(),
-  channelsStore: new Map<string, { text: string; visualRef: string | null }>(),
+  channelsStore: new Map<string, { articleId: string; text: string; visualRef: string | null }>(),
 }));
 
 // === Mocks ===
@@ -254,6 +254,7 @@ function makeTestDb() {
       const persistRow = () => {
         if (!buffered) return;
         channelsStore.set(`${buffered.articleId}:${buffered.channel}`, {
+          articleId: buffered.articleId,
           text: buffered.text,
           visualRef: buffered.visualRef ?? null,
         });
@@ -293,12 +294,18 @@ function makeTestDb() {
       const builder: {
         from: () => typeof builder;
         where: () => typeof builder;
-        limit: (n: number) => Promise<Array<{ text: string; visualRef: string | null }>>;
+        orderBy: () => typeof builder;
+        limit: (
+          n: number,
+        ) => Promise<Array<{ articleId: string; text: string; visualRef: string | null }>>;
       } = {
         from() {
           return builder;
         },
         where() {
+          return builder;
+        },
+        orderBy() {
           return builder;
         },
         async limit(n: number) {
@@ -308,14 +315,18 @@ function makeTestDb() {
       };
       return builder;
     },
+    // drain-post-slots: mark posted (channels) + mark published (articles). No-op стаб.
+    update(_table: unknown) {
+      return { set: () => ({ where: async () => undefined }) };
+    },
   };
 }
 
 // === Imports после vi.mock (hoisted) ===
 import { createPipelineInngest } from "../src/inngest/client";
 import { createDraftArticleFunction } from "../src/inngest/functions/draft-article";
+import { createDrainPostSlotsFunction } from "../src/inngest/functions/drain-post-slots";
 import { createIngestRssFunction } from "../src/inngest/functions/ingest-rss";
-import { createPostToTgFunction } from "../src/inngest/functions/post-to-tg";
 import { createProcessSourceItemFunction } from "../src/inngest/functions/process-source-item";
 
 const BINDINGS = {
@@ -421,40 +432,32 @@ describe("Walking Skeleton e2e — cron → fetch → dedup → chain → real T
     expect(events).toHaveLength(2);
     expect(events[1]!.name).toBe("article/topic.ingested");
 
-    // B2 цепочка через draft-article + терминальный article.ready emit
+    // B2 цепочка через draft-article: сохраняет TG-пост в channels-очередь.
+    // Слот-постинг (session 23): draft больше НЕ шлёт article.ready.
     const draftFn = createDraftArticleFunction(inngest, BINDINGS);
     const step3 = makeStep(events);
     await getHandler(draftFn)({
       event: { data: events[1]!.data },
       step: step3,
     });
-    expect(events).toHaveLength(3);
-    expect(events[2]!.name).toBe("article.ready");
-    const readyData = events[2]!.data as { articleId: string; channel: string };
-    expect(readyData.articleId).toBe(FAKE_ARTICLE_ID);
-    expect(readyData.channel).toBe("tg");
+    expect(events).toHaveLength(2); // article.ready больше не эмитится
 
-    // channels row должна быть сохранена (Walking Skeleton, N6 шов).
+    // channels row сохранена как ОЧЕРЕДЬ (posted_at NULL).
     const stored = channelsStore.get(`${FAKE_ARTICLE_ID}:tg`);
     expect(stored).toBeDefined();
     expect(stored!.text).toContain("walking");
     expect(stored!.visualRef).toBeNull();
 
-    // N5: post-to-tg → реальный fetch к api.telegram.org (мок).
-    // Это НЕ UPDATE articles SET status='published' — это исходящий HTTP.
-    const tgFn = createPostToTgFunction(inngest, BINDINGS, {
+    // N5 (слот-постинг): drain-post-slots забирает очередь и делает реальный
+    // sendMessage в TG (мок fetch). Финальный исходящий HTTP автономного контура.
+    const drainFn = createDrainPostSlotsFunction(inngest, BINDINGS, {
       fetchImpl: tgSpy,
     });
     const step4 = makeStep(events);
-    const tgResult = (await getHandler(tgFn)({
-      event: { data: events[2]!.data },
-      step: step4,
-    })) as {
-      ok: boolean;
-      method: string;
-      messageId: number | null;
+    const drainResult = (await getHandler(drainFn)({ step: step4 })) as {
       articleId: string;
-      channel: string;
+      posted: number;
+      results: Array<{ channel: string; status: string; postRef?: string | null }>;
     };
 
     expect(tgSpy).toHaveBeenCalledOnce();
@@ -470,11 +473,9 @@ describe("Walking Skeleton e2e — cron → fetch → dedup → chain → real T
     expect(body.text).toBeTruthy();
     expect(body.text.length).toBeGreaterThan(0);
     expect(body.photo).toBeUndefined();
-    expect(tgResult.ok).toBe(true);
-    expect(tgResult.method).toBe("sendMessage");
-    expect(tgResult.messageId).toBe(42);
-    expect(tgResult.articleId).toBe(FAKE_ARTICLE_ID);
-    expect(tgResult.channel).toBe("tg");
+    expect(drainResult.articleId).toBe(FAKE_ARTICLE_ID);
+    expect(drainResult.posted).toBe(1);
+    expect(drainResult.results).toEqual([{ channel: "tg", status: "posted", postRef: "42" }]);
   });
 
   it("повторный cron-тик НЕ эмитит дубль (dedup по seen_items)", async () => {
@@ -501,23 +502,23 @@ describe("Walking Skeleton e2e — cron → fetch → dedup → chain → real T
     expect(events2).toHaveLength(0);
   });
 
-  it("ветка sendPhoto активируется при visual_ref в channels row (N6 шов)", async () => {
+  it("ветка sendPhoto активируется при visual_ref в channels row (слот-постинг)", async () => {
     channelsStore.set(`${FAKE_ARTICLE_ID}:tg`, {
+      articleId: FAKE_ARTICLE_ID,
       text: "Caption под фото walking skeleton",
       visualRef: "stub://photo.jpg",
     });
 
     const inngest = createPipelineInngest({ NODE_ENV: "test" });
     const tgSpy = makeTgFetchSpy();
-    const tgFn = createPostToTgFunction(inngest, BINDINGS, {
+    const drainFn = createDrainPostSlotsFunction(inngest, BINDINGS, {
       fetchImpl: tgSpy,
     });
     const events: CapturedEvent[] = [];
 
-    const result = (await getHandler(tgFn)({
-      event: { data: { articleId: FAKE_ARTICLE_ID, channel: "tg" } },
+    const result = (await getHandler(drainFn)({
       step: makeStep(events),
-    })) as { method: string };
+    })) as { results: Array<{ channel: string; status: string }> };
 
     expect(tgSpy).toHaveBeenCalledOnce();
     expect(String(tgSpy.mock.calls[0]![0])).toBe(
@@ -531,6 +532,6 @@ describe("Walking Skeleton e2e — cron → fetch → dedup → chain → real T
     expect(body.photo).toBe("stub://photo.jpg");
     expect(body.caption).toBe("Caption под фото walking skeleton");
     expect(body.text).toBeUndefined();
-    expect(result.method).toBe("sendPhoto");
+    expect(result.results[0]!.status).toBe("posted");
   });
 });

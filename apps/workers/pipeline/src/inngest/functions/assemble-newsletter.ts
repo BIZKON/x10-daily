@@ -4,6 +4,7 @@ import {
   type AgentContext,
 } from "@x10/agents";
 import { loadPipelineEnv } from "../../env";
+import { modelsFromEnv } from "../../lib/agent-context";
 import { newsletterAssembleRequestedEvent } from "../../events";
 import type { PipelineInngest } from "../client";
 import type { PipelineBindings } from "../../bindings";
@@ -37,7 +38,12 @@ export function createAssembleNewsletterFunction(
         );
       }
       const masker = createMasker(env);
-      const ctx: AgentContext = { apiKey, baseURL: env.AI_GATEWAY_BASE_URL, masker };
+      const ctx: AgentContext = {
+        apiKey,
+        baseURL: env.AI_GATEWAY_BASE_URL,
+        masker,
+        models: modelsFromEnv(env),
+      };
 
       const assembled = await step.run("assemble", () =>
         NewsletterAssembleAgent.run(

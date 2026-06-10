@@ -12,6 +12,7 @@ import {
   createMasker,
 } from "@x10/agents";
 import { channels, createDb } from "@x10/db";
+import { NonRetriableError } from "inngest";
 import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
 import { modelsFromEnv } from "../../lib/agent-context";
@@ -228,7 +229,16 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
             });
             // Строка расхода записана — catch ниже НЕ должен писать ещё и failed.
             outcomeRecorded = true;
-            throw new Error(
+            // NonRetriableError, а не обычный Error: halt — штатный детерминированный
+            // исход (противоречия в источниках), ретраить его бессмысленно. Простой
+            // Error Inngest считает retriable → при retries:2 он бы реплеил все
+            // мемоизированные шаги и снова доходил до throw 2 раза впустую, а ран
+            // висел бы в дашборде как несколько failed-попыток. NonRetriableError
+            // (движок проверяет `instanceof NonRetriableError`) финализирует ран
+            // сразу. Внешний catch его пропускает без изменений: outcomeRecorded уже
+            // true → failed-строку не пишет, `throw err` ре-бросает тот же объект
+            // (повторный throw non-retriable его retriable не делает).
+            throw new NonRetriableError(
               `FactCheck halt: ${fc.output.haltReason ?? "противоречия в источниках"}`,
             );
           }

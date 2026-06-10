@@ -233,6 +233,7 @@ import {
   SocialAmplifyAgent,
   ToVAgent,
 } from "@x10/agents";
+import { NonRetriableError } from "inngest";
 import { createPipelineInngest } from "../src/inngest/client";
 import { createDraftArticleFunction } from "../src/inngest/functions/draft-article";
 import { persistArticle } from "../src/persist";
@@ -468,7 +469,16 @@ describe("draft-article pipeline", () => {
 
     const politicalEvent = { data: { ...EVENT.data, political: true } };
 
-    await expect(handler({ event: politicalEvent, step })).rejects.toThrow(/FactCheck halt/);
+    // handler вызываем ОДИН раз (FactCheckAgent замокан mockResolvedValueOnce —
+    // halt только на первом вызове), один и тот же rejected-промис проверяем дважды.
+    const haltRun = handler({ event: politicalEvent, step });
+    await expect(haltRun).rejects.toThrow(/FactCheck halt/);
+    // follow-up к failed-учёту (ветка fix/pipeline-failed-runs-ledger): halt бросается
+    // как NonRetriableError, чтобы Inngest финализировал ран сразу, без 2 бессмысленных
+    // ретраев (функция настроена retries:2). Обычный Error был бы retriable.
+    // NonRetriableError — подкласс Error с тем же message, поэтому toThrow выше тоже
+    // проходит; здесь дополнительно фиксируем точный тип.
+    await expect(haltRun).rejects.toBeInstanceOf(NonRetriableError);
     expect(FactCheckAgent.run).toHaveBeenCalledOnce();
     expect(HookGenAgent.run).not.toHaveBeenCalled();
     expect(SocialAmplifyAgent.run).not.toHaveBeenCalled();

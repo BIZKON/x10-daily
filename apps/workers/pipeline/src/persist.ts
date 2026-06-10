@@ -162,7 +162,13 @@ export async function persistArticle({
       subcategory: subcategory ?? null,
       template: template ?? "card-news",
       tags: tags ?? [],
-      status: "ready",
+      // session 24: статья публикуется СРАЗУ в miniapp-ленту (published + publishedAt),
+      // а не ждёт ручного ревью (был 'ready') — авто-режим walking-skeleton. Так
+      // reader/engagement/feed (фильтруют status='published') консистентны: весь
+      // прошедший пайплайн контент читаем и реагируем. TG-канал остаётся курируемым
+      // (4/день через channels-очередь + drain-post-slots, независимо от status).
+      status: "published",
+      publishedAt: new Date(),
       tease: revised.tease,
       lede: revised.lede,
       whyItMatters: revised.whyItMatters,

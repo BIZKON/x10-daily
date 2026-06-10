@@ -19,7 +19,11 @@ env:
 jobs:
   dependency-review:
     name: Dependency Review (PR)
-    if: github.event_name == 'pull_request'
+    # Требует включённого Dependency graph в Settings репо (GitHub Advanced
+    # Security). На аккаунте под trade-controls фича недоступна → гейтим job
+    # repo-переменной: пока DEPENDENCY_REVIEW_ENABLED != 'true' — job скипается
+    # (neutral, PR не блокирует). Включат фичу → выставить var в 'true'.
+    if: ${{ github.event_name == 'pull_request' && vars.DEPENDENCY_REVIEW_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

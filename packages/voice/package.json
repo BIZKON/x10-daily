@@ -9,5 +9,8 @@
   "files": ["src", "voice.md", "about-me.md", "visual.md", "about-author-*.md"],
   "scripts": {
     "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1"
   }
 }

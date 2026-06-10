@@ -21,13 +21,16 @@ env:
 #   VERCEL_TOKEN, VERCEL_ORG_ID,
 #   VERCEL_PROJECT_ID_MINIAPP, VERCEL_PROJECT_ID_ADMIN
 #
-# Без них jobs упадут на vercel pull — это by design, видно сразу в PR check.
-# До настройки secrets можно отключить workflow через GitHub UI > Actions.
+# Без секрета VERCEL_TOKEN деплой-шаги ПРОПУСКАЮТСЯ (if: env.VERCEL_TOKEN != '')
+# → jobs зелёные, PR не блокируется. Появятся секреты репо — шаги авто-активируются.
 
 jobs:
   miniapp:
     name: Deploy miniapp preview
     runs-on: ubuntu-latest
+    # env на уровне job — чтобы step-level `if` ниже видел наличие секрета.
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -40,6 +43,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Vercel pull
+        if: ${{ env.VERCEL_TOKEN != '' }}
         run: pnpm dlx vercel pull --yes --environment=preview --token=$VERCEL_TOKEN
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -48,6 +52,7 @@ jobs:
         working-directory: apps/miniapp
 
       - name: Vercel build
+        if: ${{ env.VERCEL_TOKEN != '' }}
         run: pnpm dlx vercel build --token=$VERCEL_TOKEN
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -56,6 +61,7 @@ jobs:
         working-directory: apps/miniapp
 
       - name: Vercel deploy --prebuilt
+        if: ${{ env.VERCEL_TOKEN != '' }}
         id: deploy
         run: |
           url=$(pnpm dlx vercel deploy --prebuilt --token=$VERCEL_TOKEN)
@@ -67,6 +73,7 @@ jobs:
         working-directory: apps/miniapp
 
       - name: Comment preview URL
+        if: ${{ env.VERCEL_TOKEN != '' }}
         uses: actions/github-script@v7
         with:
           script: |
@@ -98,6 +105,9 @@ jobs:
   admin:
     name: Deploy admin preview
     runs-on: ubuntu-latest
+    # env на уровне job — чтобы step-level `if` ниже видел наличие секрета.
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -110,6 +120,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Vercel pull
+        if: ${{ env.VERCEL_TOKEN != '' }}
         run: pnpm dlx vercel pull --yes --environment=preview --token=$VERCEL_TOKEN
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -118,6 +129,7 @@ jobs:
         working-directory: apps/admin
 
       - name: Vercel build
+        if: ${{ env.VERCEL_TOKEN != '' }}
         run: pnpm dlx vercel build --token=$VERCEL_TOKEN
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -126,6 +138,7 @@ jobs:
         working-directory: apps/admin
 
       - name: Vercel deploy --prebuilt
+        if: ${{ env.VERCEL_TOKEN != '' }}
         id: deploy
         run: |
           url=$(pnpm dlx vercel deploy --prebuilt --token=$VERCEL_TOKEN)
@@ -137,6 +150,7 @@ jobs:
         working-directory: apps/admin
 
       - name: Comment preview URL
+        if: ${{ env.VERCEL_TOKEN != '' }}
         uses: actions/github-script@v7
         with:
           script: |

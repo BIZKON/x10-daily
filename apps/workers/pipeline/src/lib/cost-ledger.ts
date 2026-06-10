@@ -65,6 +65,8 @@ export type LedgerEntry = {
   durationMs?: number | null;
   /** Произвольные метрики строки (per-agent breakdown / decision) в output jsonb. */
   output?: Record<string, unknown> | null;
+  /** Текст ошибки для failed-строки (колонка pipeline_runs.error). */
+  error?: string | null;
 };
 
 /** Записать строку в $-ledger. numeric → строка (toFixed) для drizzle. */
@@ -80,6 +82,7 @@ export async function recordRun(db: Database, entry: LedgerEntry): Promise<void>
     costUsd: entry.costUsd.toFixed(6),
     durationMs: entry.durationMs ?? null,
     output: entry.output ?? null,
+    error: entry.error ?? null,
   });
 }
 

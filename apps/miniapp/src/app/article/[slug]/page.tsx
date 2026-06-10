@@ -1,28 +1,31 @@
-import {
-  Bolt,
-  BookOpen,
-  ChevronLeft,
-  Headphones,
-  Play,
-  Quote,
-} from "lucide-react";
+import { BookOpen, ChevronLeft, ExternalLink, Headphones, Quote } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { ArticleBody } from "@/components/article/article-body";
 import { EngagementBar } from "@/components/article/engagement-bar";
 import { HeaderShare } from "@/components/article/header-share";
 import { ReadingProgress } from "@/components/article/reading-progress";
 import { ANONYMOUS_USER_STATE, fetchArticleUserState } from "@/lib/api";
-import { loadArticle, type FeedItem } from "@/lib/feed";
+import { type ArticleDetail, loadArticle } from "@/lib/feed";
 
 export async function generateStaticParams() {
-  // Cache Components (Next 16) требует ≥1 результат и НЕ допускает route-config
-  // `dynamicParams` (slug'и вне списка рендерятся on-demand неявно). Реальных
-  // статей на билде нет (бэкенд недоступен), поэтому отдаём один sentinel-slug:
-  // getBaseUrl→null коротит loadArticle ДО fetch → его пререндер = статичный
-  // 404, без dynamic-доступа. Реальные slug'и рендерятся server-side в рантайме.
+  // Cache Components (Next 16) требует ≥1 результат. Реальных статей на билде нет
+  // (бэкенд недоступен) — отдаём sentinel-slug; настоящие slug'и рендерятся
+  // server-side в рантайме (loadArticle кэшируется per-slug, см. lib/feed.ts).
   return [{ slug: "__prerender_placeholder__" }];
+}
+
+const MONTHS = [
+  "янв", "фев", "мар", "апр", "мая", "июн",
+  "июл", "авг", "сен", "окт", "ноя", "дек",
+];
+function formatDate(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
 
 export default async function ArticlePage({
@@ -36,6 +39,7 @@ export default async function ArticlePage({
 
   const isDailyTake = article.template === "daily-take";
   const isDeepDive = article.template === "deep-dive";
+  const dateLabel = formatDate(article.publishedAt);
 
   return (
     <main className="mx-auto min-h-dvh max-w-[640px]">
@@ -45,12 +49,7 @@ export default async function ArticlePage({
         </Link>
         <div className="flex items-center gap-4 text-mist">
           {/* Audio — placeholder до AudioAgent через ElevenLabs proxy. */}
-          <button
-            type="button"
-            aria-label="Аудио (скоро)"
-            disabled
-            className="opacity-40"
-          >
+          <button type="button" aria-label="Аудио (скоро)" disabled className="opacity-40">
             <Headphones size={20} strokeWidth={1.75} />
           </button>
           <HeaderShare title={article.title} slug={article.slug} />
@@ -59,14 +58,16 @@ export default async function ArticlePage({
 
       {isDailyTake ? (
         <DailyTakeHero article={article} />
-      ) : (
+      ) : article.coverImageUrl ? (
+        // Реальная обложка — рисуем hero-картинку. У авто-статей её обычно нет
+        // (VisualAgent — post-M0), тогда ниже идёт чистый типографский хедер.
         <div className="relative">
           <Image
-            src={article.imageUrl}
+            src={article.coverImageUrl}
             alt=""
             width={1200}
             height={600}
-            className="h-72 w-full object-cover"
+            className="h-64 w-full object-cover"
             unoptimized
           />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-night/85" />
@@ -76,88 +77,86 @@ export default async function ArticlePage({
               Глубокий разбор · {article.readMinutes} мин
             </span>
           )}
-          <button
-            type="button"
-            aria-label="Смотреть"
-            className="absolute inset-0 grid place-items-center"
-          >
-            <span className="grid h-16 w-16 place-items-center rounded-full bg-red/90 shadow-[0_8px_32px_rgba(230,57,70,0.4)]">
-              <Play size={28} fill="currentColor" className="text-white" />
-            </span>
-          </button>
         </div>
-      )}
+      ) : null}
 
       <article className="px-5 py-6">
         {!isDailyTake && (
           <>
-            <div className="mb-3 flex items-center gap-2">
+            <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1">
               <span className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-red">
                 {article.category}
               </span>
               <span className="text-[12px] text-haze">
-                · {article.readMinutes} мин чтения · 26 мая
+                · {article.readMinutes} мин чтения{dateLabel ? ` · ${dateLabel}` : ""}
               </span>
             </div>
-
             <h1 className="m-0 mb-4 font-display text-[27px] font-extrabold leading-[1.15]">
               {article.title}
             </h1>
           </>
         )}
 
-        <p className="mb-6 text-[14px] leading-[1.6] text-mist">
-          Минфин предложил поднять порог УСН с 265 до 350 млн ₽. Разобрали с налоговым адвокатом
-          Дмитрием Костальгиным, что это значит для производства, услуг и e-commerce.
-        </p>
+        {/* Lede — вводящая фраза */}
+        <p className="mb-6 text-[15px] leading-[1.6] text-mist">{article.excerpt}</p>
 
-        <aside className="mb-6 rounded-2xl border-l-[3px] border-red bg-card p-4">
-          <div className="mb-2 flex items-center gap-2">
-            <Bolt size={14} strokeWidth={2} className="text-red" />
-            <span className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-red">
+        {/* «Почему это важно» — canon §5: сплошной steel + белый текст + красный акцент */}
+        {article.whyItMatters && (
+          <aside className="mb-6 rounded-2xl bg-steel p-4">
+            <span className="mb-2 block text-[10px] font-extrabold uppercase tracking-[0.15em] text-red">
               Почему это важно
             </span>
-          </div>
-          <p className="m-0 text-[15px] leading-[1.55]">
-            <b className="font-bold">250+ тыс. ИП и ООО</b> остались бы на УСН вместо вынужденного
-            перехода на ОСН с НДС 22%. Сэкономили бы суммарно{" "}
-            <b className="font-bold">~120 млрд ₽</b> за 2026 год.
-          </p>
-        </aside>
+            <p className="m-0 text-[15px] leading-[1.55] text-white">{article.whyItMatters}</p>
+          </aside>
+        )}
 
-        <h2 className="mb-3 mt-7 font-display text-xl font-extrabold">Что меняется по букве закона</h2>
-        <p className="m-0 text-[16px] leading-[1.65] text-paper">
-          В пояснительной записке Минфина предлагается с 1 января 2026 года повысить базовый порог
-          годового дохода для применения УСН с 265 до 350 млн ₽. Это первая существенная индексация
-          за три года…
-        </p>
+        {/* Тело статьи — структурированные блоки */}
+        <ArticleBody blocks={article.body} />
 
-        <blockquote className="my-7 border-l-2 border-gold pl-5">
-          <p className="m-0 font-display text-[22px] font-light italic leading-[1.3]">
-            «350 млн — это не подарок государства, а возвращение к тому, что было съедено
-            инфляцией».
-          </p>
-          <footer className="mt-3 flex items-center gap-2 text-[13px] text-mist">
-            <span className="h-7 w-7 rounded-full [background:linear-gradient(135deg,var(--color-red),var(--color-gold))]" />
-            <span>
-              <b className="text-paper">Игорь Рыбаков</b> · сооснователь Технониколь
+        {/* Реакции / закладка (per-user state — в Suspense) */}
+        <div className="mt-7">
+          <Suspense fallback={<EngagementBarFallback article={article} />}>
+            <ArticleEngagement article={article} />
+          </Suspense>
+        </div>
+
+        {/* Источники — обязательны (ToV §6: цифры/цитаты с атрибуцией) */}
+        {article.citations.length > 0 && (
+          <div className="mt-7 border-t border-fence pt-5">
+            <span className="mb-3 block text-[10px] font-extrabold uppercase tracking-[0.15em] text-haze">
+              Источники
             </span>
-          </footer>
-        </blockquote>
+            <ul className="m-0 list-none space-y-2 p-0">
+              {article.citations.map((c, i) => (
+                <li key={i}>
+                  <a
+                    href={c.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-start gap-2 text-[13px] leading-snug"
+                  >
+                    <ExternalLink size={13} strokeWidth={1.75} className="mt-0.5 shrink-0 text-haze" />
+                    <span>
+                      <span className="text-paper">{c.title}</span>
+                      {c.publisher ? <span className="text-haze"> · {c.publisher}</span> : null}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
-        <Suspense fallback={<EngagementBarFallback article={article} />}>
-          <ArticleEngagement article={article} />
-        </Suspense>
-
-        <div className="mt-7 rounded-2xl border border-gold/40 p-5 [background:linear-gradient(135deg,var(--color-steel),var(--color-night))]">
+        {/* Х10 Сообщество CTA — canon §5: steel, без градиента */}
+        <div className="mt-7 rounded-2xl bg-steel p-5">
           <span className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-gold">
             ✦ Х10 Сообщество
           </span>
-          <h3 className="mb-1.5 mt-2 font-display text-lg font-extrabold">
+          <h3 className="mb-1.5 mt-2 font-display text-lg font-extrabold text-white">
             Обсудить в своём клампе
           </h3>
-          <p className="m-0 text-[13px] text-mist">
-            34 клампа уже обсуждают эту тему. Присоединись к разговору.
+          <p className="m-0 text-[13px] text-white/70">
+            Клампы уже обсуждают деловую повестку. Присоединяйся к разговору.
           </p>
           <button
             type="button"
@@ -177,7 +176,7 @@ export default async function ArticlePage({
  * Async RSC внутри Suspense — фетчит per-user snapshot (session cookie → Bearer).
  * Без auth — fetchArticleUserState вернёт нули, bar отрисуется в guest-режиме.
  */
-async function ArticleEngagement({ article }: { article: FeedItem }) {
+async function ArticleEngagement({ article }: { article: ArticleDetail }) {
   const userState = await fetchArticleUserState(article.id);
   return (
     <EngagementBar
@@ -191,7 +190,7 @@ async function ArticleEngagement({ article }: { article: FeedItem }) {
 }
 
 /** Fallback на время загрузки user state — рендерим bar в guest-режиме. */
-function EngagementBarFallback({ article }: { article: FeedItem }) {
+function EngagementBarFallback({ article }: { article: ArticleDetail }) {
   return (
     <EngagementBar
       articleId={article.id}
@@ -205,9 +204,8 @@ function EngagementBarFallback({ article }: { article: FeedItem }) {
 
 /**
  * Hero для daily-take (brief §3.3): без обложки, фокус на авторе и цитате.
- * Аватарка автора + категория + большой курсивный заголовок-цитата.
  */
-function DailyTakeHero({ article }: { article: FeedItem }) {
+function DailyTakeHero({ article }: { article: ArticleDetail }) {
   const authorName = article.authorName ?? "Редакция";
   const initial = authorName.charAt(0);
 
@@ -229,12 +227,7 @@ function DailyTakeHero({ article }: { article: FeedItem }) {
       </div>
 
       <div className="relative pl-7">
-        <Quote
-          size={28}
-          strokeWidth={1.25}
-          className="absolute left-0 top-0 text-gold/70"
-          aria-hidden
-        />
+        <Quote size={28} strokeWidth={1.25} className="absolute left-0 top-0 text-gold/70" aria-hidden />
         <h1 className="m-0 font-display text-[26px] font-extrabold leading-[1.15] text-paper">
           {article.title}
         </h1>

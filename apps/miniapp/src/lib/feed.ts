@@ -15,10 +15,14 @@
 import {
   fetchArticle,
   fetchFeed,
+  type ApiArticle,
+  type ApiArticleBlock,
   type ApiCategory,
   type ApiFeedItem,
   type ApiTemplate,
 } from "./api";
+
+export type { ApiArticleBlock };
 
 /** brief §5 — категории первого уровня (rubrics). */
 export type FeedSection = ApiCategory;
@@ -217,10 +221,54 @@ export async function loadDailyFeed(limit = 20): Promise<FeedItem[]> {
   return FEED.slice(0, limit);
 }
 
-export async function loadArticle(slug: string): Promise<FeedItem | null> {
+/**
+ * Полная статья для читалки (brief §3): FeedItem + тело (body-блоки),
+ * «почему важно», источники, обложка (raw nullable — читалка решает рисовать
+ * картинку или чистый хедер), дата.
+ */
+export type ArticleDetail = FeedItem & {
+  whyItMatters: string | null;
+  body: ApiArticleBlock[];
+  /** Реальная обложка из БД (null = нет → читалка рисует типографский хедер). */
+  coverImageUrl: string | null;
+  citations: Array<{ url: string; title: string; publisher: string; publishedAt?: string }>;
+  audioUrl: string | null;
+  publishedAt: string | null;
+};
+
+function mapApiArticle(row: ApiArticle): ArticleDetail {
+  return {
+    ...mapApiItem(row),
+    whyItMatters: row.whyItMatters,
+    body: row.body ?? [],
+    coverImageUrl: row.coverImageUrl,
+    citations: row.citations ?? [],
+    audioUrl: row.audioUrl,
+    publishedAt: row.publishedAt,
+  };
+}
+
+/**
+ * `"use cache"` (Next 16 Cache Components): статья — статичный per-slug контент,
+ * кэшируется. Это ОБЯЗАТЕЛЬНО здесь — без кэша uncached-fetch в теле страницы
+ * читалки (вне <Suspense>) роняет рендер («blocking route»). Per-user state
+ * (реакции/закладки) грузится отдельно в Suspense (ArticleEngagement).
+ */
+export async function loadArticle(slug: string): Promise<ArticleDetail | null> {
+  "use cache";
   const api = await fetchArticle(slug);
-  if (api) return mapApiItem(api);
-  return FEED.find((i) => i.slug === slug) ?? null;
+  if (api) return mapApiArticle(api);
+  const mock = FEED.find((i) => i.slug === slug);
+  if (!mock) return null;
+  return {
+    ...mock,
+    whyItMatters: null,
+    body: [],
+    coverImageUrl: null,
+    citations: [],
+    audioUrl: null,
+    publishedAt: null,
+  };
 }
 
 // ---------- Taxes (rubric) ----------

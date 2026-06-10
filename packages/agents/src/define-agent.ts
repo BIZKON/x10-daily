@@ -56,6 +56,32 @@ export type Agent<I, O> = {
 const TOOL_NAME_PREFIX = "x10_emit_";
 
 /**
+ * Reasoning-headroom для thinking-вариантов DeepSeek (v4-flash/pro): их
+ * `reasoning_content` тратит max_tokens ПЕРЕД JSON-выводом, и на сложных промптах
+ * (полная JSON-схема + длинный вход, напр. Brevity) рассуждения съедают весь
+ * бюджет → пустой `content` → падение шага (session 24). Параметры управления
+ * reasoning (reasoning_effort / enable_thinking / chat_template_kwargs) gateway
+ * Timeweb ИГНОРИРУЕТ (проверено) — отключить thinking нельзя. Поэтому добавляем
+ * запас к maxOutputTokens на DeepSeek-пути + ретрай с удвоенным запасом на пустой
+ * content. Non-reasoning `deepseek-chat` (V3.2) лишний бюджет НЕ тратит
+ * (finish=stop) — headroom для неё бесплатен (биллится фактический usage).
+ * Gateway клампит max_tokens по капу модели (проверено: deepseek-chat принимает
+ * 14336 → finish=stop), HTTP 400 не отдаёт — кламп в коде не нужен.
+ */
+const DEEPSEEK_REASONING_HEADROOM = 8192;
+
+/**
+ * Per-request таймаут для DeepSeek-вызовов (session 24). v4-flash — reasoning-
+ * модель, а gateway Timeweb БУФЕРИЗУЕТ ответ (заголовки приходят только по
+ * завершении всей генерации — проверено: TTFB ≈ полное время), поэтому клиентский
+ * таймаут покрывает ВСЮ генерацию, а не только заголовки. Дефолтные 60s
+ * (openai-client) рубят длинные вызовы (~70 ток/с → 22K-токенный ретрай ≈ 5 мин) и
+ * молча SDK-ретраятся, чей usage мимо $-ledger. 7 мин с запасом на worst-case
+ * (maxTokens + headroom×2). Claude-путь таймаут не трогает (быстрый, 60s хватает).
+ */
+const DEEPSEEK_TIMEOUT_MS = 420_000;
+
+/**
  * defineAgent — фабрика декларативных LLM-агентов (OpenAI Chat Completions через
  * Timeweb AI Gateway). Structured output — провайдер-conditional (см. run):
  *   - Anthropic/Claude: forced tool_choice на функцию x10_emit_<name>; ответ из
@@ -108,25 +134,45 @@ export function defineAgent<I, O>(def: AgentDefinition<I, O>): Agent<I, O> {
 
       let response: OpenAI.Chat.Completions.ChatCompletion;
       let rawArgs: string;
+      /** Usage вызова, выброшенного ретраем (пустой content) — биллится, учитываем. */
+      let wastedUsage: OpenAI.Completions.CompletionUsage | undefined;
 
       if (isDeepSeek) {
         const jsonSystem =
           `${systemText}\n\nФОРМАТ ОТВЕТА (обязательно): верни СТРОГО валидный JSON-объект ` +
           "по этой JSON Schema. Только JSON — без markdown, без ```, без любого текста до или после.\n" +
           `JSON Schema:\n${JSON.stringify(outputJsonSchema)}`;
-        response = await client.chat.completions.create({
-          model,
-          max_tokens: maxTokens,
-          response_format: { type: "json_object" },
-          messages: [
-            { role: "system", content: jsonSystem },
-            { role: "user", content: userText },
-          ],
-        });
+        const callDeepSeek = (budget: number) =>
+          client.chat.completions.create(
+            {
+              model,
+              max_tokens: budget,
+              response_format: { type: "json_object" },
+              messages: [
+                { role: "system", content: jsonSystem },
+                { role: "user", content: userText },
+              ],
+            },
+            { timeout: DEEPSEEK_TIMEOUT_MS },
+          );
+        // Бюджет исчерпан reasoning'ом проявляется ДВУМЯ способами: пустой content
+        // (бюджет кончился ДО вывода) ИЛИ усечённый JSON (finish_reason="length" —
+        // бюджет кончился ПОСРЕДИ вывода; content непустой, но JSON.parse упадёт).
+        // Оба чиним одинаково — ретрай с удвоенным запасом. Срабатывает редко.
+        const isStarved = (r: typeof response) =>
+          !r.choices[0]?.message?.content || r.choices[0]?.finish_reason === "length";
+        // Thinking-headroom (см. DEEPSEEK_REASONING_HEADROOM): первый вызов с запасом;
+        // если reasoning всё же съел весь бюджет — один ретрай с удвоенным запасом.
+        response = await callDeepSeek(maxTokens + DEEPSEEK_REASONING_HEADROOM);
+        if (isStarved(response)) {
+          wastedUsage = response.usage;
+          response = await callDeepSeek(maxTokens + DEEPSEEK_REASONING_HEADROOM * 2);
+        }
         const content = response.choices[0]?.message?.content;
-        if (!content) {
+        if (!content || response.choices[0]?.finish_reason === "length") {
           throw new Error(
-            `Agent ${def.name}: модель ${model} вернула пустой content (response_format=json_object)`,
+            `Agent ${def.name}: модель ${model} вернула пустой/усечённый content даже после ретрая ` +
+              `(finish_reason=${response.choices[0]?.finish_reason}; reasoning_content вероятно исчерпал max_tokens)`,
           );
         }
         rawArgs = content;
@@ -181,8 +227,8 @@ export function defineAgent<I, O>(def: AgentDefinition<I, O>): Agent<I, O> {
         (u as { prompt_tokens_details?: { cached_tokens?: number } } | undefined)
           ?.prompt_tokens_details?.cached_tokens ?? 0;
       const usage: TokenUsage = {
-        inputTokens: u?.prompt_tokens ?? 0,
-        outputTokens: u?.completion_tokens ?? 0,
+        inputTokens: (u?.prompt_tokens ?? 0) + (wastedUsage?.prompt_tokens ?? 0),
+        outputTokens: (u?.completion_tokens ?? 0) + (wastedUsage?.completion_tokens ?? 0),
         cachedInputTokens,
       };
 

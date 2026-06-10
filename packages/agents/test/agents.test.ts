@@ -977,4 +977,166 @@ describe("DeepSeek path (response_format json_object, session 23)", () => {
     expect(call.tool_choice).toBeDefined();
     expect(call.response_format).toBeUndefined();
   });
+
+  // Thinking-headroom (session 24): reasoning-варианты DeepSeek (v4-flash/pro)
+  // тратят max_tokens на reasoning_content ПЕРЕД JSON-выводом — без запаса сложные
+  // агенты (Brevity) получали пустой content. Управление reasoning'ом gateway
+  // игнорирует, поэтому бюджет добавляется всегда на deepseek-пути.
+  it("deepseek-путь добавляет reasoning-headroom 8192 к max_tokens (Numbers: 1536→9728)", async () => {
+    const { client, spy } = mockOpenAI({
+      toolName: "x10_emit_numbers",
+      toolInput: { items: [], hasUnsourcedNumbers: false },
+      contentMode: true,
+      model: "deepseek/deepseek-v4-flash",
+    });
+    await NumbersAgent.run(
+      { text: "x", sources: [] },
+      { apiKey: "test", client, models: { HAIKU: "deepseek/deepseek-v4-flash" } },
+    );
+    expect((spy.mock.calls[0]![0] as { max_tokens: number }).max_tokens).toBe(1536 + 8192);
+  });
+
+  it("Claude-путь headroom НЕ получает (max_tokens = заявленный лимит агента)", async () => {
+    const { client, spy } = mockOpenAI({
+      toolName: "x10_emit_numbers",
+      toolInput: { items: [], hasUnsourcedNumbers: false },
+    });
+    await NumbersAgent.run({ text: "x", sources: [] }, { apiKey: "test", client });
+    expect((spy.mock.calls[0]![0] as { max_tokens: number }).max_tokens).toBe(1536);
+  });
+
+  it("пустой content → один ретрай с удвоенным headroom, результат из второго ответа", async () => {
+    const empty = {
+      id: "c1",
+      object: "chat.completion",
+      created: 0,
+      model: "deepseek/deepseek-v4-flash",
+      choices: [{ index: 0, message: { role: "assistant", content: "" }, finish_reason: "length" }],
+      usage: { prompt_tokens: 10, completion_tokens: 9728, total_tokens: 9738 },
+    };
+    const good = {
+      ...empty,
+      id: "c2",
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: JSON.stringify({ items: [], hasUnsourcedNumbers: false }),
+          },
+          finish_reason: "stop",
+        },
+      ],
+    };
+    const spy = vi.fn().mockResolvedValueOnce(empty).mockResolvedValueOnce(good);
+    const client = { chat: { completions: { create: spy } } } as unknown as Parameters<
+      typeof NumbersAgent.run
+    >[1]["client"];
+    const result = await NumbersAgent.run(
+      { text: "x", sources: [] },
+      { apiKey: "test", client, models: { HAIKU: "deepseek/deepseek-v4-flash" } },
+    );
+    expect(result.output.hasUnsourcedNumbers).toBe(false);
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect((spy.mock.calls[0]![0] as { max_tokens: number }).max_tokens).toBe(1536 + 8192);
+    expect((spy.mock.calls[1]![0] as { max_tokens: number }).max_tokens).toBe(1536 + 16384);
+    // Выброшенный (пустой) вызов биллится — usage суммирует ОБА вызова,
+    // иначе $-ledger недосчитывает расход ретрая.
+    expect(result.usage.inputTokens).toBe(10 + 10);
+    expect(result.usage.outputTokens).toBe(9728 + 9728);
+  });
+
+  it("пустой content и после ретрая → понятная ошибка про reasoning/max_tokens", async () => {
+    const empty = {
+      id: "c1",
+      object: "chat.completion",
+      created: 0,
+      model: "deepseek/deepseek-v4-flash",
+      choices: [{ index: 0, message: { role: "assistant", content: "" }, finish_reason: "length" }],
+      usage: { prompt_tokens: 10, completion_tokens: 17920, total_tokens: 17930 },
+    };
+    const spy = vi.fn().mockResolvedValue(empty);
+    const client = { chat: { completions: { create: spy } } } as unknown as Parameters<
+      typeof NumbersAgent.run
+    >[1]["client"];
+    await expect(
+      NumbersAgent.run(
+        { text: "x", sources: [] },
+        { apiKey: "test", client, models: { HAIKU: "deepseek/deepseek-v4-flash" } },
+      ),
+    ).rejects.toThrow(/пустой\/усечённый content даже после ретрая/);
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  // Ключевой кейс reasoning-голодания: content НЕпустой, но JSON оборван по бюджету
+  // (finish_reason="length") → без проверки finish_reason ретрай бы НЕ сработал и
+  // JSON.parse упал бы. Здесь ретрай должен сработать как на пустом content.
+  it("усечённый content (finish_reason=length, непустой) → ретрай с удвоенным headroom", async () => {
+    const truncated = {
+      id: "c1",
+      object: "chat.completion",
+      created: 0,
+      model: "deepseek/deepseek-v4-flash",
+      choices: [
+        {
+          index: 0,
+          message: { role: "assistant", content: '{"items": [{"value": "21' },
+          finish_reason: "length",
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 9728, total_tokens: 9738 },
+    };
+    const good = {
+      ...truncated,
+      id: "c2",
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: JSON.stringify({ items: [], hasUnsourcedNumbers: false }),
+          },
+          finish_reason: "stop",
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 500, total_tokens: 510 },
+    };
+    const spy = vi.fn().mockResolvedValueOnce(truncated).mockResolvedValueOnce(good);
+    const client = { chat: { completions: { create: spy } } } as unknown as Parameters<
+      typeof NumbersAgent.run
+    >[1]["client"];
+    const result = await NumbersAgent.run(
+      { text: "x", sources: [] },
+      { apiKey: "test", client, models: { HAIKU: "deepseek/deepseek-v4-flash" } },
+    );
+    expect(result.output.hasUnsourcedNumbers).toBe(false);
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect((spy.mock.calls[1]![0] as { max_tokens: number }).max_tokens).toBe(1536 + 16384);
+    // usage обрезанного (wasted) вызова тоже учтён в $-ledger: 9728 + 500.
+    expect(result.usage.outputTokens).toBe(9728 + 500);
+  });
+
+  it("deepseek-путь шлёт per-request timeout (420s, буферизация gateway против медленного reasoning)", async () => {
+    const { client, spy } = mockOpenAI({
+      toolName: "x10_emit_numbers",
+      toolInput: { items: [], hasUnsourcedNumbers: false },
+      contentMode: true,
+      model: "deepseek/deepseek-v4-flash",
+    });
+    await NumbersAgent.run(
+      { text: "x", sources: [] },
+      { apiKey: "test", client, models: { HAIKU: "deepseek/deepseek-v4-flash" } },
+    );
+    // create(body, options) — таймаут во ВТОРОМ аргументе.
+    expect((spy.mock.calls[0]![1] as { timeout?: number } | undefined)?.timeout).toBe(420_000);
+  });
+
+  it("Claude-путь per-request timeout НЕ шлёт (быстрый, дефолт 60s клиента)", async () => {
+    const { client, spy } = mockOpenAI({
+      toolName: "x10_emit_numbers",
+      toolInput: { items: [], hasUnsourcedNumbers: false },
+    });
+    await NumbersAgent.run({ text: "x", sources: [] }, { apiKey: "test", client });
+    expect(spy.mock.calls[0]![1]).toBeUndefined();
+  });
 });

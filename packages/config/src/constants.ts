@@ -41,20 +41,26 @@ export const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   [MODELS.SONNET]: { ...COST_PER_MTOK.SONNET },
   [MODELS.HAIKU]: { ...COST_PER_MTOK.HAIKU },
   // DeepSeek через Timeweb AI Gateway (session 23) — РФ-резидентно, тот же прокси
-  // и DPA, что и Claude (masker остаётся passthrough).
-  // ⚠️ ПРОВЕРЕНО ЖИВЬЁМ: `deepseek-v4-flash`/`-v4-pro` в gateway отдаются в
-  // THINKING-режиме, который НЕ поддерживает forced tool_choice (HTTP 400 "Thinking
-  // mode does not support this tool_choice") — а на нём держатся ВСЕ наши агенты.
-  // РАБОЧАЯ модель — `deepseek/deepseek-chat` (= V4 Flash NON-thinking, по докам
-  // DeepSeek): forced tool_choice ок, reasoning_content нет, быстрее/дешевле. Именно
-  // её ставим в MODEL_* при активации DeepSeek. Цена — ОЦЕНКА (тариф V4 Flash): LK
-  // показал V4 Pro 234.9/469.8 ₽/М; Flash ≈ 0.32× → ~76/151 ₽/М; USD по курсу 80 ₽/$1.
-  // Уточнить точную цену deepseek-chat в LK Timeweb.
-  "deepseek/deepseek-chat": { input: 0.95, output: 1.89 },
-  // Thinking-варианты — для справки. СЕЙЧАС несовместимы с нашим forced tool_choice
-  // (нужен переход define-agent на response_format json_schema). Не использовать в MODEL_*.
-  "deepseek/deepseek-v4-flash": { input: 0.95, output: 1.89 },
-  "deepseek/deepseek-v4-pro": { input: 2.94, output: 5.87 },
+  // и DPA, что и Claude (masker остаётся passthrough). Цены — реальный тариф LK
+  // Timeweb AI Gateway, ₽/М ÷ курс ЦБ 71.73 ₽/$ (на 2026-06-10). cost.ts считает
+  // по фактической модели (modelUsed).
+  //
+  // ⚠️ ИДЕНТИЧНОСТЬ (из API cloud-ai/models, session 24 — handoff s23 ОШИБАЛСЯ):
+  //   deepseek/deepseek-chat     = «DeepSeek V3.2» (id 19, non-reasoning) — НАША рабочая модель в MODEL_*.
+  //   deepseek/deepseek-v4-flash = «DeepSeek V4 Flash» (id 129 non-think / 131 think) — ДРУГАЯ, новее.
+  //   deepseek/deepseek-v4-pro   = «DeepSeek V4 Pro» (id 133/135).
+  //   (Раньше считали «deepseek-chat = V4 Flash non-thinking» — НЕВЕРНО.)
+  // v4-flash ВАЛИДИРОВАН на реальной цепочке (s24, 17/17): response_format json_object
+  // работает, но это reasoning-модель — нужен thinking-headroom в define-agent (иначе
+  // reasoning_content съедает max_tokens → пустой content; Brevity падал). Латентность
+  // 3-10× выше V3.2 (social до ~4 мин). reasoning-токены биллятся как output.
+  //
+  // ⚠️ deepseek-chat (V3.2): цена — ПРОКСИ от v4-flash (строку V3.2 в LK не сверили).
+  // v4-flash 19/38 ₽/М — ПОДТВЕРЖДЁН скрином LK (контекст 1M, выход до 384K).
+  "deepseek/deepseek-chat": { input: 0.265, output: 0.53 },
+  "deepseek/deepseek-v4-flash": { input: 0.265, output: 0.53 },
+  // v4-pro — ОЦЕНКА (LK ≈ 234.9/469.8 ₽/М ÷ 71.73), в LK не пересверена; не используется.
+  "deepseek/deepseek-v4-pro": { input: 3.27, output: 6.55 },
 };
 
 export const PERF_BUDGETS = {

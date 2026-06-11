@@ -1,11 +1,4 @@
-import {
-  index,
-  pgTable,
-  timestamp,
-  uniqueIndex,
-  uuid,
-  varchar,
-} from "drizzle-orm/pg-core";
+import { index, pgTable, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 import { id } from "./_shared";
 import { sources } from "./sources";
 
@@ -31,9 +24,7 @@ export const seenItems = pgTable(
     externalId: varchar("external_id", { length: 256 }).notNull(),
     /** SimHash64 hex (16 символов). NULL допустим если fingerprint считать пока нечем. */
     fingerprint: varchar("fingerprint", { length: 64 }),
-    firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("seen_items_source_extid_uidx").on(t.sourceId, t.externalId),

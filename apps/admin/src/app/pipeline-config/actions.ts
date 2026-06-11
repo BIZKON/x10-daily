@@ -1,13 +1,13 @@
 "use server";
 
+import {
+  type AdminPipelineConfig,
+  PIPELINE_AGENTS,
+  type PipelineAgent,
+  adminMutate,
+} from "@/lib/api";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import {
-  adminMutate,
-  PIPELINE_AGENTS,
-  type AdminPipelineConfig,
-  type PipelineAgent,
-} from "@/lib/api";
 
 function isAgent(v: string): v is PipelineAgent {
   return (PIPELINE_AGENTS as readonly string[]).includes(v);

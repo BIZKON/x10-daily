@@ -60,10 +60,7 @@ export const events = pgTable(
     ticketPriceFrom: integer("ticket_price_from"),
     ticketUrl: text("ticket_url"),
     /** Спикеры — массив authors.id. Хранится как jsonb для совместимости с pgvector miragtions. */
-    speakerIds: jsonb("speaker_ids")
-      .$type<string[]>()
-      .notNull()
-      .default(sql`'[]'::jsonb`),
+    speakerIds: jsonb("speaker_ids").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     description: text("description").notNull(),
     coverImageUrl: text("cover_image_url"),
     registeredCount: integer("registered_count").notNull().default(0),

@@ -13,14 +13,14 @@
  * - imageUrl, reactions, comments, hot — заглушки (в БД пока нет колонок)
  */
 import {
-  fetchArticle,
-  fetchDigest,
-  fetchFeed,
   type ApiArticle,
   type ApiArticleBlock,
   type ApiCategory,
   type ApiFeedItem,
   type ApiTemplate,
+  fetchArticle,
+  fetchDigest,
+  fetchFeed,
 } from "./api";
 
 export type { ApiArticleBlock };
@@ -152,10 +152,8 @@ const FEED: FeedItem[] = [
     category: "НАЛОГИ",
     template: "card-news",
     title: "Новый порог УСН 350 млн: кому грозит, кому выгодно",
-    excerpt:
-      "Разобрали с налоговым адвокатом, что меняется и какие три шага сделать сейчас.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&q=80",
+    excerpt: "Разобрали с налоговым адвокатом, что меняется и какие три шага сделать сейчас.",
+    imageUrl: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&q=80",
     readMinutes: 12,
     reactions: 142,
     reactionBreakdown: { fire: 88, insight: 39, question: 15 },
@@ -171,10 +169,8 @@ const FEED: FeedItem[] = [
     category: "РЫБАКОВ ГОВОРИТ",
     template: "daily-take",
     title: "Почему я не верю в стартап-инвестиции в 2026",
-    excerpt:
-      "«Хайп-экономика заканчивается. Что покупать вместо стартапов».",
-    imageUrl:
-      "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=800&q=80",
+    excerpt: "«Хайп-экономика заканчивается. Что покупать вместо стартапов».",
+    imageUrl: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=800&q=80",
     readMinutes: 1,
     reactions: 891,
     reactionBreakdown: { fire: 612, insight: 187, question: 92 },
@@ -190,10 +186,8 @@ const FEED: FeedItem[] = [
     category: "ДЕНЬГИ",
     template: "card-news",
     title: "Рубль по 100: три сценария на лето",
-    excerpt:
-      "Что говорят валютные стратеги Сбера, Тинькоффа и независимые аналитики.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1633158829585-23ba8f7c8caf?w=800&q=80",
+    excerpt: "Что говорят валютные стратеги Сбера, Тинькоффа и независимые аналитики.",
+    imageUrl: "https://images.unsplash.com/photo-1633158829585-23ba8f7c8caf?w=800&q=80",
     readMinutes: 4,
     reactions: 67,
     reactionBreakdown: { fire: 28, insight: 24, question: 15 },
@@ -211,8 +205,7 @@ const FEED: FeedItem[] = [
     title: "Wildberries собирает логистическую империю. Разбор сделки на три такси-сервиса",
     excerpt:
       "Маркетплейс купил три такси за квартал. Что это даёт WB, что теряют продавцы, и какие 5 уроков для российского ритейла.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&q=80",
     readMinutes: 9,
     reactions: 234,
     reactionBreakdown: { fire: 128, insight: 71, question: 35 },
@@ -331,8 +324,18 @@ export type TaxesItem = {
 
 export const TAXES_ITEMS: TaxesItem[] = [
   { tag: "РАЗБОР", title: "УСН 350 млн: 3 шага на этой неделе", minutes: 8, hot: true },
-  { tag: "ИНСТРУКЦИЯ", title: "Как платить меньше дивидендного НДФЛ в 2026", minutes: 12, hot: false },
-  { tag: "НОВОСТЬ", title: "ФНС начала рассылать требования по самозанятым", minutes: 4, hot: false },
+  {
+    tag: "ИНСТРУКЦИЯ",
+    title: "Как платить меньше дивидендного НДФЛ в 2026",
+    minutes: 12,
+    hot: false,
+  },
+  {
+    tag: "НОВОСТЬ",
+    title: "ФНС начала рассылать требования по самозанятым",
+    minutes: 4,
+    hot: false,
+  },
   { tag: "КЕЙС", title: "Производство в Беларуси: реальные цифры", minutes: 15, hot: true },
   { tag: "ГИД", title: "Налоговый календарь 2026: 18 ключевых дат", minutes: 6, hot: false },
 ];
@@ -362,8 +365,7 @@ export const VIDEOS: VideoItem[] = [
     views: "847K",
     date: "23 мая",
     duration: "14:22",
-    imageUrl:
-      "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&q=80",
     live: false,
   },
   {
@@ -371,8 +373,7 @@ export const VIDEOS: VideoItem[] = [
     views: "1.2M",
     date: "21 мая",
     duration: "8:45",
-    imageUrl:
-      "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=800&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=800&q=80",
     live: false,
   },
   {
@@ -380,8 +381,7 @@ export const VIDEOS: VideoItem[] = [
     views: "12K",
     date: "сейчас",
     duration: "LIVE",
-    imageUrl:
-      "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&q=80",
     live: true,
   },
   {
@@ -389,8 +389,7 @@ export const VIDEOS: VideoItem[] = [
     views: "534K",
     date: "19 мая",
     duration: "21:08",
-    imageUrl:
-      "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&q=80",
     live: false,
   },
 ];

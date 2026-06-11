@@ -7,7 +7,7 @@
  *   docker cp scripts/post-one-now.mts x10-daily-pipeline-1:/app/apps/workers/pipeline/_post1.mts
  *   docker exec -w /app/apps/workers/pipeline x10-daily-pipeline-1 node --import tsx _post1.mts
  */
-import { and, articles, channels, createDb, eq, isNull, asc, gte } from "@x10/db";
+import { and, articles, asc, channels, createDb, eq, gte, isNull } from "@x10/db";
 import { readBindingsFromEnv } from "./src/bindings";
 import { loadPipelineEnv } from "./src/env";
 import { markChannelPosted, sendToChannel } from "./src/lib/post-channel";
@@ -27,7 +27,11 @@ async function main() {
     })
     .from(channels)
     .where(
-      and(eq(channels.channel, "tg"), isNull(channels.postedAt), gte(channels.createdAt, staleBefore)),
+      and(
+        eq(channels.channel, "tg"),
+        isNull(channels.postedAt),
+        gte(channels.createdAt, staleBefore),
+      ),
     )
     .orderBy(asc(channels.createdAt))
     .limit(1);
@@ -38,7 +42,7 @@ async function main() {
   }
 
   console.log("=== ВЫБРАНА статья ===", row.articleId);
-  console.log("=== ТЕКСТ (что уйдёт) ===\n" + row.text + "\n=== /ТЕКСТ ===");
+  console.log(`=== ТЕКСТ (что уйдёт) ===\n${row.text}\n=== /ТЕКСТ ===`);
 
   const outcome = await sendToChannel(env, {
     channel: "tg",
@@ -64,7 +68,9 @@ async function main() {
     .set({ status: "published", publishedAt: new Date() })
     .where(eq(articles.id, row.articleId));
 
-  console.log(`✅ ОПУБЛИКОВАНО в Telegram, message_id=${outcome.postRef}, posted_at + status=published проставлены.`);
+  console.log(
+    `✅ ОПУБЛИКОВАНО в Telegram, message_id=${outcome.postRef}, posted_at + status=published проставлены.`,
+  );
 }
 
 main().catch((e) => {

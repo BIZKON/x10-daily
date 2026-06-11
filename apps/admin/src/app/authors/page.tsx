@@ -1,7 +1,7 @@
+import { fetchAdminAuthors } from "@/lib/api";
 import { Plus, Star } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import { fetchAdminAuthors } from "@/lib/api";
 
 // Cache Components (Next 16): async fetch ДОЛЖЕН быть внутри <Suspense>.
 export default function AuthorsPage() {
@@ -53,7 +53,8 @@ async function AuthorsContent() {
                   className="grid h-12 w-12 shrink-0 place-items-center rounded-full font-display text-base font-extrabold text-night"
                   style={{
                     background:
-                      a.bylineColor ?? "linear-gradient(135deg, var(--color-red), var(--color-gold))",
+                      a.bylineColor ??
+                      "linear-gradient(135deg, var(--color-red), var(--color-gold))",
                   }}
                 >
                   {a.name.charAt(0)}

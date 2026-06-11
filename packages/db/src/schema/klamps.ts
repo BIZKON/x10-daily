@@ -1,12 +1,4 @@
-import {
-  boolean,
-  index,
-  integer,
-  pgTable,
-  text,
-  uniqueIndex,
-  varchar,
-} from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, text, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { id, timestamps } from "./_shared";
 
 /**

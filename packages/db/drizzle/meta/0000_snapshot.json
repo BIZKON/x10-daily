@@ -410,12 +410,8 @@
           "name": "ingest_items_source_id_sources_id_fk",
           "tableFrom": "ingest_items",
           "tableTo": "sources",
-          "columnsFrom": [
-            "source_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -646,12 +642,8 @@
           "name": "articles_author_id_users_id_fk",
           "tableFrom": "articles",
           "tableTo": "users",
-          "columnsFrom": [
-            "author_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["author_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -659,12 +651,8 @@
           "name": "articles_editor_id_users_id_fk",
           "tableFrom": "articles",
           "tableTo": "users",
-          "columnsFrom": [
-            "editor_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["editor_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -909,12 +897,8 @@
           "name": "pipeline_runs_article_id_articles_id_fk",
           "tableFrom": "pipeline_runs",
           "tableTo": "articles",
-          "columnsFrom": [
-            "article_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["article_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1054,12 +1038,8 @@
           "name": "subscriptions_user_id_users_id_fk",
           "tableFrom": "subscriptions",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1149,12 +1129,8 @@
           "name": "article_embeddings_article_id_articles_id_fk",
           "tableFrom": "article_embeddings",
           "tableTo": "articles",
-          "columnsFrom": [
-            "article_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["article_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1170,78 +1146,37 @@
     "public.user_platform": {
       "name": "user_platform",
       "schema": "public",
-      "values": [
-        "telegram",
-        "max",
-        "web"
-      ]
+      "values": ["telegram", "max", "web"]
     },
     "public.user_role": {
       "name": "user_role",
       "schema": "public",
-      "values": [
-        "reader",
-        "subscriber",
-        "author",
-        "editor",
-        "admin"
-      ]
+      "values": ["reader", "subscriber", "author", "editor", "admin"]
     },
     "public.source_kind": {
       "name": "source_kind",
       "schema": "public",
-      "values": [
-        "rss",
-        "api",
-        "scrape",
-        "telegram",
-        "manual"
-      ]
+      "values": ["rss", "api", "scrape", "telegram", "manual"]
     },
     "public.source_tier": {
       "name": "source_tier",
       "schema": "public",
-      "values": [
-        "primary",
-        "secondary",
-        "fringe"
-      ]
+      "values": ["primary", "secondary", "fringe"]
     },
     "public.ingest_status": {
       "name": "ingest_status",
       "schema": "public",
-      "values": [
-        "fetched",
-        "deduped",
-        "selected",
-        "dropped",
-        "errored"
-      ]
+      "values": ["fetched", "deduped", "selected", "dropped", "errored"]
     },
     "public.article_section": {
       "name": "article_section",
       "schema": "public",
-      "values": [
-        "main",
-        "numbers",
-        "people",
-        "playbook",
-        "weekend",
-        "longread",
-        "newsletter"
-      ]
+      "values": ["main", "numbers", "people", "playbook", "weekend", "longread", "newsletter"]
     },
     "public.article_status": {
       "name": "article_status",
       "schema": "public",
-      "values": [
-        "draft",
-        "in_pipeline",
-        "ready",
-        "scheduled",
-        "published",
-        "archived"
-      ]
+      "values": ["draft", "in_pipeline", "ready", "scheduled", "published", "archived"]
     },
     "public.agent_kind": {
       "name": "agent_kind",
@@ -1264,42 +1199,22 @@
     "public.run_status": {
       "name": "run_status",
       "schema": "public",
-      "values": [
-        "queued",
-        "running",
-        "succeeded",
-        "failed",
-        "halted",
-        "skipped"
-      ]
+      "values": ["queued", "running", "succeeded", "failed", "halted", "skipped"]
     },
     "public.subscription_provider": {
       "name": "subscription_provider",
       "schema": "public",
-      "values": [
-        "telegram_stars",
-        "yookassa",
-        "manual"
-      ]
+      "values": ["telegram_stars", "yookassa", "manual"]
     },
     "public.subscription_status": {
       "name": "subscription_status",
       "schema": "public",
-      "values": [
-        "active",
-        "past_due",
-        "cancelled",
-        "trialing"
-      ]
+      "values": ["active", "past_due", "cancelled", "trialing"]
     },
     "public.subscription_tier": {
       "name": "subscription_tier",
       "schema": "public",
-      "values": [
-        "free",
-        "paid",
-        "premium"
-      ]
+      "values": ["free", "paid", "premium"]
     }
   },
   "schemas": {},

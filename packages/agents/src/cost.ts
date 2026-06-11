@@ -22,8 +22,7 @@ export function calculateCostUsd(tier: ModelTier, usage: TokenUsage, modelId?: s
       rate = byModel;
     } else {
       console.warn(
-        `calculateCostUsd: нет тарифа для модели "${modelId}" — fallback на tier ${tier}. ` +
-          "Добавь в MODEL_COSTS (@x10/config/constants.ts), иначе $-ledger неточен.",
+        `calculateCostUsd: нет тарифа для модели "${modelId}" — fallback на tier ${tier}. Добавь в MODEL_COSTS (@x10/config/constants.ts), иначе $-ledger неточен.`,
       );
     }
   }

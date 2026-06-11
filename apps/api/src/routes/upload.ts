@@ -123,7 +123,7 @@ function randomString(len: number): string {
   let out = "";
   const bytes = new Uint8Array(len);
   crypto.getRandomValues(bytes);
-  for (let i = 0; i < len; i++) out += chars[bytes[i]! % chars.length];
+  for (const b of bytes) out += chars[b % chars.length];
   return out;
 }
 
@@ -205,10 +205,7 @@ export const uploadRoute = new Hono<AppEnv>().post("/", async (c) => {
     return c.json({ error: "empty_file" }, 400);
   }
   if (file.size > MAX_BYTES) {
-    return c.json(
-      { error: "file_too_large", maxBytes: MAX_BYTES, actualBytes: file.size },
-      413,
-    );
+    return c.json({ error: "file_too_large", maxBytes: MAX_BYTES, actualBytes: file.size }, 413);
   }
 
   // HIGH-7: финальная quota check с учётом file.size. Count уже OK из preCheck,
@@ -234,10 +231,7 @@ export const uploadRoute = new Hono<AppEnv>().post("/", async (c) => {
   const mime = file.type.toLowerCase();
   const declaredExt = ALLOWED_MIME[mime];
   if (!declaredExt) {
-    return c.json(
-      { error: "unsupported_mime", mime, allowed: Object.keys(ALLOWED_MIME) },
-      415,
-    );
+    return c.json({ error: "unsupported_mime", mime, allowed: Object.keys(ALLOWED_MIME) }, 415);
   }
 
   // MEDIUM-2: магические байты должны совпадать с заявленным MIME.
@@ -253,8 +247,7 @@ export const uploadRoute = new Hono<AppEnv>().post("/", async (c) => {
         error: "mime_signature_mismatch",
         mime,
         detected,
-        message:
-          "Magic bytes файла не совпадают с Content-Type. Не пытайтесь спуфить MIME.",
+        message: "Magic bytes файла не совпадают с Content-Type. Не пытайтесь спуфить MIME.",
       },
       415,
     );

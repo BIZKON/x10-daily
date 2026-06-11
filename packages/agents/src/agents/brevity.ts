@@ -28,16 +28,17 @@ function buildSystem(template: DraftTemplate): string {
       : `${minutes(limits.READ_SECONDS_MIN)}-${minutes(limits.READ_SECONDS_MAX)} минут`;
 
   const templateRules: Record<DraftTemplate, string> = {
-    "card-news": `Шаблон card-news — режь агрессивно. Каждый абзац несёт цифру или конкретный факт.`,
+    "card-news":
+      "Шаблон card-news — режь агрессивно. Каждый абзац несёт цифру или конкретный факт.",
     "deep-dive":
-      `Шаблон deep-dive — режь МЯГКО. Структура «3-5 уроков» обязана сохраниться. ` +
+      "Шаблон deep-dive — режь МЯГКО. Структура «3-5 уроков» обязана сохраниться. " +
       `Удаляй только воду в paragraph'ах, повторы. НЕ удаляй callouts с «уроками».`,
     "daily-take":
-      `Шаблон daily-take — режь жёстко. Авторский голос (от первого лица) сохрани. ` +
-      `Структура Cite→Opinion→Implication обязательна. Никаких numbers/quote/callouts.`,
+      "Шаблон daily-take — режь жёстко. Авторский голос (от первого лица) сохрани. " +
+      "Структура Cite→Opinion→Implication обязательна. Никаких numbers/quote/callouts.",
     guide:
-      `Шаблон guide — НЕ удаляй шаги list ordered=true. Сжимай только описания в шагах. ` +
-      `Cohмpon mistakes (callout yes-but) и Resources (callout what-next) обязательны.`,
+      "Шаблон guide — НЕ удаляй шаги list ordered=true. Сжимай только описания в шагах. " +
+      "Cohмpon mistakes (callout yes-but) и Resources (callout what-next) обязательны.",
   };
 
   return `Ты — BrevityAgent редакции Х10 Daily. Получаешь готовый по тону draft и сжимаешь до лимитов шаблона.
@@ -99,7 +100,7 @@ export const BrevityAgent = {
   tier: "SONNET" as const,
   run(
     input: z.infer<typeof inputSchema>,
-    ctx: Parameters<typeof agentByTemplate["card-news"]["run"]>[1],
+    ctx: Parameters<(typeof agentByTemplate)["card-news"]["run"]>[1],
   ) {
     const template = (input.template ?? "card-news") as DraftTemplate;
     return agentByTemplate[template].run(input, ctx);

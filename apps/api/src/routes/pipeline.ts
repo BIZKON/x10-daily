@@ -15,9 +15,7 @@ const runSchema = z.object({
   topic: z.string().min(1),
   context: z.string().min(1),
   sources: z.array(sourceRefSchema).min(1),
-  section: z
-    .enum(["main", "numbers", "people", "playbook", "weekend", "longread"])
-    .optional(),
+  section: z.enum(["main", "numbers", "people", "playbook", "weekend", "longread"]).optional(),
   authorName: z.string().nullable().optional(),
 });
 

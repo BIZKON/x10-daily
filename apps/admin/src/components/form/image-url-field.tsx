@@ -1,8 +1,8 @@
 "use client";
 
+import { uploadImage } from "@/app/upload-action";
 import { Image as ImageIcon, Loader2, Upload, X } from "lucide-react";
 import { useId, useRef, useState, useTransition } from "react";
-import { uploadImage } from "@/app/upload-action";
 
 /**
  * Combo-поле для URL изображения: текстовый input + загрузка с диска.

@@ -1,6 +1,6 @@
 import { customType, index, integer, pgTable, uuid, varchar } from "drizzle-orm/pg-core";
-import { articles } from "./articles";
 import { id, timestamps } from "./_shared";
+import { articles } from "./articles";
 
 const vector = (name: string, dimensions: number) =>
   customType<{ data: number[]; driverData: string }>({

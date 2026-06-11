@@ -19,12 +19,7 @@ export function DigestForm({
   return (
     <form action={action} className="space-y-4">
       <Field label="Дата выпуска (YYYY-MM-DD)" required hint="Уникальная — один digest на дату.">
-        <TextInput
-          name="issueDate"
-          type="date"
-          defaultValue={defaults?.issueDate ?? ""}
-          required
-        />
+        <TextInput name="issueDate" type="date" defaultValue={defaults?.issueDate ?? ""} required />
       </Field>
 
       <Field label="Intro" required hint="Приветствие + дата. 1-2 предложения.">
@@ -45,10 +40,7 @@ export function DigestForm({
         />
       </Field>
 
-      <Field
-        label="Rybakov take (JSON)"
-        hint='Опционально: {"quote": "...", "context": "..."}'
-      >
+      <Field label="Rybakov take (JSON)" hint='Опционально: {"quote": "...", "context": "..."}'>
         <TextArea
           name="rybakovTake"
           defaultValue={defaults?.rybakovTake ? JSON.stringify(defaults.rybakovTake, null, 2) : ""}

@@ -89,7 +89,12 @@ async function probe(model) {
   }
   const ms = Date.now() - t0;
   if (!res.ok) {
-    return { model, ok: false, reason: `HTTP ${res.status}: ${JSON.stringify(json).slice(0, 220)}`, ms };
+    return {
+      model,
+      ok: false,
+      reason: `HTTP ${res.status}: ${JSON.stringify(json).slice(0, 220)}`,
+      ms,
+    };
   }
   const choice = json.choices?.[0];
   const toolCall = choice?.message?.tool_calls?.[0];
@@ -98,9 +103,7 @@ async function probe(model) {
     return {
       model,
       ok: false,
-      reason:
-        `пустой tool_call (finish=${choice?.finish_reason}, reasoning_content=${hasReasoning}). ` +
-        "Reasoning мог съесть max_tokens — попробуй VALIDATE_MAX_TOKENS=4096 или non-thinking-вариант.",
+      reason: `пустой tool_call (finish=${choice?.finish_reason}, reasoning_content=${hasReasoning}). Reasoning мог съесть max_tokens — попробуй VALIDATE_MAX_TOKENS=4096 или non-thinking-вариант.`,
       ms,
       usage: json.usage,
     };
@@ -109,7 +112,12 @@ async function probe(model) {
   try {
     args = JSON.parse(toolCall.function.arguments);
   } catch {
-    return { model, ok: false, reason: `arguments не JSON: ${toolCall.function.arguments.slice(0, 160)}`, ms };
+    return {
+      model,
+      ok: false,
+      reason: `arguments не JSON: ${toolCall.function.arguments.slice(0, 160)}`,
+      ms,
+    };
   }
   if (!["accept", "reject", "duplicate"].includes(args.decision)) {
     return { model, ok: false, reason: `decision вне enum: ${JSON.stringify(args.decision)}`, ms };
@@ -135,5 +143,7 @@ for (const m of models) {
     console.error(`❌ ${m}: ${r.reason} (${r.ms}мс)`);
   }
 }
-console.log(allOk ? "\nИТОГ: PASS — можно включать модель в проде." : "\nИТОГ: FAIL — не включать до фикса.");
+console.log(
+  allOk ? "\nИТОГ: PASS — можно включать модель в проде." : "\nИТОГ: FAIL — не включать до фикса.",
+);
 process.exit(allOk ? 0 : 1);

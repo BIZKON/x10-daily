@@ -183,7 +183,10 @@ export function createDrainPostSlotsFunction(
           // публикации в ленте, иначе TG-постинг сдвигал бы её в топ фида.
           await db
             .update(articles)
-            .set({ status: "published", publishedAt: sql`coalesce(${articles.publishedAt}, now())` })
+            .set({
+              status: "published",
+              publishedAt: sql`coalesce(${articles.publishedAt}, now())`,
+            })
             .where(eq(articles.id, articleId));
           return { published: true };
         });

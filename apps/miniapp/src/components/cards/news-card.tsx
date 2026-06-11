@@ -1,7 +1,7 @@
+import type { FeedItem } from "@/lib/feed";
 import { Bookmark, Flame, Heart, MessageCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import type { FeedItem } from "@/lib/feed";
 
 /**
  * NewsCard — brief §3.1 (card-news).

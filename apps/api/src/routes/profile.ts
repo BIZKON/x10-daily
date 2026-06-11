@@ -1,14 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import {
-  and,
-  articles,
-  bookmarks,
-  desc,
-  eq,
-  gte,
-  sql,
-  userReadingHistory,
-} from "@x10/db";
+import { and, articles, bookmarks, desc, eq, gte, sql, userReadingHistory } from "@x10/db";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../app";
@@ -135,7 +126,9 @@ export const profileRoute = new Hono<AppEnv>()
             gte(userReadingHistory.lastReadAt, sql`now() - interval '7 days'`),
           ),
         )
-        .groupBy(sql`to_char(${userReadingHistory.lastReadAt} at time zone 'Europe/Moscow', 'YYYY-MM-DD')`),
+        .groupBy(
+          sql`to_char(${userReadingHistory.lastReadAt} at time zone 'Europe/Moscow', 'YYYY-MM-DD')`,
+        ),
     ]);
 
     const bookmarksTotal = bookmarksAgg[0]?.count ?? 0;

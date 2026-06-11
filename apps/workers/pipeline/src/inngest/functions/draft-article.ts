@@ -13,8 +13,8 @@ import {
 import { channels, createDb } from "@x10/db";
 import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
-import { modelsFromEnv } from "../../lib/agent-context";
 import { DEFAULT_SECTION, DEFAULT_TEMPLATE, topicIngestedEvent } from "../../events";
+import { modelsFromEnv } from "../../lib/agent-context";
 import { getTodaySpendUsd, mskDayString, recordRun } from "../../lib/cost-ledger";
 import { deliverOpsAlert } from "../../lib/ops-alert";
 import { cleanPostText } from "../../lib/text";
@@ -71,9 +71,7 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
       if (budget.spentUsd >= env.DAILY_BUDGET_USD) {
         await step.run("budget-exhausted-alert", async () => {
           const db = createDb(env.DATABASE_URL);
-          const message =
-            `🛑 X10 pipeline: дневной бюджет исчерпан — $${budget.spentUsd.toFixed(2)} ≥ cap $${env.DAILY_BUDGET_USD}. ` +
-            "Драфт статей остановлен до полуночи МСК. Гейт (Haiku) продолжает работать.";
+          const message = `🛑 X10 pipeline: дневной бюджет исчерпан — $${budget.spentUsd.toFixed(2)} ≥ cap $${env.DAILY_BUDGET_USD}. Драфт статей остановлен до полуночи МСК. Гейт (Haiku) продолжает работать.`;
           // M4: claim + быстрая попытка доставки. Провал send → строка остаётся
           // в очереди, cron retry-ops-alerts дослыает (алерт не теряется молча).
           return deliverOpsAlert(db, env, {

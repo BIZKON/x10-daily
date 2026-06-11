@@ -1,7 +1,7 @@
+import type { FeedItem } from "@/lib/feed";
 import { ArrowRight, BookOpen, Flame } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import type { FeedItem } from "@/lib/feed";
 
 /**
  * DeepDiveCard — brief §3.2 (deep-dive).

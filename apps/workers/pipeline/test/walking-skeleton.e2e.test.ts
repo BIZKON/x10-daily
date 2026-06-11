@@ -279,6 +279,7 @@ function makeTestDb() {
           persistRow();
           return [{ id: "mock-row" }];
         },
+        // biome-ignore lint/suspicious/noThenProperty: мок имитирует thenable query-builder Drizzle (await builder)
         then(onFulfilled, onRejected) {
           try {
             persistRow();

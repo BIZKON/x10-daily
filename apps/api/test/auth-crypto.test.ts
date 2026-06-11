@@ -10,8 +10,8 @@
  */
 import { describe, expect, it } from "vitest";
 import { verifyInitData } from "../src/lib/initdata";
-import { verifyTelegramWidget } from "../src/lib/telegram-widget";
 import { signSession, verifySession } from "../src/lib/jwt";
+import { verifyTelegramWidget } from "../src/lib/telegram-widget";
 
 const BOT_TOKEN = "7700000000:AAEHELLOworld_TEST_TOKEN_PLACEHOLDER_x10x";
 const JWT_SECRET = "test-secret-min-32-bytes-for-HS256-yes-this-is-long-enough";
@@ -121,8 +121,10 @@ describe("verifyInitData (Mini App)", () => {
 
   it("отвергает initData с подделанным hash", async () => {
     const initData = await buildValidInitData({});
-    const tampered = initData.replace(/hash=[a-f0-9]+/, "hash=" + "0".repeat(64));
-    await expect(verifyInitData(tampered, { botToken: BOT_TOKEN })).rejects.toThrow(/hash mismatch/);
+    const tampered = initData.replace(/hash=[a-f0-9]+/, `hash=${"0".repeat(64)}`);
+    await expect(verifyInitData(tampered, { botToken: BOT_TOKEN })).rejects.toThrow(
+      /hash mismatch/,
+    );
   });
 
   it("отвергает истёкший initData (auth_date старше maxAge)", async () => {
@@ -142,9 +144,9 @@ describe("verifyInitData (Mini App)", () => {
   it("отвергает initData с auth_date в будущем", async () => {
     const now = Math.floor(Date.now() / 1000);
     const future = await buildValidInitData({ authDateSeconds: now + 600 });
-    await expect(
-      verifyInitData(future, { botToken: BOT_TOKEN, nowSeconds: now }),
-    ).rejects.toThrow(/в будущем/);
+    await expect(verifyInitData(future, { botToken: BOT_TOKEN, nowSeconds: now })).rejects.toThrow(
+      /в будущем/,
+    );
   });
 
   it("constant-time compare — не падает на разной длине hash", async () => {
@@ -165,7 +167,9 @@ describe("verifyTelegramWidget (Login Widget)", () => {
   it("отвергает widget с подделанным hash", async () => {
     const payload = await buildValidWidgetPayload({});
     payload.hash = "0".repeat(64);
-    await expect(verifyTelegramWidget(payload, { botToken: BOT_TOKEN })).rejects.toThrow(/hash mismatch/);
+    await expect(verifyTelegramWidget(payload, { botToken: BOT_TOKEN })).rejects.toThrow(
+      /hash mismatch/,
+    );
   });
 
   it("отвергает истёкший widget", async () => {
@@ -178,6 +182,7 @@ describe("verifyTelegramWidget (Login Widget)", () => {
 
   it("отвергает widget без first_name", async () => {
     const payload = await buildValidWidgetPayload({});
+    // biome-ignore lint/performance/noDelete: тест проверяет именно ОТСУТСТВИЕ поля (delete ≠ присвоение undefined)
     delete (payload as Record<string, unknown>).first_name;
     // Hash станет невалидным после удаления, но мы хотим проверить именно
     // first_name-валидацию. Подделываем hash под новый набор полей.
@@ -201,7 +206,7 @@ describe("JWT sign/verify", () => {
       { userId: "550e8400-e29b-41d4-a716-446655440000", role: "reader" },
       { secret: JWT_SECRET, ttlSeconds: 3600 },
     );
-    const tampered = token.slice(0, -3) + "AAA";
+    const tampered = `${token.slice(0, -3)}AAA`;
     await expect(verifySession(tampered, { secret: JWT_SECRET })).rejects.toThrow();
   });
 

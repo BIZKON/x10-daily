@@ -61,8 +61,8 @@ async function hmacSha256(key: ArrayBuffer | Uint8Array, data: string): Promise<
 function toHex(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let out = "";
-  for (let i = 0; i < bytes.length; i++) {
-    out += bytes[i]!.toString(16).padStart(2, "0");
+  for (const byte of bytes) {
+    out += byte.toString(16).padStart(2, "0");
   }
   return out;
 }
@@ -150,7 +150,10 @@ export async function verifyTelegramWidget(
   };
 }
 
-function stringOrUndef(payload: Record<string, unknown> | TelegramWidgetPayload, key: string): string | undefined {
+function stringOrUndef(
+  payload: Record<string, unknown> | TelegramWidgetPayload,
+  key: string,
+): string | undefined {
   const v = (payload as Record<string, unknown>)[key];
   return typeof v === "string" && v.length > 0 ? v : undefined;
 }

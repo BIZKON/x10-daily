@@ -14,9 +14,6 @@ export function FeedCard({ item }: { item: FeedItem }) {
       return <DeepDiveCard item={item} />;
     case "daily-take":
       return <DailyTakeCard item={item} />;
-    case "card-news":
-    case "guide":
-    case "digest":
     default:
       return <NewsCard item={item} />;
   }

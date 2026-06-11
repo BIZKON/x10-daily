@@ -1,5 +1,6 @@
 "use client";
 
+import { reportProgressAction } from "@/lib/engagement-actions";
 /**
  * ReadingProgress — невидимый компонент.
  *
@@ -14,7 +15,6 @@
  * completed=true при readPercent ≥ 90.
  */
 import { useEffect, useRef } from "react";
-import { reportProgressAction } from "@/lib/engagement-actions";
 
 const THROTTLE_MS = 5000;
 

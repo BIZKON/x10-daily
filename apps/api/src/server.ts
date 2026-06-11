@@ -15,8 +15,8 @@
 import { serve } from "@hono/node-server";
 import { createApp } from "./app";
 import type { AppBindings, ObjectStorage, RateLimiter } from "./bindings";
-import { disconnectRedis, getRedis } from "./services/redis";
 import { RedisRateLimiter } from "./services/rate-limiter-redis";
+import { disconnectRedis, getRedis } from "./services/redis";
 import { S3Storage, createS3Client } from "./services/s3-storage";
 
 /** Заглушка RateLimiter — всегда allow. Используется когда REDIS_URL не задан. */
@@ -26,9 +26,10 @@ const noopLimiter: RateLimiter = {
   },
 };
 
-function buildRateLimiters(
-  redisUrl: string | undefined,
-): { engagement: RateLimiter; pipeline: RateLimiter } {
+function buildRateLimiters(redisUrl: string | undefined): {
+  engagement: RateLimiter;
+  pipeline: RateLimiter;
+} {
   if (!redisUrl) {
     console.warn("[server] REDIS_URL не задан — rate limit disabled (noop)");
     return { engagement: noopLimiter, pipeline: noopLimiter };
@@ -86,7 +87,8 @@ function readBindings(): AppBindings {
     AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
 
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-    ANTHROPIC_ZDR_CONFIRMED: process.env.ANTHROPIC_ZDR_CONFIRMED as AppBindings["ANTHROPIC_ZDR_CONFIRMED"],
+    ANTHROPIC_ZDR_CONFIRMED: process.env
+      .ANTHROPIC_ZDR_CONFIRMED as AppBindings["ANTHROPIC_ZDR_CONFIRMED"],
 
     MASKER_BASE_URL: process.env.MASKER_BASE_URL,
     MASKER_API_KEY: process.env.MASKER_API_KEY,

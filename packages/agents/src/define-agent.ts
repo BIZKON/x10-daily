@@ -1,7 +1,7 @@
 import { MODELS, type ModelTier } from "@x10/config";
 import type OpenAI from "openai";
 import type { z } from "zod";
-import { calculateCostUsd, type TokenUsage } from "./cost";
+import { type TokenUsage, calculateCostUsd } from "./cost";
 import type { Masker } from "./masker";
 import { getOpenAIClient } from "./openai-client";
 import { zodToToolSchema } from "./zod-to-tool-schema";
@@ -138,10 +138,7 @@ export function defineAgent<I, O>(def: AgentDefinition<I, O>): Agent<I, O> {
       let wastedUsage: OpenAI.Completions.CompletionUsage | undefined;
 
       if (isDeepSeek) {
-        const jsonSystem =
-          `${systemText}\n\nФОРМАТ ОТВЕТА (обязательно): верни СТРОГО валидный JSON-объект ` +
-          "по этой JSON Schema. Только JSON — без markdown, без ```, без любого текста до или после.\n" +
-          `JSON Schema:\n${JSON.stringify(outputJsonSchema)}`;
+        const jsonSystem = `${systemText}\n\nФОРМАТ ОТВЕТА (обязательно): верни СТРОГО валидный JSON-объект по этой JSON Schema. Только JSON — без markdown, без \`\`\`, без любого текста до или после.\nJSON Schema:\n${JSON.stringify(outputJsonSchema)}`;
         const callDeepSeek = (budget: number) =>
           client.chat.completions.create(
             {

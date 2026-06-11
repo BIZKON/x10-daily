@@ -18,10 +18,7 @@ const TEST_BINDINGS: AppBindings = {
 describe("GET /health", () => {
   it("returns ok + service identity", async () => {
     const app = createApp();
-    const res = await app.fetch(
-      new Request("https://x10-api.local/health"),
-      TEST_BINDINGS,
-    );
+    const res = await app.fetch(new Request("https://x10-api.local/health"), TEST_BINDINGS);
     expect(res.status).toBe(200);
     const body = (await res.json()) as { status: string; service: string; env: string };
     expect(body.status).toBe("ok");

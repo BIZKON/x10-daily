@@ -1,3 +1,6 @@
+import { TopBar } from "@/components/top-bar";
+import { PROFILE, PROFILE_MENU, SCHEDULE, SUBSCRIPTIONS } from "@/lib/feed";
+import { type ProfileStatIcon, type ProfileStatTone, loadProfileSnapshot } from "@/lib/profile";
 import { cn } from "@x10/ui";
 import {
   Bell,
@@ -11,9 +14,6 @@ import {
   Settings,
 } from "lucide-react";
 import { Suspense } from "react";
-import { TopBar } from "@/components/top-bar";
-import { PROFILE, PROFILE_MENU, SCHEDULE, SUBSCRIPTIONS } from "@/lib/feed";
-import { loadProfileSnapshot, type ProfileStatIcon, type ProfileStatTone } from "@/lib/profile";
 
 const statIconMap: Record<ProfileStatIcon, typeof Flame> = {
   flame: Flame,
@@ -177,9 +177,9 @@ async function StatsAndStreak() {
           <span className="text-[11px] text-mist">До ачивки: {snapshot.daysToAchievement}</span>
         </div>
         <div className="grid grid-cols-7 gap-1.5">
-          {snapshot.weekStreak.map((d, i) => (
+          {snapshot.weekStreak.map((d) => (
             <div
-              key={i}
+              key={d.d}
               className={cn(
                 "aspect-square place-items-center rounded-md text-[10px] font-bold grid",
                 d.on ? "bg-red text-white" : "bg-fence text-haze",
@@ -194,12 +194,15 @@ async function StatsAndStreak() {
   );
 }
 
+const STATS_SKELETON_KEYS = ["st-1", "st-2", "st-3", "st-4"];
+const STREAK_SKELETON_KEYS = ["wk-1", "wk-2", "wk-3", "wk-4", "wk-5", "wk-6", "wk-7"];
+
 function StatsSkeleton() {
   return (
     <>
       <section className="grid grid-cols-4 gap-2 p-4" aria-busy="true">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-fence bg-card p-3 text-center">
+        {STATS_SKELETON_KEYS.map((k) => (
+          <div key={k} className="rounded-xl border border-fence bg-card p-3 text-center">
             <div className="mx-auto mb-1.5 h-4 w-4 animate-pulse rounded bg-fence" />
             <div className="mx-auto h-4 w-8 animate-pulse rounded bg-fence" />
             <div className="mx-auto mt-1 h-2 w-12 animate-pulse rounded bg-fence" />
@@ -209,8 +212,8 @@ function StatsSkeleton() {
       <section className="mx-4 rounded-2xl border border-fence bg-card p-4" aria-busy="true">
         <div className="mb-3 h-4 w-40 animate-pulse rounded bg-fence" />
         <div className="grid grid-cols-7 gap-1.5">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <div key={i} className="aspect-square animate-pulse rounded-md bg-fence" />
+          {STREAK_SKELETON_KEYS.map((k) => (
+            <div key={k} className="aspect-square animate-pulse rounded-md bg-fence" />
           ))}
         </div>
       </section>

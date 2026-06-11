@@ -45,13 +45,13 @@ export function simhash64(text: string): string {
     const h = fnv1a64(tok);
     for (let i = 0; i < 64; i++) {
       const bit = (h >> BigInt(i)) & 1n;
-      v[i]! += bit === 1n ? 1 : -1;
+      v[i] = (v[i] ?? 0) + (bit === 1n ? 1 : -1);
     }
   }
 
   let fp = 0n;
   for (let i = 0; i < 64; i++) {
-    if (v[i]! > 0) fp |= 1n << BigInt(i);
+    if ((v[i] ?? 0) > 0) fp |= 1n << BigInt(i);
   }
   return fp.toString(16).padStart(16, "0");
 }

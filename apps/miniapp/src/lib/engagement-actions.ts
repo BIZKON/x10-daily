@@ -16,12 +16,12 @@
  * критического пути клика; useOptimistic уже показал нужное состояние.
  */
 import {
-  postBookmark,
-  postProgress,
-  postReaction,
   type ApiBookmarkResponse,
   type ApiReactionResponse,
   type ReactionKind,
+  postBookmark,
+  postProgress,
+  postReaction,
 } from "./api";
 import { getSessionToken } from "./session";
 
@@ -49,9 +49,7 @@ export async function toggleReactionAction(
   return { ok: true, data };
 }
 
-export async function toggleBookmarkAction(
-  articleId: string,
-): Promise<ToggleBookmarkResult> {
+export async function toggleBookmarkAction(articleId: string): Promise<ToggleBookmarkResult> {
   const data = await postBookmark(articleId);
   if (!data) {
     return { ok: false, reason: await classifyFailure() };

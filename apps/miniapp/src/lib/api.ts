@@ -264,7 +264,7 @@ export type ApiProfileStats = {
 };
 
 export async function fetchProfileStats(): Promise<ApiProfileStats | null> {
-  const res = await fetchAuthed(`/v1/profile/stats`);
+  const res = await fetchAuthed("/v1/profile/stats");
   if (!res || !res.ok) return null;
   return (await res.json()) as ApiProfileStats;
 }
@@ -305,9 +305,7 @@ export const ANONYMOUS_USER_STATE: ApiArticleUserState = {
   readPercent: 0,
 };
 
-export async function fetchArticleUserState(
-  articleId: string,
-): Promise<ApiArticleUserState> {
+export async function fetchArticleUserState(articleId: string): Promise<ApiArticleUserState> {
   const res = await fetchAuthed(`/v1/articles/${encodeURIComponent(articleId)}/me`);
   if (!res || !res.ok) return ANONYMOUS_USER_STATE;
   return (await res.json()) as ApiArticleUserState;
@@ -348,9 +346,7 @@ export async function postReaction(
   return (await res.json()) as ApiReactionResponse;
 }
 
-export async function postBookmark(
-  articleId: string,
-): Promise<ApiBookmarkResponse | null> {
+export async function postBookmark(articleId: string): Promise<ApiBookmarkResponse | null> {
   const res = await postAuthed(`/v1/articles/${encodeURIComponent(articleId)}/bookmark`, {});
   if (!res || !res.ok) return null;
   return (await res.json()) as ApiBookmarkResponse;

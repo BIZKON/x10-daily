@@ -229,7 +229,7 @@ export function loadEnv(source: EnvSource, opts?: LoadEnvOptions): Env {
     const missing = required.filter((k) => !env[k]);
     if (missing.length > 0) {
       throw new Error(
-        `Production env missing required keys: ${missing.join(", ")}. ` + "See docs/DEPLOY.md.",
+        `Production env missing required keys: ${missing.join(", ")}. See docs/DEPLOY.md.`,
       );
     }
     // CRITICAL-6: ZDR-чек выполняется ТОЛЬКО при использовании ANTHROPIC_API_KEY

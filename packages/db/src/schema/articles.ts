@@ -12,8 +12,8 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
-import { authors } from "./authors";
 import { id, timestamps } from "./_shared";
+import { authors } from "./authors";
 import { users } from "./users";
 
 export const articleStatus = pgEnum("article_status", [
@@ -103,14 +103,8 @@ export const articles = pgTable(
     wordCount: integer("word_count").notNull().default(0),
     readSeconds: integer("read_seconds").notNull().default(0),
 
-    sourceIds: jsonb("source_ids")
-      .$type<string[]>()
-      .notNull()
-      .default(sql`'[]'::jsonb`),
-    citations: jsonb("citations")
-      .$type<Citation[]>()
-      .notNull()
-      .default(sql`'[]'::jsonb`),
+    sourceIds: jsonb("source_ids").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    citations: jsonb("citations").$type<Citation[]>().notNull().default(sql`'[]'::jsonb`),
 
     audioUrl: text("audio_url"),
     audioDurationSec: integer("audio_duration_sec"),

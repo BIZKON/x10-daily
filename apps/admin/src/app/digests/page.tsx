@@ -1,7 +1,7 @@
+import { fetchAdminLatestDigest } from "@/lib/api";
 import { CheckCircle2, Clock, Mic, Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import { fetchAdminLatestDigest } from "@/lib/api";
 
 // Cache Components (Next 16): async fetch ДОЛЖЕН быть внутри <Suspense>.
 export default function DigestsPage() {

@@ -1,13 +1,5 @@
 import { sql } from "drizzle-orm";
-import {
-  date,
-  index,
-  jsonb,
-  pgTable,
-  text,
-  timestamp,
-  uniqueIndex,
-} from "drizzle-orm/pg-core";
+import { date, index, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { id, timestamps } from "./_shared";
 
 /**
@@ -41,10 +33,7 @@ export const digests = pgTable(
     issueDate: date("issue_date").notNull(),
     intro: text("intro").notNull(),
     /** Порядок имеет значение — это очерёдность в дайджесте. */
-    topArticleIds: jsonb("top_article_ids")
-      .$type<string[]>()
-      .notNull()
-      .default(sql`'[]'::jsonb`),
+    topArticleIds: jsonb("top_article_ids").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     rybakovTake: jsonb("rybakov_take").$type<RybakovTake>(),
     premiumTeaser: jsonb("premium_teaser").$type<PremiumTeaser>(),
     tomorrow: text("tomorrow"),

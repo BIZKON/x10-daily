@@ -32,7 +32,11 @@ export function TopBar({ title, back = false }: { title: string; back?: boolean 
         <button type="button" aria-label="Поиск" className="grid h-9 w-9 place-items-center">
           <Search size={20} strokeWidth={1.75} />
         </button>
-        <button type="button" aria-label="Уведомления" className="relative grid h-9 w-9 place-items-center">
+        <button
+          type="button"
+          aria-label="Уведомления"
+          className="relative grid h-9 w-9 place-items-center"
+        >
           <Bell size={20} strokeWidth={1.75} />
           <span className="absolute right-2 top-1.5 h-2 w-2 rounded-full bg-red" />
         </button>

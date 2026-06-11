@@ -1,7 +1,7 @@
+import { fetchAdminKlamps } from "@/lib/api";
 import { MapPin, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import { fetchAdminKlamps } from "@/lib/api";
 
 // Cache Components (Next 16): async fetch ДОЛЖЕН быть внутри <Suspense>.
 export default function KlampsPage() {

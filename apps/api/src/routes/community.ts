@@ -77,11 +77,7 @@ export const communityRoute = new Hono<AppEnv>()
     const db = getDb(env.DATABASE_URL);
     const { slug } = c.req.valid("param");
 
-    const [row] = await db
-      .select()
-      .from(klamps)
-      .where(eq(klamps.slug, slug))
-      .limit(1);
+    const [row] = await db.select().from(klamps).where(eq(klamps.slug, slug)).limit(1);
 
     if (!row) return c.json({ error: "not_found", slug }, 404);
     return c.json(row);

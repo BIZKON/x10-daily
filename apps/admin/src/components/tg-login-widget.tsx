@@ -14,12 +14,9 @@
  * NEXT_PUBLIC_TELEGRAM_BOT_USERNAME — без @, например "x10daily_bot".
  */
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { type TelegramWidgetUser, loginWithTelegramWidgetAction } from "@/lib/auth-actions";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  loginWithTelegramWidgetAction,
-  type TelegramWidgetUser,
-} from "@/lib/auth-actions";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 declare global {
   interface Window {
@@ -87,12 +84,8 @@ export function TgLoginWidget({ botUsername }: { botUsername: string }) {
       {status.kind === "submitting" && (
         <p className="text-sm text-muted-foreground">Проверяем подпись…</p>
       )}
-      {status.kind === "error" && (
-        <p className="text-sm text-destructive">{status.message}</p>
-      )}
-      {status.kind === "ok" && (
-        <p className="text-sm text-success">Готово, перенаправляем…</p>
-      )}
+      {status.kind === "error" && <p className="text-sm text-destructive">{status.message}</p>}
+      {status.kind === "ok" && <p className="text-sm text-success">Готово, перенаправляем…</p>}
     </div>
   );
 }

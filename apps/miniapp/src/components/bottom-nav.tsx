@@ -34,11 +34,7 @@ export function BottomNav() {
               active ? "text-paper" : "text-haze",
             )}
           >
-            <Icon
-              size={22}
-              strokeWidth={active ? 2 : 1.6}
-              className={active ? "text-red" : ""}
-            />
+            <Icon size={22} strokeWidth={active ? 2 : 1.6} className={active ? "text-red" : ""} />
             <span className="text-[10px] font-semibold">{label}</span>
           </Link>
         );

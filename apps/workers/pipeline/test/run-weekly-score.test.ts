@@ -13,9 +13,7 @@ vi.mock("@x10/agents", async () => {
           weekSummary: "9 статей, среднее composite 1240.",
           topArticleIds: ["art-1"],
           bottomArticleIds: ["art-9"],
-          hookPatternRanking: [
-            { pattern: "contrarian", avgComposite: 1800, sampleSize: 3 },
-          ],
+          hookPatternRanking: [{ pattern: "contrarian", avgComposite: 1800, sampleSize: 3 }],
           recommendations: [
             {
               configPath: "hookgen.patterns.contrarian.weight",
@@ -80,14 +78,13 @@ describe("run-weekly-score", () => {
 
   it("вызывает ScoreWeeklyAgent и пробрасывает рекомендации", async () => {
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
-    const fn = createRunWeeklyScoreFunction(
-      inngest,
-      BINDINGS as unknown as PipelineBindings,
-    );
+    const fn = createRunWeeklyScoreFunction(inngest, BINDINGS as unknown as PipelineBindings);
     const step = makeStep();
-    const handler = (fn as unknown as {
-      fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
-    }).fn;
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
 
     const result = (await handler({ event: EVENT, step })) as {
       weekISO: string;
@@ -98,9 +95,7 @@ describe("run-weekly-score", () => {
     expect(ScoreWeeklyAgent.run).toHaveBeenCalledOnce();
     expect(result.weekISO).toBe("2026-W21");
     expect(result.recommendations).toHaveLength(1);
-    expect(result.recommendations[0]?.configPath).toBe(
-      "hookgen.patterns.contrarian.weight",
-    );
+    expect(result.recommendations[0]?.configPath).toBe("hookgen.patterns.contrarian.weight");
     expect(result.previewScoreCorrelation).toBeCloseTo(0.62, 2);
   });
 });

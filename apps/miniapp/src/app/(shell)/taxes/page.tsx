@@ -1,7 +1,14 @@
-import { cn } from "@x10/ui";
-import { BarChart3, Calendar, ChevronRight, Flame, SlidersHorizontal, TrendingUp } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { TAXES_FILTERS, TAXES_ITEMS, TAXES_METRICS } from "@/lib/feed";
+import { cn } from "@x10/ui";
+import {
+  BarChart3,
+  Calendar,
+  ChevronRight,
+  Flame,
+  SlidersHorizontal,
+  TrendingUp,
+} from "lucide-react";
 
 const iconMap = {
   "chart-bar": BarChart3,
@@ -52,9 +59,7 @@ export default function TaxesPage() {
             type="button"
             className={cn(
               "whitespace-nowrap rounded-pill px-3 py-1.5 text-xs font-semibold",
-              i === 0
-                ? "bg-red text-white"
-                : "border border-fence bg-card text-mist",
+              i === 0 ? "bg-red text-white" : "border border-fence bg-card text-mist",
             )}
           >
             {t}

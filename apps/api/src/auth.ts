@@ -1,9 +1,9 @@
-import type { Context } from "hono";
-import { HTTPException } from "hono/http-exception";
 import { eq, users } from "@x10/db";
 import type { Database } from "@x10/db";
+import type { Context } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { getEnv } from "./env";
-import { verifySession, type SessionClaims } from "./lib/jwt";
+import { type SessionClaims, verifySession } from "./lib/jwt";
 
 /**
  * Session auth — Authorization: Bearer <JWT> (HIGH-2).

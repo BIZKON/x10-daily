@@ -6,14 +6,14 @@
   "packageManager": "pnpm@10.33.4",
   "engines": { "node": ">=22" },
   "scripts": {
-    "dev":      "turbo run dev",
-    "build":    "turbo run build",
-    "lint":     "turbo run lint",
-    "typecheck":"turbo run typecheck && tsc --noEmit -p scripts/tsconfig.json",
-    "test":     "turbo run test",
-    "format":   "biome format --write .",
-    "check":    "biome check --apply .",
-    "db:seed":  "pnpm --filter @x10/db db:seed"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck && tsc --noEmit -p scripts/tsconfig.json",
+    "test": "turbo run test",
+    "format": "biome format --write .",
+    "check": "biome check --apply .",
+    "db:seed": "pnpm --filter @x10/db db:seed"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",

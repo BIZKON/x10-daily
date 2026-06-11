@@ -1,8 +1,8 @@
 "use server";
 
+import { type AdminAuthor, adminMutate } from "@/lib/api";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { adminMutate, type AdminAuthor } from "@/lib/api";
 
 function parseAuthorForm(form: FormData) {
   const slug = String(form.get("slug") ?? "").trim();

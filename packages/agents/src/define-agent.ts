@@ -1,7 +1,7 @@
 import { MODELS, type ModelTier } from "@x10/config";
 import type OpenAI from "openai";
 import type { z } from "zod";
-import { calculateCostUsd, type TokenUsage } from "./cost";
+import { type TokenUsage, calculateCostUsd } from "./cost";
 import type { Masker } from "./masker";
 import { getOpenAIClient } from "./openai-client";
 import { zodToToolSchema } from "./zod-to-tool-schema";

@@ -1,3 +1,6 @@
+import { TopBar } from "@/components/top-bar";
+import { PROFILE, PROFILE_MENU, SCHEDULE, SUBSCRIPTIONS } from "@/lib/feed";
+import { type ProfileStatIcon, type ProfileStatTone, loadProfileSnapshot } from "@/lib/profile";
 import { cn } from "@x10/ui";
 import {
   Bell,
@@ -11,9 +14,6 @@ import {
   Settings,
 } from "lucide-react";
 import { Suspense } from "react";
-import { TopBar } from "@/components/top-bar";
-import { PROFILE, PROFILE_MENU, SCHEDULE, SUBSCRIPTIONS } from "@/lib/feed";
-import { loadProfileSnapshot, type ProfileStatIcon, type ProfileStatTone } from "@/lib/profile";
 
 const statIconMap: Record<ProfileStatIcon, typeof Flame> = {
   flame: Flame,

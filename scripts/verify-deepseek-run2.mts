@@ -3,13 +3,7 @@
  * ToV на политическом черновике (2-й diverse-вход). Кэш gateway обходим уникальным
  * маркером в topicContext каждую итерацию. session 24.
  */
-import {
-  BrevityAgent,
-  DraftAgent,
-  FactCheckAgent,
-  ToVAgent,
-  type AgentContext,
-} from "@x10/agents";
+import { type AgentContext, BrevityAgent, DraftAgent, FactCheckAgent, ToVAgent } from "@x10/agents";
 
 const MODEL = "deepseek/deepseek-v4-flash";
 const ctx: AgentContext = {
@@ -48,7 +42,9 @@ async function main() {
   const t1 = Date.now();
   const tv = await ToVAgent.run({ draft: d.output as never, authorName: null } as never, ctx);
   const revised = (tv.output as { revised: string; changes: unknown[] }).revised;
-  console.log(`tov(pol diverse): OK ${Date.now() - t1}ms changes=${(tv.output as { changes: unknown[] }).changes.length}`);
+  console.log(
+    `tov(pol diverse): OK ${Date.now() - t1}ms changes=${(tv.output as { changes: unknown[] }).changes.length}`,
+  );
 
   const t2 = Date.now();
   const br = await BrevityAgent.run({ revised, template: "card-news" } as never, ctx);
@@ -67,17 +63,29 @@ async function main() {
         } as never,
         ctx,
       );
-      const o = fc.output as { status: string; verdict: string; confidence: string; haltReason?: string };
+      const o = fc.output as {
+        status: string;
+        verdict: string;
+        confidence: string;
+        haltReason?: string;
+      };
       console.log(
         `factcheck[${i + 1}/3]: OK ${Date.now() - start}ms status=${o.status} verdict=${o.verdict} conf=${o.confidence}` +
           (o.haltReason ? ` halt="${o.haltReason.slice(0, 90)}"` : ""),
       );
     } catch (e) {
-      console.log(`factcheck[${i + 1}/3]: FAIL ${Date.now() - start}ms ${(e instanceof Error ? e.message : String(e)).slice(0, 140)}`);
+      console.log(
+        `factcheck[${i + 1}/3]: FAIL ${Date.now() - start}ms ${(e instanceof Error ? e.message : String(e)).slice(0, 140)}`,
+      );
     }
   }
 
-  console.log("\nВЫВОД: если все factcheck вернули валидные enum-значения (status/verdict/confidence) и halt по делу — safety-путь на v4-flash рабочий.");
+  console.log(
+    "\nВЫВОД: если все factcheck вернули валидные enum-значения (status/verdict/confidence) и halt по делу — safety-путь на v4-flash рабочий.",
+  );
 }
 
-main().catch((e) => { console.error("FATAL:", e); process.exit(1); });
+main().catch((e) => {
+  console.error("FATAL:", e);
+  process.exit(1);
+});

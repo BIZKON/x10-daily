@@ -1,8 +1,8 @@
 "use server";
 
+import { type AdminEvent, adminMutate } from "@/lib/api";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { adminMutate, type AdminEvent } from "@/lib/api";
 
 /**
  * <input type="datetime-local"> возвращает "YYYY-MM-DDTHH:mm" без секунд и таймзоны.

@@ -1,5 +1,7 @@
 "use client";
 
+import type { ApiArticleUserState, ReactionKind } from "@/lib/api";
+import { toggleBookmarkAction, toggleReactionAction } from "@/lib/engagement-actions";
 /**
  * EngagementBar — реакции (3 kind) + закладка + visual comment counter.
  *
@@ -12,11 +14,6 @@
  */
 import { Bookmark, MessageCircle } from "lucide-react";
 import { useOptimistic, useState, useTransition } from "react";
-import type { ApiArticleUserState, ReactionKind } from "@/lib/api";
-import {
-  toggleBookmarkAction,
-  toggleReactionAction,
-} from "@/lib/engagement-actions";
 
 type ReactionCounts = { fire: number; insight: number; question: number };
 type ReactionMine = { fire: boolean; insight: boolean; question: boolean };
@@ -130,11 +127,7 @@ export function EngagementBar({
       <div className="flex items-center gap-3 text-[13px] text-mist">
         <button
           type="button"
-          aria-label={
-            optimisticBookmark.isBookmarked
-              ? "Убрать из сохранённого"
-              : "Сохранить"
-          }
+          aria-label={optimisticBookmark.isBookmarked ? "Убрать из сохранённого" : "Сохранить"}
           aria-pressed={optimisticBookmark.isBookmarked}
           onClick={handleBookmark}
           className="flex items-center gap-1.5 transition-colors hover:text-paper"
@@ -143,9 +136,7 @@ export function EngagementBar({
             size={18}
             strokeWidth={1.75}
             fill={optimisticBookmark.isBookmarked ? "currentColor" : "none"}
-            className={
-              optimisticBookmark.isBookmarked ? "text-gold" : "text-mist"
-            }
+            className={optimisticBookmark.isBookmarked ? "text-gold" : "text-mist"}
           />
           <span className="tabular-nums">{optimisticBookmark.count}</span>
         </button>

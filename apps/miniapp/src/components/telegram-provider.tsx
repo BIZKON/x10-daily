@@ -16,9 +16,9 @@
  * (исправится через router.refresh() в TelegramProvider после login.success).
  */
 
-import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { devLoginAction, loginWithTelegramAction } from "@/lib/auth-actions";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 interface TelegramWebApp {
   initData: string;

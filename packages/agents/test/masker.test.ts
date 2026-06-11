@@ -36,14 +36,12 @@ describe("createMasker", () => {
   });
 
   it("MASKER URL+KEY → HTTP-вызов", async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(JSON.stringify({ masked: "[NAME_1], [PHONE_1]", sessionId: "sess-1" }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
-      );
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ masked: "[NAME_1], [PHONE_1]", sessionId: "sess-1" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
 
     const m = createMasker({
       NODE_ENV: "production",
@@ -62,14 +60,12 @@ describe("createMasker", () => {
   });
 
   it("unmask отправляет sessionId", async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(JSON.stringify({ text: "Иванов, +7-916-555-12-34" }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
-      );
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ text: "Иванов, +7-916-555-12-34" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
 
     const m = createMasker({
       NODE_ENV: "production",

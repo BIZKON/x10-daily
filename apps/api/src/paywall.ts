@@ -33,10 +33,7 @@ export async function hasPaidSubscription(
       and(
         eq(subscriptions.userId, userId),
         eq(subscriptions.status, "active"),
-        or(
-          eq(subscriptions.tier, PAID_TIERS[0]),
-          eq(subscriptions.tier, PAID_TIERS[1]),
-        ),
+        or(eq(subscriptions.tier, PAID_TIERS[0]), eq(subscriptions.tier, PAID_TIERS[1])),
         or(
           isNull(subscriptions.currentPeriodEnd),
           // Postgres comparison via sql template — но через drizzle для типов:

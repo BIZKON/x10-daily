@@ -22,11 +22,7 @@ const inputSchema = z.object({
   draft: draftShapeSchema,
 });
 
-const scoreSchema = z
-  .number()
-  .int()
-  .min(1)
-  .max(10);
+const scoreSchema = z.number().int().min(1).max(10);
 
 const fixSchema = z.object({
   /** На какой критерий тянет этот фикс. .catch: advisory-метка, отклонение enum'а не должно ронять score. */

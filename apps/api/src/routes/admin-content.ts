@@ -1,13 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import {
-  authors,
-  digests,
-  eq,
-  events,
-  klamps,
-  pipelineConfig,
-  sql,
-} from "@x10/db";
+import { events, authors, digests, eq, klamps, pipelineConfig, sql } from "@x10/db";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../app";
@@ -95,30 +87,29 @@ const eventCreateSchema = z
     coverImageUrl: z.string().url().nullable().optional(),
     capacity: z.number().int().positive().nullable().optional(),
   })
-  .refine(
-    (d) => !d.endDate || new Date(d.endDate) >= new Date(d.startDate),
-    { message: "endDate must be ≥ startDate", path: ["endDate"] },
-  );
-
-const eventUpdateSchema = z
-  .object({
-    slug: z.string().min(1).max(120).optional(),
-    title: z.string().min(1).max(200).optional(),
-    type: z.enum(["kod-x10", "meet-up", "breakfast", "festival", "webinar"]).optional(),
-    startDate: z.string().datetime().optional(),
-    endDate: z.string().datetime().nullable().optional(),
-    timezone: z.string().max(40).optional(),
-    city: z.string().max(80).nullable().optional(),
-    venue: venueSchema.nullable().optional(),
-    isOnline: z.boolean().optional(),
-    organizer: z.string().min(1).max(120).optional(),
-    ticketPriceFrom: z.number().int().nonnegative().nullable().optional(),
-    ticketUrl: z.string().url().nullable().optional(),
-    speakerIds: z.array(z.string().uuid()).optional(),
-    description: z.string().min(1).optional(),
-    coverImageUrl: z.string().url().nullable().optional(),
-    capacity: z.number().int().positive().nullable().optional(),
+  .refine((d) => !d.endDate || new Date(d.endDate) >= new Date(d.startDate), {
+    message: "endDate must be ≥ startDate",
+    path: ["endDate"],
   });
+
+const eventUpdateSchema = z.object({
+  slug: z.string().min(1).max(120).optional(),
+  title: z.string().min(1).max(200).optional(),
+  type: z.enum(["kod-x10", "meet-up", "breakfast", "festival", "webinar"]).optional(),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().nullable().optional(),
+  timezone: z.string().max(40).optional(),
+  city: z.string().max(80).nullable().optional(),
+  venue: venueSchema.nullable().optional(),
+  isOnline: z.boolean().optional(),
+  organizer: z.string().min(1).max(120).optional(),
+  ticketPriceFrom: z.number().int().nonnegative().nullable().optional(),
+  ticketUrl: z.string().url().nullable().optional(),
+  speakerIds: z.array(z.string().uuid()).optional(),
+  description: z.string().min(1).optional(),
+  coverImageUrl: z.string().url().nullable().optional(),
+  capacity: z.number().int().positive().nullable().optional(),
+});
 
 /* ----------------------------------------------------------------
  * Digests — brief §3.7
@@ -203,8 +194,7 @@ function toView(
     agent,
     enabled: row?.enabled ?? DEFAULT_CONFIG.enabled,
     modelOverride: row?.modelOverride ?? DEFAULT_CONFIG.modelOverride,
-    confidenceThreshold:
-      row?.confidenceThreshold ?? DEFAULT_CONFIG.confidenceThreshold,
+    confidenceThreshold: row?.confidenceThreshold ?? DEFAULT_CONFIG.confidenceThreshold,
   };
 }
 
@@ -417,9 +407,7 @@ export const adminContentRoute = new Hono<AppEnv>()
       })
       .from(pipelineConfig);
     const byAgent = new Map(rows.map((r) => [r.agent, r]));
-    const items: PipelineConfigView[] = PIPELINE_AGENTS.map((a) =>
-      toView(a, byAgent.get(a)),
-    );
+    const items: PipelineConfigView[] = PIPELINE_AGENTS.map((a) => toView(a, byAgent.get(a)));
     return c.json({ items });
   })
 
@@ -427,26 +415,22 @@ export const adminContentRoute = new Hono<AppEnv>()
    * GET /v1/admin/pipeline-config/:agent
    * Effective config для одного агента — для edit-form. 200 всегда (дефолты если не сохранён).
    */
-  .get(
-    "/pipeline-config/:agent",
-    zValidator("param", pipelineAgentParam),
-    async (c) => {
-      const env = getEnv(c.env);
-      const db = getDb(env.DATABASE_URL);
-      await requireRole(c, db, EDITOR_ROLES);
-      const { agent } = c.req.valid("param");
-      const [row] = await db
-        .select({
-          enabled: pipelineConfig.enabled,
-          modelOverride: pipelineConfig.modelOverride,
-          confidenceThreshold: pipelineConfig.confidenceThreshold,
-        })
-        .from(pipelineConfig)
-        .where(eq(pipelineConfig.agent, agent))
-        .limit(1);
-      return c.json(toView(agent, row));
-    },
-  )
+  .get("/pipeline-config/:agent", zValidator("param", pipelineAgentParam), async (c) => {
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
+    const { agent } = c.req.valid("param");
+    const [row] = await db
+      .select({
+        enabled: pipelineConfig.enabled,
+        modelOverride: pipelineConfig.modelOverride,
+        confidenceThreshold: pipelineConfig.confidenceThreshold,
+      })
+      .from(pipelineConfig)
+      .where(eq(pipelineConfig.agent, agent))
+      .limit(1);
+    return c.json(toView(agent, row));
+  })
 
   /**
    * PUT /v1/admin/pipeline-config/:agent

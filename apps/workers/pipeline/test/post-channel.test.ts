@@ -27,7 +27,11 @@ describe("sendToChannel — tg", () => {
     const fetchImpl = vi.fn(async (u: unknown, init: unknown) => {
       url = String(u);
       body = JSON.parse((init as { body: string }).body);
-      return { ok: true, status: 200, json: async () => ({ ok: true, result: { message_id: 555 } }) };
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true, result: { message_id: 555 } }),
+      };
     }) as unknown as typeof fetch;
 
     const out = await sendToChannel(
@@ -112,7 +116,11 @@ describe("sendToChannel — vk", () => {
       json: async () => ({ error: { error_code: 100, error_msg: "x" } }),
     })) as unknown as typeof fetch;
     await expect(
-      sendToChannel(VK_ENV, { channel: "vk", articleId: "a1", text: "t", visualRef: null }, { fetchImpl }),
+      sendToChannel(
+        VK_ENV,
+        { channel: "vk", articleId: "a1", text: "t", visualRef: null },
+        { fetchImpl },
+      ),
     ).rejects.toThrow(/\[100\]/);
   });
 

@@ -1,13 +1,7 @@
 import { boolean, index, integer, pgEnum, pgTable, text, varchar } from "drizzle-orm/pg-core";
 import { id, timestamps } from "./_shared";
 
-export const sourceKind = pgEnum("source_kind", [
-  "rss",
-  "api",
-  "scrape",
-  "telegram",
-  "manual",
-]);
+export const sourceKind = pgEnum("source_kind", ["rss", "api", "scrape", "telegram", "manual"]);
 
 export const sourceTier = pgEnum("source_tier", ["primary", "secondary", "fringe"]);
 
@@ -26,10 +20,7 @@ export const sources = pgTable(
     notes: text("notes"),
     ...timestamps,
   },
-  (t) => [
-    index("sources_enabled_idx").on(t.enabled, t.tier),
-    index("sources_kind_idx").on(t.kind),
-  ],
+  (t) => [index("sources_enabled_idx").on(t.enabled, t.tier), index("sources_kind_idx").on(t.kind)],
 );
 
 export type Source = typeof sources.$inferSelect;

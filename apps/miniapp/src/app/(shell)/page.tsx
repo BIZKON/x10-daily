@@ -1,10 +1,10 @@
-import { connection } from "next/server";
-import { Suspense } from "react";
 import { CategoryChips } from "@/components/category-chips";
 import { FeedCard } from "@/components/feed-card";
 import { HeroDigest } from "@/components/hero-digest";
 import { TopBar } from "@/components/top-bar";
 import { HOME_CATEGORIES, loadDailyFeed } from "@/lib/feed";
+import { connection } from "next/server";
+import { Suspense } from "react";
 
 export default function HomePage() {
   return (
@@ -29,10 +29,7 @@ export default function HomePage() {
 
 function HeroSkeleton() {
   return (
-    <div
-      aria-busy="true"
-      className="mx-4 mb-5 h-[260px] animate-pulse rounded-[20px] bg-red/20"
-    />
+    <div aria-busy="true" className="mx-4 mb-5 h-[260px] animate-pulse rounded-[20px] bg-red/20" />
   );
 }
 
@@ -58,10 +55,7 @@ function FeedSkeleton() {
   return (
     <ul className="flex flex-col gap-3.5" aria-busy="true">
       {Array.from({ length: 4 }).map((_, i) => (
-        <li
-          key={i}
-          className="h-72 animate-pulse rounded-[20px] border border-fence bg-card"
-        />
+        <li key={i} className="h-72 animate-pulse rounded-[20px] border border-fence bg-card" />
       ))}
     </ul>
   );

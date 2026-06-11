@@ -1,7 +1,7 @@
+import { loadDigest } from "@/lib/feed";
 import { Newspaper, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { connection } from "next/server";
-import { loadDigest } from "@/lib/feed";
 
 /**
  * issueDate (YYYY-MM-DD, МСК-календарный день) → «среда, 11 июня».

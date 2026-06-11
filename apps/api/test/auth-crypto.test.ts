@@ -10,8 +10,8 @@
  */
 import { describe, expect, it } from "vitest";
 import { verifyInitData } from "../src/lib/initdata";
-import { verifyTelegramWidget } from "../src/lib/telegram-widget";
 import { signSession, verifySession } from "../src/lib/jwt";
+import { verifyTelegramWidget } from "../src/lib/telegram-widget";
 
 const BOT_TOKEN = "7700000000:AAEHELLOworld_TEST_TOKEN_PLACEHOLDER_x10x";
 const JWT_SECRET = "test-secret-min-32-bytes-for-HS256-yes-this-is-long-enough";
@@ -122,7 +122,9 @@ describe("verifyInitData (Mini App)", () => {
   it("отвергает initData с подделанным hash", async () => {
     const initData = await buildValidInitData({});
     const tampered = initData.replace(/hash=[a-f0-9]+/, "hash=" + "0".repeat(64));
-    await expect(verifyInitData(tampered, { botToken: BOT_TOKEN })).rejects.toThrow(/hash mismatch/);
+    await expect(verifyInitData(tampered, { botToken: BOT_TOKEN })).rejects.toThrow(
+      /hash mismatch/,
+    );
   });
 
   it("отвергает истёкший initData (auth_date старше maxAge)", async () => {
@@ -142,9 +144,9 @@ describe("verifyInitData (Mini App)", () => {
   it("отвергает initData с auth_date в будущем", async () => {
     const now = Math.floor(Date.now() / 1000);
     const future = await buildValidInitData({ authDateSeconds: now + 600 });
-    await expect(
-      verifyInitData(future, { botToken: BOT_TOKEN, nowSeconds: now }),
-    ).rejects.toThrow(/в будущем/);
+    await expect(verifyInitData(future, { botToken: BOT_TOKEN, nowSeconds: now })).rejects.toThrow(
+      /в будущем/,
+    );
   });
 
   it("constant-time compare — не падает на разной длине hash", async () => {
@@ -165,7 +167,9 @@ describe("verifyTelegramWidget (Login Widget)", () => {
   it("отвергает widget с подделанным hash", async () => {
     const payload = await buildValidWidgetPayload({});
     payload.hash = "0".repeat(64);
-    await expect(verifyTelegramWidget(payload, { botToken: BOT_TOKEN })).rejects.toThrow(/hash mismatch/);
+    await expect(verifyTelegramWidget(payload, { botToken: BOT_TOKEN })).rejects.toThrow(
+      /hash mismatch/,
+    );
   });
 
   it("отвергает истёкший widget", async () => {

@@ -60,9 +60,9 @@ export default function VideoPage() {
           <Video size={22} strokeWidth={1.75} /> Видео
         </h1>
         <p className="mt-1.5 text-[13px] text-mist">
-          Brief §12: «не делаем встроенную видеоплатформу — embed YouTube/RuTube». На M0
-          видео — статичные карточки в miniapp /video. CRUD появится в M4-M5 вместе с
-          IngestAgent для YouTube.
+          Brief §12: «не делаем встроенную видеоплатформу — embed YouTube/RuTube». На M0 видео —
+          статичные карточки в miniapp /video. CRUD появится в M4-M5 вместе с IngestAgent для
+          YouTube.
         </p>
       </header>
 
@@ -99,8 +99,8 @@ export default function VideoPage() {
             <PlaySquare size={14} strokeWidth={2} /> Канал Рыбакова
           </h3>
           <p className="m-0 text-[13px] text-mist">
-            Источник №1 для rybakov.podcast и rybakov.essay. ~6M подписчиков на YouTube.
-            Эфиры еженедельно.
+            Источник №1 для rybakov.podcast и rybakov.essay. ~6M подписчиков на YouTube. Эфиры
+            еженедельно.
           </p>
           <a
             href="https://www.youtube.com/@rybakovigor"
@@ -116,8 +116,8 @@ export default function VideoPage() {
       <div className="mt-6 rounded-xl border border-fence bg-card p-4 text-[12.5px] text-mist">
         <p className="m-0">
           Текущее: видео-карточки на моках в{" "}
-          <code className="font-mono text-paper">apps/miniapp/src/lib/feed.ts</code>{" "}
-          (VIDEOS, PODCAST_OF_WEEK). M2-M5 roadmap — см.{" "}
+          <code className="font-mono text-paper">apps/miniapp/src/lib/feed.ts</code> (VIDEOS,
+          PODCAST_OF_WEEK). M2-M5 roadmap — см.{" "}
           <code className="font-mono text-paper">docs/strategy/X10ContentArchitectureBrief.md</code>{" "}
           §10.
         </p>

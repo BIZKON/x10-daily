@@ -74,16 +74,19 @@ function makeHandler(bindings: Record<string, string | undefined>, fetchImpl?: t
   const fn = createDrainPostSlotsFunction(inngest, bindings as unknown as PipelineBindings, {
     fetchImpl,
   });
-  return (
-    fn as unknown as { fn: (a: { step: ReturnType<typeof makeStep> }) => Promise<unknown> }
-  ).fn;
+  return (fn as unknown as { fn: (a: { step: ReturnType<typeof makeStep> }) => Promise<unknown> })
+    .fn;
 }
 
 /** fetch по host: TG ok всегда; VK по opts (post_id или error_code). */
 const dualFetch = (vk: { postId?: number; errorCode?: number } = {}) =>
   vi.fn(async (url: unknown) => {
     if (String(url).includes("api.telegram.org")) {
-      return { ok: true, status: 200, json: async () => ({ ok: true, result: { message_id: 555 } }) };
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true, result: { message_id: 555 } }),
+      };
     }
     if (vk.errorCode) {
       return {
@@ -92,7 +95,11 @@ const dualFetch = (vk: { postId?: number; errorCode?: number } = {}) =>
         json: async () => ({ error: { error_code: vk.errorCode, error_msg: "e" } }),
       };
     }
-    return { ok: true, status: 200, json: async () => ({ response: { post_id: vk.postId ?? 99 } }) };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ response: { post_id: vk.postId ?? 99 } }),
+    };
   }) as unknown as typeof fetch;
 
 describe("drain-post-slots", () => {

@@ -2,14 +2,7 @@ import { sourceRefSchema } from "@x10/agents";
 import { eventType } from "inngest";
 import { z } from "zod";
 
-export const sectionEnum = z.enum([
-  "main",
-  "numbers",
-  "people",
-  "playbook",
-  "weekend",
-  "longread",
-]);
+export const sectionEnum = z.enum(["main", "numbers", "people", "playbook", "weekend", "longread"]);
 export type Section = z.infer<typeof sectionEnum>;
 export const DEFAULT_SECTION: Section = "main";
 
@@ -89,14 +82,11 @@ export const newsletterAssembleRequestedDataSchema = z.object({
   articles: z.array(newsletterArticleSummarySchema).min(1),
   editorialNote: z.string().optional(),
 });
-export type NewsletterAssembleRequestedData = z.infer<
-  typeof newsletterAssembleRequestedDataSchema
->;
+export type NewsletterAssembleRequestedData = z.infer<typeof newsletterAssembleRequestedDataSchema>;
 
-export const newsletterAssembleRequestedEvent = eventType(
-  "newsletter.assemble.requested",
-  { schema: newsletterAssembleRequestedDataSchema },
-);
+export const newsletterAssembleRequestedEvent = eventType("newsletter.assemble.requested", {
+  schema: newsletterAssembleRequestedDataSchema,
+});
 export const NEWSLETTER_ASSEMBLE_REQUESTED = newsletterAssembleRequestedEvent.event;
 
 /* ----------------------------------------------------------------

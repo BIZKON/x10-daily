@@ -1,12 +1,8 @@
+import { TopBar } from "@/components/top-bar";
+import { type CommunityEvent, loadCommunityEvents, loadCommunityStats } from "@/lib/community";
+import { COMMUNITY_PATHS, MY_CLUMP } from "@/lib/feed";
 import { ChevronRight, MapPin, MessageSquare, Users } from "lucide-react";
 import { Suspense } from "react";
-import { TopBar } from "@/components/top-bar";
-import {
-  loadCommunityEvents,
-  loadCommunityStats,
-  type CommunityEvent,
-} from "@/lib/community";
-import { COMMUNITY_PATHS, MY_CLUMP } from "@/lib/feed";
 
 const TONE_BG: Record<CommunityEvent["tone"], string> = {
   red: "[background:linear-gradient(135deg,var(--color-red),var(--color-red-deep))]",

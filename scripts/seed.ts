@@ -18,15 +18,15 @@
  */
 import "dotenv/config";
 import {
+  events,
+  type ArticleBlock,
+  type Citation,
   articles,
   authors,
   createDb,
   digests,
-  events,
   klamps,
   users,
-  type ArticleBlock,
-  type Citation,
 } from "@x10/db";
 
 const url = process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL;
@@ -422,7 +422,11 @@ async function seedArticles() {
       items: [
         { label: "Ключевая ставка", value: "17%", source: "https://www.cbr.ru/press/keypr/" },
         { label: "Инфляция апрель", value: "8.9%", source: "https://rosstat.gov.ru/" },
-        { label: "Кредитов МСП за квартал", value: "−14%", source: "https://www.cbr.ru/statistics/" },
+        {
+          label: "Кредитов МСП за квартал",
+          value: "−14%",
+          source: "https://www.cbr.ru/statistics/",
+        },
       ],
     },
     {
@@ -515,8 +519,7 @@ async function seedArticles() {
         authorId: ID.author.slobodyanik,
         editorId: ID.user.editor,
         tease: "ЦБ держит 17% — четвёртое заседание подряд",
-        lede:
-          "Совет директоров ЦБ сохранил ключевую ставку на уровне 17%. Кредитное окно для МСП остаётся закрытым минимум до сентября.",
+        lede: "Совет директоров ЦБ сохранил ключевую ставку на уровне 17%. Кредитное окно для МСП остаётся закрытым минимум до сентября.",
         whyItMatters:
           "При ставке 17% IRR проектов МСП в среднем ниже стоимости долга. Время оборотки собственным капиталом, а не банковским.",
         body: cbRateBody,
@@ -538,8 +541,7 @@ async function seedArticles() {
         authorId: ID.author.vyatkina,
         editorId: ID.user.editor,
         tease: "Wildberries собирает логистическую империю",
-        lede:
-          "Маркетплейс купил три такси-сервиса за квартал. Что это даёт WB, что теряют продавцы, и какие 5 уроков для российского ритейла.",
+        lede: "Маркетплейс купил три такси-сервиса за квартал. Что это даёт WB, что теряют продавцы, и какие 5 уроков для российского ритейла.",
         whyItMatters:
           "Маркетплейсы переходят от агрегации к вертикальной интеграции. Селлерам это сужает рычаг переговоров и меняет unit-экономику.",
         body: wbBody,

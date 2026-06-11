@@ -14,7 +14,7 @@
  * чтобы client-side useTransition корректно отображал состояние.
  */
 
-import { setSessionToken, clearSessionToken } from "./session";
+import { clearSessionToken, setSessionToken } from "./session";
 
 const TIMEOUT_MS = 4000;
 

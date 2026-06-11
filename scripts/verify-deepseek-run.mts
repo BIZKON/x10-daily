@@ -6,7 +6,7 @@
  *
  * Читает DATABASE_URL из env контейнера. Все даты — в дне МСК (Europe/Moscow).
  */
-import { createDb, closeAllPools, sql } from "@x10/db";
+import { closeAllPools, createDb, sql } from "@x10/db";
 
 const url = process.env.DATABASE_URL;
 if (!url) {

@@ -13,8 +13,8 @@ import {
 import { channels, createDb } from "@x10/db";
 import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
-import { modelsFromEnv } from "../../lib/agent-context";
 import { DEFAULT_SECTION, DEFAULT_TEMPLATE, topicIngestedEvent } from "../../events";
+import { modelsFromEnv } from "../../lib/agent-context";
 import { getTodaySpendUsd, mskDayString, recordRun } from "../../lib/cost-ledger";
 import { deliverOpsAlert } from "../../lib/ops-alert";
 import { cleanPostText } from "../../lib/text";

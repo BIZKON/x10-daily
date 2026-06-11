@@ -49,9 +49,7 @@ export const channels = pgTable(
     lastError: text("last_error"),
     /** Идентификатор опубликованного поста (TG message_id / VK post id) — аудит. */
     postRef: text("post_ref"),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("channels_article_channel_uidx").on(t.articleId, t.channel),

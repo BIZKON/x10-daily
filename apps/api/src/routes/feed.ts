@@ -11,9 +11,7 @@ const querySchema = z.object({
   /** brief §5 — фильтр по user-facing категории. Главный фильтр для ленты. */
   category: z.enum(["taxes", "money", "practice", "power", "tech", "rybakov"]).optional(),
   /** brief §3 — фильтр по шаблону. */
-  template: z
-    .enum(["card-news", "deep-dive", "daily-take", "guide", "digest"])
-    .optional(),
+  template: z.enum(["card-news", "deep-dive", "daily-take", "guide", "digest"]).optional(),
   /** Legacy фильтр — оставлено для обратной совместимости. */
   section: z
     .enum(["main", "numbers", "people", "playbook", "weekend", "longread", "newsletter"])
@@ -27,53 +25,57 @@ const querySchema = z.object({
  */
 const FEED_FRESH_WINDOW_DAYS = 14;
 
-export const feedRoute = new Hono<AppEnv>().get("/daily", zValidator("query", querySchema), async (c) => {
-  const env = getEnv(c.env);
-  const db = getDb(env.DATABASE_URL);
-  const q = c.req.valid("query");
-  const now = new Date();
-  const freshAfter = new Date(now.getTime() - FEED_FRESH_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+export const feedRoute = new Hono<AppEnv>().get(
+  "/daily",
+  zValidator("query", querySchema),
+  async (c) => {
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    const q = c.req.valid("query");
+    const now = new Date();
+    const freshAfter = new Date(now.getTime() - FEED_FRESH_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
-  // Видимость miniapp-ленты РАСЦЕПЛЕНА от TG-слот-постинга (session 24). Пайплайн
-  // пишет статьи как 'ready' (с полным body), а 'published' их делает ТОЛЬКО
-  // drain-post-slots при отправке в TG-канал (4/день) — из-за чего в приложении
-  // было видно лишь ~8 статей при сотнях готовых. Лента-приложение и broadcast-
-  // канал — разные поверхности: показываем и 'ready', и 'published'. Эффективное
-  // время публикации — publishedAt, а для ready (publishedAt=null) — createdAt.
-  const effectiveAt = sql<Date>`coalesce(${articles.publishedAt}, ${articles.createdAt})`;
+    // Видимость miniapp-ленты РАСЦЕПЛЕНА от TG-слот-постинга (session 24). Пайплайн
+    // пишет статьи как 'ready' (с полным body), а 'published' их делает ТОЛЬКО
+    // drain-post-slots при отправке в TG-канал (4/день) — из-за чего в приложении
+    // было видно лишь ~8 статей при сотнях готовых. Лента-приложение и broadcast-
+    // канал — разные поверхности: показываем и 'ready', и 'published'. Эффективное
+    // время публикации — publishedAt, а для ready (publishedAt=null) — createdAt.
+    const effectiveAt = sql<Date>`coalesce(${articles.publishedAt}, ${articles.createdAt})`;
 
-  const rows = await db
-    .select({
-      id: articles.id,
-      slug: articles.slug,
-      section: articles.section,
-      category: articles.category,
-      subcategory: articles.subcategory,
-      template: articles.template,
-      tags: articles.tags,
-      coverImageUrl: articles.coverImageUrl,
-      tease: articles.tease,
-      lede: articles.lede,
-      readSeconds: articles.readSeconds,
-      wordCount: articles.wordCount,
-      isPaid: articles.isPaid,
-      isFeatured: articles.isFeatured,
-      reactions: articles.reactions,
-      publishedAt: effectiveAt,
-    })
-    .from(articles)
-    .where(
-      and(
-        inArray(articles.status, ["ready", "published"]),
-        lte(effectiveAt, now),
-        gte(effectiveAt, freshAfter),
-        q.category ? eq(articles.category, q.category) : undefined,
-        q.template ? eq(articles.template, q.template) : undefined,
-        q.section ? eq(articles.section, q.section) : undefined,
-      ),
-    )
-    .orderBy(desc(effectiveAt))
-    .limit(q.limit);
+    const rows = await db
+      .select({
+        id: articles.id,
+        slug: articles.slug,
+        section: articles.section,
+        category: articles.category,
+        subcategory: articles.subcategory,
+        template: articles.template,
+        tags: articles.tags,
+        coverImageUrl: articles.coverImageUrl,
+        tease: articles.tease,
+        lede: articles.lede,
+        readSeconds: articles.readSeconds,
+        wordCount: articles.wordCount,
+        isPaid: articles.isPaid,
+        isFeatured: articles.isFeatured,
+        reactions: articles.reactions,
+        publishedAt: effectiveAt,
+      })
+      .from(articles)
+      .where(
+        and(
+          inArray(articles.status, ["ready", "published"]),
+          lte(effectiveAt, now),
+          gte(effectiveAt, freshAfter),
+          q.category ? eq(articles.category, q.category) : undefined,
+          q.template ? eq(articles.template, q.template) : undefined,
+          q.section ? eq(articles.section, q.section) : undefined,
+        ),
+      )
+      .orderBy(desc(effectiveAt))
+      .limit(q.limit);
 
-  return c.json({ items: rows, generatedAt: now.toISOString() });
-});
+    return c.json({ items: rows, generatedAt: now.toISOString() });
+  },
+);

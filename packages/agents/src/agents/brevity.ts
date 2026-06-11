@@ -99,7 +99,7 @@ export const BrevityAgent = {
   tier: "SONNET" as const,
   run(
     input: z.infer<typeof inputSchema>,
-    ctx: Parameters<typeof agentByTemplate["card-news"]["run"]>[1],
+    ctx: Parameters<(typeof agentByTemplate)["card-news"]["run"]>[1],
   ) {
     const template = (input.template ?? "card-news") as DraftTemplate;
     return agentByTemplate[template].run(input, ctx);

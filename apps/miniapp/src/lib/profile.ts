@@ -7,7 +7,7 @@
  * Fallback на мок-цифры из прототипа (CLAUDE.md §1, прототип fonts.ts).
  * PROFILE/SUBSCRIPTIONS/SCHEDULE остаются мок до auth + user_topic_subscriptions (3d/4).
  */
-import { fetchProfileStats, type ApiProfileStats } from "./api";
+import { type ApiProfileStats, fetchProfileStats } from "./api";
 
 export type ProfileStatTone = "red" | "gold" | "success";
 export type ProfileStatIcon = "flame" | "book" | "bookmark" | "crown";

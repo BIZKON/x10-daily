@@ -1,6 +1,6 @@
+import type { AdminCategory } from "@/lib/api";
 import { Filter } from "lucide-react";
 import Link from "next/link";
-import type { AdminCategory } from "@/lib/api";
 
 export const metadata = { title: "Рубрики — X10 Admin" };
 
@@ -131,18 +131,15 @@ export default function RubricsPage() {
       <header className="mb-6 border-b border-fence pb-5">
         <h1 className="m-0 font-display text-2xl font-extrabold">Рубрики</h1>
         <p className="mt-1.5 text-[13px] text-mist">
-          Brief §1 — таксономия первого уровня. 6 рубрик, фиксированный набор.
-          Подкатегории второго уровня — открытые, IngestAgent классифицирует автоматически.
-          CRUD над рубриками — только через миграцию Postgres enum, не через UI.
+          Brief §1 — таксономия первого уровня. 6 рубрик, фиксированный набор. Подкатегории второго
+          уровня — открытые, IngestAgent классифицирует автоматически. CRUD над рубриками — только
+          через миграцию Postgres enum, не через UI.
         </p>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2">
         {RUBRICS.map((r) => (
-          <article
-            key={r.id}
-            className={`rounded-2xl border p-5 ${r.toneClass}`}
-          >
+          <article key={r.id} className={`rounded-2xl border p-5 ${r.toneClass}`}>
             <div className="mb-1 flex items-center gap-2">
               <h2 className="m-0 font-display text-lg font-extrabold">{r.label}</h2>
               <code className="rounded-pill border border-fence bg-night px-2 py-0.5 font-mono text-[10px] text-haze">
@@ -188,8 +185,7 @@ export default function RubricsPage() {
                 <span className="font-bold text-mist">Частота:</span> {r.cadence}
               </div>
               <div>
-                <span className="font-bold text-mist">Бенчмарки:</span>{" "}
-                {r.benchmarks.join(", ")}
+                <span className="font-bold text-mist">Бенчмарки:</span> {r.benchmarks.join(", ")}
               </div>
             </div>
           </article>

@@ -1,13 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import {
-  and,
-  articles,
-  bookmarks,
-  eq,
-  reactions,
-  sql,
-  userReadingHistory,
-} from "@x10/db";
+import { and, articles, bookmarks, eq, reactions, sql, userReadingHistory } from "@x10/db";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../app";
@@ -95,10 +87,7 @@ export const engagementRoute = new Hono<AppEnv>()
         .select({ readPercent: userReadingHistory.readPercent })
         .from(userReadingHistory)
         .where(
-          and(
-            eq(userReadingHistory.userId, userId),
-            eq(userReadingHistory.articleId, articleId),
-          ),
+          and(eq(userReadingHistory.userId, userId), eq(userReadingHistory.articleId, articleId)),
         )
         .limit(1),
     ]);
@@ -164,10 +153,7 @@ export const engagementRoute = new Hono<AppEnv>()
       } else {
         // Возможен PK race (concurrent INSERT) — onConflictDoNothing → no-op,
         // row уже существует, состояние "added" корректно для UI.
-        await db
-          .insert(reactions)
-          .values({ userId, articleId, kind })
-          .onConflictDoNothing();
+        await db.insert(reactions).values({ userId, articleId, kind }).onConflictDoNothing();
         action = "added";
       }
 
@@ -211,10 +197,7 @@ export const engagementRoute = new Hono<AppEnv>()
     if (deleted.length > 0) {
       action = "removed";
     } else {
-      await db
-        .insert(bookmarks)
-        .values({ userId, articleId })
-        .onConflictDoNothing();
+      await db.insert(bookmarks).values({ userId, articleId }).onConflictDoNothing();
       action = "added";
     }
 

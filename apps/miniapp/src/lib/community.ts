@@ -9,11 +9,11 @@
  * COMMUNITY_PATHS — статический onboarding, не data-driven.
  */
 import {
-  fetchCommunityStats,
-  fetchEvents,
   type ApiCommunityStats,
   type ApiEvent,
   type ApiEventType,
+  fetchCommunityStats,
+  fetchEvents,
 } from "./api";
 
 export type CommunityStats = {

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://biomejs.dev/schemas/1.9.0/schema.json",
+
+  // biome 1.9.4 по умолчанию НЕ читает .gitignore → локально сканирует build-вывод
+  // (.next/, dist/, .turbo/) и выдаёт тысячи ложных ошибок. Включаем уважение к
+  // .gitignore, чтобы локальный скоуп совпадал с CI (в CI сборки перед линтом нет).
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+
+  // docs/research/X10-Prototype.tsx и прочее в docs/ — прототипы и черновики,
+  // а не shippable-исходники. Линтовать их не нужно.
+  "files": { "ignore": ["docs/**"] },
+
+  "organizeImports": { "enabled": true },
+  "linter": { "enabled": true, "rules": { "recommended": true } },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "javascript": { "formatter": { "quoteStyle": "double", "semicolons": "always" } },
+
+  // В тестах non-null assertion на моках (например mock.calls[0]![1]) легитимен:
+  // форму данных гарантирует setup. Отключаем правило только для тестовых файлов.
+  "overrides": [
+    {
+      "include": ["**/test/**", "**/*.test.ts", "**/*.test.tsx"],
+      "linter": { "rules": { "style": { "noNonNullAssertion": "off" } } }
+    }
+  ]
+}

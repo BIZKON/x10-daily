@@ -40,12 +40,7 @@ export function HeaderShare({
   };
 
   return (
-    <button
-      type="button"
-      aria-label="Поделиться"
-      onClick={handle}
-      className="relative"
-    >
+    <button type="button" aria-label="Поделиться" onClick={handle} className="relative">
       <Share2 size={20} strokeWidth={1.75} />
       {toast && (
         <span

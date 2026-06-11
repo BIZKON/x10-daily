@@ -1,6 +1,6 @@
+import type { FeedItem } from "@/lib/feed";
 import { Heart, MessageCircle, Quote } from "lucide-react";
 import Link from "next/link";
-import type { FeedItem } from "@/lib/feed";
 
 /**
  * DailyTakeCard — brief §3.3 (daily-take).

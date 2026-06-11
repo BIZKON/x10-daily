@@ -77,14 +77,13 @@ describe("assemble-newsletter", () => {
 
   it("вызывает NewsletterAssembleAgent с данными из event", async () => {
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
-    const fn = createAssembleNewsletterFunction(
-      inngest,
-      BINDINGS as unknown as PipelineBindings,
-    );
+    const fn = createAssembleNewsletterFunction(inngest, BINDINGS as unknown as PipelineBindings);
     const step = makeStep();
-    const handler = (fn as unknown as {
-      fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
-    }).fn;
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
 
     const result = (await handler({ event: EVENT, step })) as {
       subject: string;

@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
-import { fontDisplay, fontMono, fontSans } from "@/lib/fonts";
 import { TelegramProvider } from "@/components/telegram-provider";
+import { fontDisplay, fontMono, fontSans } from "@/lib/fonts";
 
 export const metadata: Metadata = {
   title: "X10 Daily — Деловое утро за 7 минут",

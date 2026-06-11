@@ -1,9 +1,9 @@
-import { cn } from "@x10/ui";
-import { Play } from "lucide-react";
-import Image from "next/image";
 import { PodcastOfWeek } from "@/components/podcast-of-week";
 import { TopBar } from "@/components/top-bar";
 import { VIDEOS, VIDEO_TABS } from "@/lib/feed";
+import { cn } from "@x10/ui";
+import { Play } from "lucide-react";
+import Image from "next/image";
 
 export default function VideoPage() {
   return (
@@ -17,9 +17,7 @@ export default function VideoPage() {
             type="button"
             className={cn(
               "whitespace-nowrap rounded-pill px-4 py-2 text-[13px] font-semibold",
-              i === 0
-                ? "bg-red text-white"
-                : "border border-fence bg-card text-mist",
+              i === 0 ? "bg-red text-white" : "border border-fence bg-card text-mist",
             )}
           >
             {t}
@@ -46,7 +44,12 @@ export default function VideoPage() {
               />
               <div className="absolute inset-0 grid place-items-center">
                 <span className="grid h-12 w-12 place-items-center rounded-full bg-black/50 backdrop-blur-md">
-                  <Play size={20} strokeWidth={2.25} fill="currentColor" className="ml-0.5 text-white" />
+                  <Play
+                    size={20}
+                    strokeWidth={2.25}
+                    fill="currentColor"
+                    className="ml-0.5 text-white"
+                  />
                 </span>
               </div>
               <span

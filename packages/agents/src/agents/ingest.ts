@@ -30,12 +30,7 @@ export const INGEST_CATEGORIES = [
 export type IngestCategory = (typeof INGEST_CATEGORIES)[number];
 
 /** Шаблоны материалов — brief §3. */
-export const INGEST_TEMPLATES = [
-  "card-news",
-  "deep-dive",
-  "daily-take",
-  "guide",
-] as const;
+export const INGEST_TEMPLATES = ["card-news", "deep-dive", "daily-take", "guide"] as const;
 export type IngestTemplate = (typeof INGEST_TEMPLATES)[number];
 
 export const INGEST_DECISION = ["accept", "reject", "duplicate"] as const;

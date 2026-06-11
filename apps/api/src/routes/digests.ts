@@ -1,16 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import {
-  and,
-  articles,
-  desc,
-  digests,
-  eq,
-  gte,
-  inArray,
-  isNotNull,
-  lte,
-  sql,
-} from "@x10/db";
+import { and, articles, desc, digests, eq, gte, inArray, isNotNull, lte, sql } from "@x10/db";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../app";
@@ -116,10 +105,7 @@ async function expandTopArticles(
  * featured+свежесть; после launch вес получит engagement. SQL-курация
  * (как в feed.ts) проверяется живьём, не юнит-тестами.
  */
-async function selectHeroArticles(
-  db: ReturnType<typeof getDb>,
-  now: Date,
-): Promise<HeroArticle[]> {
+async function selectHeroArticles(db: ReturnType<typeof getDb>, now: Date): Promise<HeroArticle[]> {
   const freshAfter = new Date(now.getTime() - HERO_FRESH_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const effectiveAt = sql<Date>`coalesce(${articles.publishedAt}, ${articles.createdAt})`;
   const reactionScore = sql<number>`

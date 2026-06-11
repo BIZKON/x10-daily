@@ -14,7 +14,7 @@ async function call(model, maxTokens, userPrompt) {
       max_tokens: maxTokens,
       response_format: { type: "json_object" },
       messages: [
-        { role: "system", content: "Верни строго JSON-объект {\"text\": string}. Только JSON." },
+        { role: "system", content: 'Верни строго JSON-объект {"text": string}. Только JSON.' },
         { role: "user", content: userPrompt },
       ],
     }),
@@ -23,7 +23,11 @@ async function call(model, maxTokens, userPrompt) {
   const bodyText = await res.text();
   const tBody = Date.now() - t0;
   let parsed;
-  try { parsed = JSON.parse(bodyText); } catch { parsed = null; }
+  try {
+    parsed = JSON.parse(bodyText);
+  } catch {
+    parsed = null;
+  }
   return { status: res.status, tHeaders, tBody, bodyText, parsed };
 }
 
@@ -33,8 +37,13 @@ async function call(model, maxTokens, userPrompt) {
     const r1 = await call("deepseek/deepseek-chat", 14336, "Скажи привет одним словом.");
     console.log(`status=${r1.status} tHeaders=${r1.tHeaders}ms tBody=${r1.tBody}ms`);
     if (r1.status !== 200) console.log("BODY:", r1.bodyText.slice(0, 400));
-    else console.log(`finish=${r1.parsed?.choices?.[0]?.finish_reason} completion_tokens=${r1.parsed?.usage?.completion_tokens}`);
-  } catch (e) { console.log("ERR:", e.message); }
+    else
+      console.log(
+        `finish=${r1.parsed?.choices?.[0]?.finish_reason} completion_tokens=${r1.parsed?.usage?.completion_tokens}`,
+      );
+  } catch (e) {
+    console.log("ERR:", e.message);
+  }
 
   console.log("\n=== ПРОБА 2: v4-flash буферизация (tHeaders vs tBody) ===");
   try {
@@ -43,10 +52,18 @@ async function call(model, maxTokens, userPrompt) {
       4096,
       "Перечисли 10 трендов российского бизнеса 2026 года, по 2-3 предложения каждый, внутри JSON поля text.",
     );
-    console.log(`status=${r2.status} tHeaders=${r2.tHeaders}ms tBody=${r2.tBody}ms (разница тело-заголовки=${r2.tBody - r2.tHeaders}ms)`);
-    console.log(`finish=${r2.parsed?.choices?.[0]?.finish_reason} completion_tokens=${r2.parsed?.usage?.completion_tokens}`);
-    console.log(r2.tHeaders > 30000
-      ? "→ ВЫВОД: заголовки приходят ПОЗДНО → gateway БУФЕРИЗУЕТ → 60s-таймаут реально рубит длинные вызовы (finding #2)."
-      : "→ ВЫВОД: заголовки рано, тело тянется дольше → 60s покрывает только заголовки (finding #7); но всё равно хрупко.");
-  } catch (e) { console.log("ERR:", e.message); }
+    console.log(
+      `status=${r2.status} tHeaders=${r2.tHeaders}ms tBody=${r2.tBody}ms (разница тело-заголовки=${r2.tBody - r2.tHeaders}ms)`,
+    );
+    console.log(
+      `finish=${r2.parsed?.choices?.[0]?.finish_reason} completion_tokens=${r2.parsed?.usage?.completion_tokens}`,
+    );
+    console.log(
+      r2.tHeaders > 30000
+        ? "→ ВЫВОД: заголовки приходят ПОЗДНО → gateway БУФЕРИЗУЕТ → 60s-таймаут реально рубит длинные вызовы (finding #2)."
+        : "→ ВЫВОД: заголовки рано, тело тянется дольше → 60s покрывает только заголовки (finding #7); но всё равно хрупко.",
+    );
+  } catch (e) {
+    console.log("ERR:", e.message);
+  }
 })();

@@ -11,8 +11,8 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { articles } from "./articles";
 import { id, timestamps } from "./_shared";
+import { articles } from "./articles";
 import { users } from "./users";
 
 /**
@@ -39,9 +39,7 @@ export const reactions = pgTable(
       .notNull()
       .references(() => articles.id, { onDelete: "cascade" }),
     kind: reactionKind("kind").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .default(sql`now()`),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
   },
   (t) => [
     primaryKey({ columns: [t.userId, t.articleId, t.kind] }),
@@ -68,9 +66,7 @@ export const bookmarks = pgTable(
     articleId: uuid("article_id")
       .notNull()
       .references(() => articles.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .default(sql`now()`),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
   },
   (t) => [
     primaryKey({ columns: [t.userId, t.articleId] }),
@@ -103,9 +99,7 @@ export const userReadingHistory = pgTable(
     /** Процент прокрутки 0..100. */
     readPercent: smallint("read_percent").notNull().default(0),
     completed: boolean("completed").notNull().default(false),
-    lastReadAt: timestamp("last_read_at", { withTimezone: true })
-      .notNull()
-      .default(sql`now()`),
+    lastReadAt: timestamp("last_read_at", { withTimezone: true }).notNull().default(sql`now()`),
     /** Время в секундах активного чтения (если miniapp шлёт heartbeats). */
     readSeconds: integer("read_seconds").notNull().default(0),
     ...timestamps,

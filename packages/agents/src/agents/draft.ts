@@ -16,9 +16,7 @@ const inputSchema = z.object({
   context: z.string(),
   sources: z.array(sourceRefSchema).min(1),
   /** Pipeline-internal section — оставлено для обратной совместимости pipeline_runs. */
-  section: z
-    .enum(["main", "numbers", "people", "playbook", "weekend", "longread"])
-    .default("main"),
+  section: z.enum(["main", "numbers", "people", "playbook", "weekend", "longread"]).default("main"),
   /** brief §3 — шаблон материала. Определяет структуру и длину. По умолчанию card-news. */
   template: z.enum(DRAFT_TEMPLATES).optional(),
   /** brief §1 — "taxes.news", "practice.stories" и т.д. Используется DraftAgent для уточнения тона. */
@@ -133,7 +131,10 @@ function makeAgent(template: DraftTemplate) {
 export const DraftAgent = {
   name: "draft" as const,
   tier: "SONNET" as const,
-  run(input: z.infer<typeof inputSchema>, ctx: Parameters<typeof agentByTemplate["card-news"]["run"]>[1]) {
+  run(
+    input: z.infer<typeof inputSchema>,
+    ctx: Parameters<(typeof agentByTemplate)["card-news"]["run"]>[1],
+  ) {
     // Zod default может не сработать если input уже распарсен — нормализуем.
     const template = (input.template ?? "card-news") as DraftTemplate;
     return agentByTemplate[template].run(input, ctx);

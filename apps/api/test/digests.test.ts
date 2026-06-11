@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildSyntheticDigest,
-  SYNTHETIC_DIGEST_INTRO,
-  todayMskIsoDate,
   type HeroArticle,
+  SYNTHETIC_DIGEST_INTRO,
+  buildSyntheticDigest,
+  todayMskIsoDate,
 } from "../src/routes/digests";
 
 const ARTICLE: HeroArticle = {

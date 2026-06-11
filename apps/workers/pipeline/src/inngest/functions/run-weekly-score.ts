@@ -1,9 +1,9 @@
-import { ScoreWeeklyAgent, createMasker, type AgentContext } from "@x10/agents";
-import { loadPipelineEnv } from "../../env";
-import { modelsFromEnv } from "../../lib/agent-context";
-import { scoreWeeklyRequestedEvent } from "../../events";
-import type { PipelineInngest } from "../client";
+import { type AgentContext, ScoreWeeklyAgent, createMasker } from "@x10/agents";
 import type { PipelineBindings } from "../../bindings";
+import { loadPipelineEnv } from "../../env";
+import { scoreWeeklyRequestedEvent } from "../../events";
+import { modelsFromEnv } from "../../lib/agent-context";
+import type { PipelineInngest } from "../client";
 
 /**
  * Еженедельный анализ engagement. Триггер:
@@ -13,10 +13,7 @@ import type { PipelineBindings } from "../../bindings";
  * Этот worker НЕ применяет рекомендации к pipeline_config — это решает редактор
  * через apps/admin UI (Layer 5c).
  */
-export function createRunWeeklyScoreFunction(
-  inngest: PipelineInngest,
-  bindings: PipelineBindings,
-) {
+export function createRunWeeklyScoreFunction(inngest: PipelineInngest, bindings: PipelineBindings) {
   return inngest.createFunction(
     {
       id: "run-weekly-score",

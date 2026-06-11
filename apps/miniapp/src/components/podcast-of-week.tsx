@@ -1,5 +1,5 @@
-import { Play } from "lucide-react";
 import { PODCAST_OF_WEEK } from "@/lib/feed";
+import { Play } from "lucide-react";
 
 const BARS = 40;
 const ACTIVE = Math.round(BARS * PODCAST_OF_WEEK.progress);

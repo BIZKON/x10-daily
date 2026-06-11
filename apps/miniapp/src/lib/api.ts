@@ -120,6 +120,45 @@ export async function fetchArticle(slug: string): Promise<ApiArticle | null> {
 }
 
 /* ----------------------------------------------------------------
+ * Daily digest (home-hero) — GET /v1/digests/hero.
+ *
+ * Бэкенд отдаёт редакционный выпуск, а пока его нет — СИНТЕЗ из реальных
+ * топ-статей дня (synthetic:true). topArticles раскрыты — hero рендерится
+ * одним запросом. 404 (нет контента) / api down → null → honest fallback.
+ * ---------------------------------------------------------------- */
+
+export type ApiDigestArticle = {
+  id: string;
+  slug: string;
+  tease: string;
+  lede: string;
+  category: ApiCategory;
+};
+
+export type ApiDigest = {
+  issueDate: string;
+  intro: string;
+  rybakovTake: { quote: string; context: string } | null;
+  premiumTeaser: { title: string; articleId: string } | null;
+  tomorrow: string | null;
+  sentAt: string | null;
+  synthetic: boolean;
+  topArticles: ApiDigestArticle[];
+};
+
+export async function fetchDigest(): Promise<ApiDigest | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  try {
+    const res = await fetchWithTimeout(`${base}/v1/digests/hero`);
+    if (!res.ok) return null;
+    return (await res.json()) as ApiDigest;
+  } catch {
+    return null;
+  }
+}
+
+/* ----------------------------------------------------------------
  * Community (Этап 3c — brief §2.1)
  * ---------------------------------------------------------------- */
 

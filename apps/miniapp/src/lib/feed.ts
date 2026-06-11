@@ -14,6 +14,7 @@
  */
 import {
   fetchArticle,
+  fetchDigest,
   fetchFeed,
   type ApiArticle,
   type ApiArticleBlock,
@@ -113,25 +114,35 @@ function mapApiItem(row: ApiFeedItem): FeedItem {
   };
 }
 
-export const DAILY_DIGEST = {
-  date: "Понедельник, 26 мая",
-  title: "Утренний разбор от Рыбакова",
-  videoMinutes: 8,
-  bullets: [
-    {
-      n: "01",
-      t: "ЦБ оставил ставку 17%. Рыбаков: «Кредитное окно закрыто, время своих денег».",
-    },
-    {
-      n: "02",
-      t: "Минфин предложил поднять порог УСН до 350 млн. Что делать малому бизнесу.",
-    },
-    {
-      n: "03",
-      t: "Wildberries купил три сервиса такси. Передел рынка логистики начался.",
-    },
-  ],
+/**
+ * Home-hero «Главное сегодня» (brief §6 DailyDigest).
+ *
+ * Реальные данные приходят из GET /v1/digests/hero: редакционный выпуск, а
+ * пока его нет — синтез из топ-статей дня. ⚠️ Никаких выдуманных цитат/
+ * атрибуций здесь быть НЕ должно (ToV, кейс Романчук) — bullets = реальные
+ * заголовки статей, ведущие в читалку.
+ */
+export type DigestBullet = {
+  /** «01» / «02» / «03» — порядковый номер. */
+  n: string;
+  /** Slug статьи — bullet кликабелен, ведёт в читалку. */
+  slug: string;
+  /** Заголовок статьи (tease). */
+  text: string;
 };
+
+export type Digest = {
+  /** YYYY-MM-DD (МСК) — hero форматирует в «Среда, 11 июня». "" → eyebrow без даты. */
+  issueDate: string;
+  /** Короткая врезка-подзаголовок. */
+  intro: string;
+  bullets: DigestBullet[];
+  /** CTA «Читать разбор» → slug топ-статьи; null → CTA скрыт. */
+  ctaSlug: string | null;
+};
+
+/** Сколько сюжетов показываем в hero. */
+const DIGEST_BULLET_COUNT = 3;
 
 /** Mock feed для разработки без backend'a — покрывает все 3 template (M0 brief §10). */
 const FEED: FeedItem[] = [
@@ -214,11 +225,49 @@ const FEED: FeedItem[] = [
 ];
 
 export async function loadDailyFeed(limit = 20): Promise<FeedItem[]> {
+  "use cache";
   const api = await fetchFeed(limit);
   if (api && api.items.length > 0) {
     return api.items.map(mapApiItem);
   }
   return FEED.slice(0, limit);
+}
+
+/**
+ * Нейтральный link-safe fallback (api недоступен в рантайме). ⚠️ НЕ фабрикуем
+ * статьи/слаги: иначе на первом экране появятся выдуманные заголовки и мёртвые
+ * ссылки, ведущие в 404 (находка ревью s25 — мок-bullets запекались в статику).
+ * Без bullets/CTA — честный пустой hero, направляющий в ленту ниже.
+ */
+function fallbackDigest(): Digest {
+  return {
+    issueDate: "",
+    intro: "Свежие деловые материалы — в ленте ниже.",
+    bullets: [],
+    ctaSlug: null,
+  };
+}
+
+/**
+ * Данные home-hero (дайджест одинаков для всех — per-day), кэш 15м.
+ * Динамическая граница — connection() в HeroDigest (чтобы build не запекал
+ * fallback в статику); здесь только кэш результата живого fetch.
+ */
+export async function loadDigest(): Promise<Digest> {
+  "use cache";
+  const api = await fetchDigest();
+  if (!api || api.topArticles.length === 0) return fallbackDigest();
+  const top = api.topArticles.slice(0, DIGEST_BULLET_COUNT);
+  return {
+    issueDate: api.issueDate,
+    intro: api.intro,
+    bullets: top.map((a, i) => ({
+      n: String(i + 1).padStart(2, "0"),
+      slug: a.slug,
+      text: a.tease,
+    })),
+    ctaSlug: api.topArticles[0]?.slug ?? null,
+  };
 }
 
 /**

@@ -138,10 +138,7 @@ export function defineAgent<I, O>(def: AgentDefinition<I, O>): Agent<I, O> {
       let wastedUsage: OpenAI.Completions.CompletionUsage | undefined;
 
       if (isDeepSeek) {
-        const jsonSystem =
-          `${systemText}\n\nФОРМАТ ОТВЕТА (обязательно): верни СТРОГО валидный JSON-объект ` +
-          "по этой JSON Schema. Только JSON — без markdown, без ```, без любого текста до или после.\n" +
-          `JSON Schema:\n${JSON.stringify(outputJsonSchema)}`;
+        const jsonSystem = `${systemText}\n\nФОРМАТ ОТВЕТА (обязательно): верни СТРОГО валидный JSON-объект по этой JSON Schema. Только JSON — без markdown, без \`\`\`, без любого текста до или после.\nJSON Schema:\n${JSON.stringify(outputJsonSchema)}`;
         const callDeepSeek = (budget: number) =>
           client.chat.completions.create(
             {

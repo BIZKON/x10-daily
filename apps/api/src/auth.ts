@@ -30,7 +30,7 @@ export const EDITOR_ROLES = ["editor", "admin"] as const satisfies readonly User
 function extractBearer(authorization: string | undefined): string | null {
   if (!authorization) return null;
   const m = authorization.match(/^Bearer\s+(.+)$/i);
-  return m ? m[1]!.trim() : null;
+  return m?.[1]?.trim() ?? null;
 }
 
 function requireJwtSecret(c: Context): string {

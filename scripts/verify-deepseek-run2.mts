@@ -6,8 +6,10 @@
 import { type AgentContext, BrevityAgent, DraftAgent, FactCheckAgent, ToVAgent } from "@x10/agents";
 
 const MODEL = "deepseek/deepseek-v4-flash";
+const apiKey = process.env.AI_GATEWAY_API_KEY;
+if (!apiKey) throw new Error("AI_GATEWAY_API_KEY не задан в окружении");
 const ctx: AgentContext = {
-  apiKey: process.env.AI_GATEWAY_API_KEY!,
+  apiKey,
   baseURL: process.env.AI_GATEWAY_BASE_URL || "https://api.timeweb.ai/v1",
   models: { OPUS: MODEL, SONNET: MODEL, HAIKU: MODEL },
 };
@@ -59,7 +61,7 @@ async function main() {
         {
           draft: compressed,
           sources: sourcesPol,
-          topicContext: draftPol.context + ` [проверка #${i + 1}-${Date.now()}]`,
+          topicContext: `${draftPol.context} [проверка #${i + 1}-${Date.now()}]`,
         } as never,
         ctx,
       );
@@ -70,8 +72,7 @@ async function main() {
         haltReason?: string;
       };
       console.log(
-        `factcheck[${i + 1}/3]: OK ${Date.now() - start}ms status=${o.status} verdict=${o.verdict} conf=${o.confidence}` +
-          (o.haltReason ? ` halt="${o.haltReason.slice(0, 90)}"` : ""),
+        `factcheck[${i + 1}/3]: OK ${Date.now() - start}ms status=${o.status} verdict=${o.verdict} conf=${o.confidence}${o.haltReason ? ` halt="${o.haltReason.slice(0, 90)}"` : ""}`,
       );
     } catch (e) {
       console.log(

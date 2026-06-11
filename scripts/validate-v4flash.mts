@@ -21,8 +21,10 @@ import {
 import { serializeDraftForNumbers } from "./src/persist";
 
 const MODEL = "deepseek/deepseek-v4-flash";
+const apiKey = process.env.AI_GATEWAY_API_KEY;
+if (!apiKey) throw new Error("AI_GATEWAY_API_KEY не задан в окружении");
 const ctx: AgentContext = {
-  apiKey: process.env.AI_GATEWAY_API_KEY!,
+  apiKey,
   baseURL: process.env.AI_GATEWAY_BASE_URL || "https://api.timeweb.ai/v1",
   models: { OPUS: MODEL, SONNET: MODEL, HAIKU: MODEL },
 };
@@ -95,7 +97,7 @@ async function main() {
   const d = await tryRun("draft", tallies.draft, () => DraftAgent.run(evBiz as never, ctx));
   const draft = (d.r as { output: unknown } | null)?.output;
   console.log(
-    `draft: ${d.r ? "OK" : "FAIL"} ${d.ms}ms ${draft ? "tease=" + JSON.stringify((draft as { tease?: string }).tease)?.slice(0, 80) : tallies.draft.errors.at(-1)}`,
+    `draft: ${d.r ? "OK" : "FAIL"} ${d.ms}ms ${draft ? `tease=${JSON.stringify((draft as { tease?: string }).tease)?.slice(0, 80)}` : tallies.draft.errors.at(-1)}`,
   );
 
   if (draft) {
@@ -198,7 +200,7 @@ async function main() {
   console.log("\n=== ИТОГ (ok/всего) ===");
   for (const [k, v] of Object.entries(tallies)) {
     console.log(
-      `${k.padEnd(10)} ${v.ok}/${v.ok + v.fail}${v.errors.length ? "  ⚠ " + v.errors[0] : ""}`,
+      `${k.padEnd(10)} ${v.ok}/${v.ok + v.fail}${v.errors.length ? `  ⚠ ${v.errors[0]}` : ""}`,
     );
   }
 }

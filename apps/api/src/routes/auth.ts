@@ -59,7 +59,7 @@ function requireJwtSecret(env: { X10_JWT_SECRET?: string }): string {
 }
 
 function pickDisplayName(u: { first_name?: string; last_name?: string }): string | null {
-  const parts = [u.first_name, u.last_name].filter((s): s is string => Boolean(s && s.trim()));
+  const parts = [u.first_name, u.last_name].filter((s): s is string => Boolean(s?.trim()));
   const joined = parts.join(" ").trim();
   return joined.length > 0 ? joined.slice(0, 128) : null;
 }
@@ -82,7 +82,7 @@ export const authRoute = new Hono<AppEnv>()
     const ttl = env.X10_JWT_TTL_SECONDS;
     const { initData } = c.req.valid("json");
 
-    let verified;
+    let verified: Awaited<ReturnType<typeof verifyInitData>>;
     try {
       verified = await verifyInitData(initData, { botToken });
     } catch (err) {
@@ -135,7 +135,7 @@ export const authRoute = new Hono<AppEnv>()
     const ttl = env.X10_JWT_TTL_SECONDS;
     const payload = c.req.valid("json");
 
-    let verified;
+    let verified: Awaited<ReturnType<typeof verifyTelegramWidget>>;
     try {
       verified = await verifyTelegramWidget(payload, { botToken });
     } catch (err) {
@@ -260,7 +260,7 @@ export const authRoute = new Hono<AppEnv>()
     }
     const env = getEnv(c.env);
     const jwtSecret = requireJwtSecret(env);
-    let claims;
+    let claims: Awaited<ReturnType<typeof verifySession>>;
     try {
       claims = await verifySession(token, { secret: jwtSecret });
     } catch {
@@ -290,7 +290,7 @@ export const authRoute = new Hono<AppEnv>()
 function extractBearer(authorization: string | undefined): string | null {
   if (!authorization) return null;
   const m = authorization.match(/^Bearer\s+(.+)$/i);
-  return m ? m[1]!.trim() : null;
+  return m?.[1]?.trim() ?? null;
 }
 
 /**
@@ -348,7 +348,7 @@ async function upsertTelegramUser(
           avatarUrl: users.avatarUrl,
           locale: users.locale,
         });
-      return updated!;
+      return updated ?? existing;
     }
     return existing;
   }
@@ -372,5 +372,8 @@ async function upsertTelegramUser(
       avatarUrl: users.avatarUrl,
       locale: users.locale,
     });
-  return created!;
+  if (!created) {
+    throw new Error("INSERT users RETURNING вернул пусто — нарушен инвариант БД");
+  }
+  return created;
 }

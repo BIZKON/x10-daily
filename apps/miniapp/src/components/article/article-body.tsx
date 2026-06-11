@@ -18,8 +18,8 @@ export function ArticleBody({ blocks }: { blocks: ApiArticleBlock[] }) {
   if (!blocks?.length) return null;
   return (
     <div className="space-y-5">
-      {blocks.map((block, i) => (
-        <BlockView key={i} block={block} />
+      {blocks.map((block) => (
+        <BlockView key={JSON.stringify(block)} block={block} />
       ))}
     </div>
   );
@@ -44,9 +44,9 @@ function BlockView({ block }: { block: ApiArticleBlock }) {
       return (
         <div className="rounded-2xl bg-steel p-4">
           <div className="space-y-2.5">
-            {block.items.map((it, j) => (
+            {block.items.map((it) => (
               <div
-                key={j}
+                key={it.label}
                 className="flex items-baseline justify-between gap-3 border-b border-white/10 pb-2.5 last:border-0 last:pb-0"
               >
                 <span className="text-[13px] leading-snug text-white/70">{it.label}</span>
@@ -74,14 +74,14 @@ function BlockView({ block }: { block: ApiArticleBlock }) {
     case "list":
       return block.ordered ? (
         <ol className="m-0 list-decimal space-y-1.5 pl-5 text-[16px] leading-[1.6] text-paper">
-          {block.items.map((it, j) => (
-            <li key={j}>{it}</li>
+          {block.items.map((it) => (
+            <li key={it}>{it}</li>
           ))}
         </ol>
       ) : (
         <ul className="m-0 list-disc space-y-1.5 pl-5 text-[16px] leading-[1.6] text-paper">
-          {block.items.map((it, j) => (
-            <li key={j}>{it}</li>
+          {block.items.map((it) => (
+            <li key={it}>{it}</li>
           ))}
         </ul>
       );

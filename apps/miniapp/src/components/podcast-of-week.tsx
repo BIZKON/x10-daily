@@ -3,6 +3,7 @@ import { Play } from "lucide-react";
 
 const BARS = 40;
 const ACTIVE = Math.round(BARS * PODCAST_OF_WEEK.progress);
+const BAR_KEYS = Array.from({ length: BARS }, (_, i) => `wave-${i}`);
 
 export function PodcastOfWeek() {
   return (
@@ -27,11 +28,11 @@ export function PodcastOfWeek() {
         </button>
         <div className="flex-1">
           <div className="flex h-7 items-end gap-0.5">
-            {Array.from({ length: BARS }).map((_, i) => {
+            {BAR_KEYS.map((barKey, i) => {
               const h = Math.round(20 + Math.abs(Math.sin(i * 0.5)) * 60 + ((i * 17) % 30));
               return (
                 <div
-                  key={i}
+                  key={barKey}
                   className={`flex-1 rounded-pill ${i < ACTIVE ? "bg-gold" : "bg-fence"}`}
                   style={{ height: `${h}%` }}
                 />

@@ -44,7 +44,7 @@ describe("GET /v1/articles/:id/me (anonymous)", () => {
   it("rejects malformed UUID in path", async () => {
     const app = createApp();
     const res = await app.fetch(
-      new Request(`https://x10-api.local/v1/articles/not-a-uuid/me`),
+      new Request("https://x10-api.local/v1/articles/not-a-uuid/me"),
       TEST_BINDINGS,
     );
     expect(res.status).toBe(400);

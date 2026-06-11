@@ -6,9 +6,9 @@ const key = process.env.AI_GATEWAY_API_KEY;
 
 async function call(model, maxTokens, userPrompt) {
   const t0 = Date.now();
-  const res = await fetch(base + "/chat/completions", {
+  const res = await fetch(`${base}/chat/completions`, {
     method: "POST",
-    headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model,
       max_tokens: maxTokens,

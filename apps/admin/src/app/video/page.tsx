@@ -70,8 +70,8 @@ export default function VideoPage() {
         <article className="lg:col-span-2 rounded-2xl border border-fence bg-card p-5">
           <h2 className="m-0 mb-3 font-display text-lg font-extrabold">Roadmap до полного CRUD</h2>
           <ol className="m-0 list-none space-y-3 p-0">
-            {ROADMAP.map((m, i) => (
-              <li key={i} className="flex items-start gap-3">
+            {ROADMAP.map((m) => (
+              <li key={m.label} className="flex items-start gap-3">
                 {m.done ? (
                   <CheckCircle2
                     size={18}

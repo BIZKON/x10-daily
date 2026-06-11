@@ -92,7 +92,7 @@ function MyKlampSection() {
         <div className="flex">
           {MY_CLUMP.avatars.map((l, i) => (
             <div
-              key={l + i}
+              key={l}
               className="-ml-2 grid h-8 w-8 place-items-center rounded-full border-2 border-card font-display text-[10px] font-bold text-white first:ml-0"
               style={{
                 background: `linear-gradient(135deg, ${AVATAR_COLORS[i % AVATAR_COLORS.length]}, var(--color-red))`,
@@ -179,6 +179,8 @@ async function EventsSection() {
   );
 }
 
+const EVENTS_SKELETON_KEYS = ["ev-sk-1", "ev-sk-2", "ev-sk-3"];
+
 function EventsSkeleton() {
   return (
     <section className="mb-5 px-5" aria-busy="true">
@@ -186,9 +188,9 @@ function EventsSkeleton() {
         <h3 className="m-0 font-display text-[19px] font-extrabold">События рядом</h3>
       </div>
       <div className="flex flex-col gap-2.5">
-        {Array.from({ length: 3 }).map((_, i) => (
+        {EVENTS_SKELETON_KEYS.map((k) => (
           <div
-            key={i}
+            key={k}
             className="flex items-center gap-3.5 rounded-xl border border-fence bg-card p-3.5"
           >
             <div className="h-14 w-14 animate-pulse rounded-xl bg-fence" />

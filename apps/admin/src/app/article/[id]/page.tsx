@@ -144,8 +144,8 @@ function DraftPanel({ article }: { article: ArticleDetail }) {
         {Math.round(article.readSeconds / 60)} мин)
       </div>
       <div className="space-y-4">
-        {article.body.map((block, i) => (
-          <BodyBlock key={i} block={block} />
+        {article.body.map((block) => (
+          <BodyBlock key={JSON.stringify(block)} block={block} />
         ))}
       </div>
 
@@ -155,8 +155,8 @@ function DraftPanel({ article }: { article: ArticleDetail }) {
             Источники ({article.citations.length})
           </div>
           <ul className="space-y-1.5 text-[13px]">
-            {article.citations.map((c, i) => (
-              <li key={i}>
+            {article.citations.map((c) => (
+              <li key={c.url}>
                 <a
                   href={c.url}
                   target="_blank"
@@ -194,8 +194,8 @@ function BodyBlock({ block }: { block: ArticleDetail["body"][number] }) {
             Numbers
           </div>
           <ul className="space-y-1.5">
-            {block.items.map((n, i) => (
-              <li key={i} className="flex items-baseline justify-between gap-3 text-[13px]">
+            {block.items.map((n) => (
+              <li key={n.label} className="flex items-baseline justify-between gap-3 text-[13px]">
                 <span className="text-mist">{n.label}</span>
                 <span className="font-mono font-bold text-paper">{n.value}</span>
               </li>
@@ -215,8 +215,8 @@ function BodyBlock({ block }: { block: ArticleDetail["body"][number] }) {
         <ul
           className={`ml-5 space-y-1 text-[14px] ${block.ordered ? "list-decimal" : "list-disc"}`}
         >
-          {block.items.map((it, i) => (
-            <li key={i}>{it}</li>
+          {block.items.map((it) => (
+            <li key={it}>{it}</li>
           ))}
         </ul>
       );
@@ -266,8 +266,8 @@ function ScorePanel({ metadata }: { metadata: ArticleDetail["metadata"] }) {
             Fixes ({score.fixes.length})
           </div>
           <ul className="space-y-2 text-[12px]">
-            {score.fixes.map((f, i) => (
-              <li key={i} className="rounded-lg border border-fence bg-night p-2.5">
+            {score.fixes.map((f) => (
+              <li key={f.criterion} className="rounded-lg border border-fence bg-night p-2.5">
                 <div className="font-mono text-[10px] text-gold">{f.criterion}</div>
                 <div className="mt-1 text-mist">{f.issue}</div>
                 <div className="mt-1 text-paper">→ {f.suggestion}</div>
@@ -296,8 +296,8 @@ function FactCheckPanel({ metadata }: { metadata: ArticleDetail["metadata"] }) {
         <p className="m-0 mb-3 text-[12px] leading-relaxed text-red">{fc.haltReason}</p>
       )}
       <ul className="space-y-2 text-[12px]">
-        {fc.claims.slice(0, 5).map((c, i) => (
-          <li key={i} className="rounded-lg border border-fence bg-night p-2.5">
+        {fc.claims.slice(0, 5).map((c) => (
+          <li key={c.claim} className="rounded-lg border border-fence bg-night p-2.5">
             <div className="flex items-center gap-2">
               <span className="font-mono text-[10px] text-gold">{c.location}</span>
               <span
@@ -356,8 +356,8 @@ function BrevityPanel({ metadata }: { metadata: ArticleDetail["metadata"] }) {
       </div>
       {b.cuts.length > 0 && (
         <ul className="space-y-1 text-[12px] text-mist">
-          {b.cuts.map((c, i) => (
-            <li key={i}>· {c}</li>
+          {b.cuts.map((c) => (
+            <li key={c}>· {c}</li>
           ))}
         </ul>
       )}
@@ -371,8 +371,8 @@ function HooksPanel({ metadata }: { metadata: ArticleDetail["metadata"] }) {
   return (
     <Card title="Hooks (6 паттернов)">
       <ul className="space-y-2 text-[12px]">
-        {hooks.map((h, i) => (
-          <li key={i} className="rounded-lg border border-fence bg-night p-2.5">
+        {hooks.map((h) => (
+          <li key={h.pattern} className="rounded-lg border border-fence bg-night p-2.5">
             <div className="font-mono text-[10px] text-gold">{h.pattern}</div>
             <div className="mt-1 whitespace-pre-line text-paper">{h.text}</div>
             <div className="mt-1 text-mist">{h.reasoning}</div>

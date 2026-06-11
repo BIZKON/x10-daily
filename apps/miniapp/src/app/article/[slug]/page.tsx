@@ -124,8 +124,8 @@ export default async function ArticlePage({
               Источники
             </span>
             <ul className="m-0 list-none space-y-2 p-0">
-              {article.citations.map((c, i) => (
-                <li key={i}>
+              {article.citations.map((c) => (
+                <li key={c.url}>
                   <a
                     href={c.url}
                     target="_blank"

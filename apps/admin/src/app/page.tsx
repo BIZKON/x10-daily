@@ -189,7 +189,7 @@ function EmptyQueue({ filtered }: { filtered: boolean }) {
         Pipeline не оставил статей со статусом ready. Запусти прогон:
       </p>
       <code className="mt-3 inline-block rounded-lg bg-night px-3 py-2 font-mono text-[12px] text-mist">
-        POST {`{X10_API_BASE_URL}`}/v1/pipeline/run
+        POST {"{X10_API_BASE_URL}"}/v1/pipeline/run
       </code>
     </div>
   );

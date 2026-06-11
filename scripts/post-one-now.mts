@@ -42,7 +42,7 @@ async function main() {
   }
 
   console.log("=== ВЫБРАНА статья ===", row.articleId);
-  console.log("=== ТЕКСТ (что уйдёт) ===\n" + row.text + "\n=== /ТЕКСТ ===");
+  console.log(`=== ТЕКСТ (что уйдёт) ===\n${row.text}\n=== /ТЕКСТ ===`);
 
   const outcome = await sendToChannel(env, {
     channel: "tg",

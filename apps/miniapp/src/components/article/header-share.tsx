@@ -43,12 +43,9 @@ export function HeaderShare({
     <button type="button" aria-label="Поделиться" onClick={handle} className="relative">
       <Share2 size={20} strokeWidth={1.75} />
       {toast && (
-        <span
-          role="status"
-          className="absolute -bottom-8 right-0 whitespace-nowrap rounded-md border border-fence bg-card px-2 py-1 text-[11px] text-paper shadow-lg"
-        >
+        <output className="absolute -bottom-8 right-0 whitespace-nowrap rounded-md border border-fence bg-card px-2 py-1 text-[11px] text-paper shadow-lg">
           {toast}
-        </span>
+        </output>
       )}
     </button>
   );

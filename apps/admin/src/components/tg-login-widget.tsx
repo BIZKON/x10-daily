@@ -73,7 +73,7 @@ export function TgLoginWidget({ botUsername }: { botUsername: string }) {
     containerRef.current.appendChild(script);
 
     return () => {
-      delete window.__x10_tg_auth;
+      window.__x10_tg_auth = undefined;
       script.remove();
     };
   }, [botUsername, router, search]);

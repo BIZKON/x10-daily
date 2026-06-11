@@ -42,7 +42,7 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
 
     const tg = getTelegramWebApp();
 
-    if (tg && tg.initData) {
+    if (tg?.initData) {
       tg.ready();
       tg.expand?.();
       loginWithTelegramAction(tg.initData)

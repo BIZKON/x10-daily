@@ -51,11 +51,13 @@ async function DailyFeed() {
   );
 }
 
+const FEED_SKELETON_KEYS = ["fs-1", "fs-2", "fs-3", "fs-4"];
+
 function FeedSkeleton() {
   return (
     <ul className="flex flex-col gap-3.5" aria-busy="true">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <li key={i} className="h-72 animate-pulse rounded-[20px] border border-fence bg-card" />
+      {FEED_SKELETON_KEYS.map((k) => (
+        <li key={k} className="h-72 animate-pulse rounded-[20px] border border-fence bg-card" />
       ))}
     </ul>
   );

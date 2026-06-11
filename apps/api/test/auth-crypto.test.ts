@@ -121,7 +121,7 @@ describe("verifyInitData (Mini App)", () => {
 
   it("отвергает initData с подделанным hash", async () => {
     const initData = await buildValidInitData({});
-    const tampered = initData.replace(/hash=[a-f0-9]+/, "hash=" + "0".repeat(64));
+    const tampered = initData.replace(/hash=[a-f0-9]+/, `hash=${"0".repeat(64)}`);
     await expect(verifyInitData(tampered, { botToken: BOT_TOKEN })).rejects.toThrow(
       /hash mismatch/,
     );
@@ -182,6 +182,7 @@ describe("verifyTelegramWidget (Login Widget)", () => {
 
   it("отвергает widget без first_name", async () => {
     const payload = await buildValidWidgetPayload({});
+    // biome-ignore lint/performance/noDelete: тест проверяет именно ОТСУТСТВИЕ поля (delete ≠ присвоение undefined)
     delete (payload as Record<string, unknown>).first_name;
     // Hash станет невалидным после удаления, но мы хотим проверить именно
     // first_name-валидацию. Подделываем hash под новый набор полей.
@@ -205,7 +206,7 @@ describe("JWT sign/verify", () => {
       { userId: "550e8400-e29b-41d4-a716-446655440000", role: "reader" },
       { secret: JWT_SECRET, ttlSeconds: 3600 },
     );
-    const tampered = token.slice(0, -3) + "AAA";
+    const tampered = `${token.slice(0, -3)}AAA`;
     await expect(verifySession(tampered, { secret: JWT_SECRET })).rejects.toThrow();
   });
 

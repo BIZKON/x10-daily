@@ -16,7 +16,7 @@ if (!url) {
 const db = createDb(url);
 
 function hdr(t: string) {
-  console.log("\n" + "=".repeat(70) + "\n" + t + "\n" + "=".repeat(70));
+  console.log(`\n${"=".repeat(70)}\n${t}\n${"=".repeat(70)}`);
 }
 
 async function main() {

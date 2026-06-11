@@ -12,11 +12,10 @@ export async function publishAction(formData: FormData) {
   const result = await publishArticle(id);
   if (result.ok) {
     revalidatePath("/");
-    redirect("/?published=" + encodeURIComponent(id));
+    redirect(`/?published=${encodeURIComponent(id)}`);
   }
   // Если ошибка — редиректим на статью с error-параметром (страница покажет alert).
   redirect(
-    `/article/${encodeURIComponent(id)}?error=` +
-      encodeURIComponent(result.error ?? "publish_failed"),
+    `/article/${encodeURIComponent(id)}?error=${encodeURIComponent(result.error ?? "publish_failed")}`,
   );
 }

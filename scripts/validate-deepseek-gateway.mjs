@@ -103,9 +103,7 @@ async function probe(model) {
     return {
       model,
       ok: false,
-      reason:
-        `пустой tool_call (finish=${choice?.finish_reason}, reasoning_content=${hasReasoning}). ` +
-        "Reasoning мог съесть max_tokens — попробуй VALIDATE_MAX_TOKENS=4096 или non-thinking-вариант.",
+      reason: `пустой tool_call (finish=${choice?.finish_reason}, reasoning_content=${hasReasoning}). Reasoning мог съесть max_tokens — попробуй VALIDATE_MAX_TOKENS=4096 или non-thinking-вариант.`,
       ms,
       usage: json.usage,
     };

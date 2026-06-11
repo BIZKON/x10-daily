@@ -264,7 +264,7 @@ export type ApiProfileStats = {
 };
 
 export async function fetchProfileStats(): Promise<ApiProfileStats | null> {
-  const res = await fetchAuthed(`/v1/profile/stats`);
+  const res = await fetchAuthed("/v1/profile/stats");
   if (!res || !res.ok) return null;
   return (await res.json()) as ApiProfileStats;
 }

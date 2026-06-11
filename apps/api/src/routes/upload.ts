@@ -123,7 +123,7 @@ function randomString(len: number): string {
   let out = "";
   const bytes = new Uint8Array(len);
   crypto.getRandomValues(bytes);
-  for (let i = 0; i < len; i++) out += chars[bytes[i]! % chars.length];
+  for (const b of bytes) out += chars[b % chars.length];
   return out;
 }
 

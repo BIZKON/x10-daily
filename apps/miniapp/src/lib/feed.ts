@@ -233,6 +233,22 @@ export async function loadDailyFeed(limit = 20): Promise<FeedItem[]> {
 }
 
 /**
+ * Лента одной рубрики (category-страница, напр. /taxes). Как loadDailyFeed, но
+ * с фильтром по category. Кэш per-category. Dev/demo-fallback — мок-FEED той же
+ * рубрики; prod-down — честный empty (НЕ мок со слагами-404).
+ */
+export async function loadCategoryFeed(
+  category: ApiCategory,
+  limit = 20,
+): Promise<FeedItem[]> {
+  "use cache";
+  const api = await fetchFeed(limit, { category });
+  if (api && api.items.length > 0) return api.items.map(mapApiItem);
+  if (isApiConfigured()) return [];
+  return FEED.filter((i) => i.categoryKey === category).slice(0, limit);
+}
+
+/**
  * Нейтральный link-safe fallback (api недоступен в рантайме). ⚠️ НЕ фабрикуем
  * статьи/слаги: иначе на первом экране появятся выдуманные заголовки и мёртвые
  * ссылки, ведущие в 404 (находка ревью s25 — мок-bullets запекались в статику).
@@ -319,30 +335,8 @@ export async function loadArticle(slug: string): Promise<ArticleDetail | null> {
   };
 }
 
-// ---------- Taxes (rubric) ----------
-
-export type TaxesItem = {
-  tag: string;
-  title: string;
-  minutes: number;
-  hot: boolean;
-};
-
-export const TAXES_ITEMS: TaxesItem[] = [
-  { tag: "РАЗБОР", title: "УСН 350 млн: 3 шага на этой неделе", minutes: 8, hot: true },
-  { tag: "ИНСТРУКЦИЯ", title: "Как платить меньше дивидендного НДФЛ в 2026", minutes: 12, hot: false },
-  { tag: "НОВОСТЬ", title: "ФНС начала рассылать требования по самозанятым", minutes: 4, hot: false },
-  { tag: "КЕЙС", title: "Производство в Беларуси: реальные цифры", minutes: 15, hot: true },
-  { tag: "ГИД", title: "Налоговый календарь 2026: 18 ключевых дат", minutes: 6, hot: false },
-];
-
-export const TAXES_METRICS = [
-  { icon: "chart-bar" as const, k: "247", v: "материалов" },
-  { icon: "trending-up" as const, k: "+18%", v: "охват/мес" },
-  { icon: "calendar" as const, k: "2/нед", v: "разборов" },
-];
-
-export const TAXES_FILTERS = ["Все", "УСН", "НДС", "НДФЛ", "Самозанятые", "Релокация"];
+// ---------- Taxes (rubric) — теперь живая лента через loadCategoryFeed("taxes") ----------
+// (мок TAXES_ITEMS/METRICS/FILTERS удалён в s25 — /taxes рендерит реальные статьи)
 
 // ---------- Video ----------
 

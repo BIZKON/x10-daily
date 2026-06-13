@@ -1,20 +1,13 @@
 import { cn } from "@x10/ui";
-import {
-  Bell,
-  Book,
-  Bookmark,
-  ChevronRight,
-  Crown,
-  Flame,
-  Headphones,
-  Settings,
-} from "lucide-react";
+import { Book, Bookmark, ChevronRight, Crown, Flame, Headphones, Settings } from "lucide-react";
 import Image from "next/image";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { PreferenceToggles } from "@/components/profile/preference-toggles";
 import { TopBar } from "@/components/top-bar";
-import { PROFILE_MENU, SCHEDULE, SUBSCRIPTIONS } from "@/lib/feed";
+import { PROFILE_MENU } from "@/lib/feed";
 import {
+  loadPreferences,
   loadProfileIdentity,
   loadProfileSnapshot,
   type ProfileStatIcon,
@@ -42,21 +35,6 @@ const menuIconMap = {
   settings: Settings,
 } as const;
 
-function Toggle({ on }: { on: boolean }) {
-  return (
-    <div
-      className={cn("relative h-6 w-10 rounded-pill transition-colors", on ? "bg-red" : "bg-fence")}
-    >
-      <span
-        className={cn(
-          "absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all",
-          on ? "right-0.5" : "left-0.5",
-        )}
-      />
-    </div>
-  );
-}
-
 export default function ProfilePage() {
   return (
     <>
@@ -70,43 +48,9 @@ export default function ProfilePage() {
         <StatsAndStreak />
       </Suspense>
 
-      <section className="px-4 pt-6">
-        <h3 className="m-0 mb-2.5 font-display text-[15px] font-extrabold">Мои подписки</h3>
-        <div className="flex flex-col gap-2">
-          {SUBSCRIPTIONS.map((s) => (
-            <div
-              key={s}
-              className="flex items-center justify-between rounded-xl border border-fence bg-card px-4 py-3"
-            >
-              <span className="text-[13.5px]">{s}</span>
-              <Toggle on />
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="px-4 pt-6">
-        <h3 className="m-0 mb-2.5 flex items-center gap-2 font-display text-[15px] font-extrabold">
-          <Bell size={16} strokeWidth={1.75} /> Дайджест-расписание
-        </h3>
-        <div className="overflow-hidden rounded-xl border border-fence bg-card">
-          {SCHEDULE.map((r, i) => (
-            <div
-              key={r.time}
-              className={cn(
-                "flex items-center justify-between px-4 py-3",
-                i > 0 && "border-t border-fence",
-              )}
-            >
-              <div>
-                <span className="x10-num text-[13px] font-bold text-gold">{r.time}</span>
-                <span className="ml-3 text-[13px]">{r.name}</span>
-              </div>
-              <Toggle on={r.on} />
-            </div>
-          ))}
-        </div>
-      </section>
+      <Suspense fallback={<PrefsSkeleton />}>
+        <PreferencesSection />
+      </Suspense>
 
       <section className="flex flex-col gap-2 p-4 pt-6">
         {PROFILE_MENU.map((m) => {
@@ -188,6 +132,31 @@ function HeaderSkeleton() {
         </div>
       </div>
       <div className="mt-4 h-11 w-full animate-pulse rounded-xl bg-white/10" />
+    </section>
+  );
+}
+
+/**
+ * Реальные настройки (подписки+расписание) из API в PPR-дыре. key по серверному
+ * состоянию → после авто-логина (router.refresh) PreferenceToggles подхватит
+ * настройки юзера (иначе useState(initial) застрял бы на дефолте гостя).
+ */
+async function PreferencesSection() {
+  await connection();
+  const prefs = await loadPreferences();
+  const key = `${prefs.subscribedCategories.join(",")}|${JSON.stringify(prefs.digestSchedule)}`;
+  return <PreferenceToggles key={key} initial={prefs} />;
+}
+
+function PrefsSkeleton() {
+  return (
+    <section className="px-4 pt-6" aria-busy="true">
+      <div className="mb-2.5 h-4 w-28 animate-pulse rounded bg-fence" />
+      <div className="flex flex-col gap-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-12 animate-pulse rounded-xl border border-fence bg-card" />
+        ))}
+      </div>
     </section>
   );
 }

@@ -383,18 +383,9 @@ export async function loadVideos(): Promise<Video[]> {
 }
 
 // ---------- Community (Х10) ----------
-// COMMUNITY_STATS и EVENTS переехали в @/lib/community (Этап 3c — подключены к API).
-// MY_CLUMP остаётся моком до auth + user_clump_memberships (3d/4).
+// COMMUNITY_STATS и EVENTS — в @/lib/community (Этап 3c, API). MY_CLUMP-мок удалён
+// (s25): «Твой кламп» → честный join-state (нет membership/данных клампов).
 // COMMUNITY_PATHS — статичный onboarding, не data-driven.
-
-export const MY_CLUMP = {
-  name: "Кламп «Цифровой прорыв»",
-  goal: "Запустить совместный AI-сервис за 90 дней",
-  avatars: ["А", "М", "К", "И", "П"],
-  extraCount: 3,
-  progress: 0.67,
-  nextMeet: "Завтра, 19:00",
-};
 
 export const COMMUNITY_PATHS = [
   { icon: "🚀", title: "Создать свой кламп", description: "Собрать команду 6-10 человек" },
@@ -404,23 +395,10 @@ export const COMMUNITY_PATHS = [
 ];
 
 // ---------- Profile ----------
-// PROFILE (имя/город) → реальная identity через loadProfileIdentity (/v1/auth/me);
-// PROFILE_STATS/WEEK_STREAK → реальные статы через loadProfileSnapshot.
-// Мок удалён в s25. SUBSCRIPTIONS/SCHEDULE — пока мок (Tier-2: user_preferences).
-
-export const SUBSCRIPTIONS = [
-  "Налоги",
-  "Деньги",
-  "Рыбаков говорит",
-  "Х10 Краснодар",
-  "Подкаст: Разбор недели",
-];
-
-export const SCHEDULE = [
-  { time: "07:00", name: "Утренний разбор Рыбакова", on: true },
-  { time: "13:00", name: "Smart-карусель за обедом", on: true },
-  { time: "19:00", name: "Что обсуждают в Х10", on: false },
-];
+// PROFILE/PROFILE_STATS/WEEK_STREAK → реальные (loadProfileIdentity/Snapshot).
+// SUBSCRIPTIONS/SCHEDULE-моки удалены (s25) → реальные настройки через
+// loadPreferences + PreferenceToggles (таблица user_preferences). PROFILE_MENU —
+// статичная навигация (пункты ведут на ещё не построенные экраны).
 
 export const PROFILE_MENU = [
   { title: "Сохранённое", icon: "bookmark" as const },

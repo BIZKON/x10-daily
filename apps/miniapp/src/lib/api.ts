@@ -322,6 +322,48 @@ export async function fetchAuthMe(): Promise<ApiMeUser | null> {
 }
 
 /* ----------------------------------------------------------------
+ * Настройки профиля (Tier-2): подписки на рубрики + расписание дайджеста.
+ * GET /v1/profile/preferences (authed) + PATCH (полный набор).
+ * ---------------------------------------------------------------- */
+
+export type ApiDigestSchedule = { morning: boolean; lunch: boolean; evening: boolean };
+export type ApiPreferences = {
+  subscribedCategories: string[];
+  digestSchedule: ApiDigestSchedule;
+};
+
+export async function fetchPreferences(): Promise<ApiPreferences | null> {
+  const res = await fetchAuthed(`/v1/profile/preferences`);
+  if (!res || !res.ok) return null;
+  return (await res.json()) as ApiPreferences;
+}
+
+export async function patchPreferences(
+  body: Partial<ApiPreferences>,
+): Promise<ApiPreferences | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  const token = await getSessionToken();
+  if (!token) return null;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(`${base}/v1/profile/preferences`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as ApiPreferences;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+/* ----------------------------------------------------------------
  * Article engagement (optimistic UI — brief §11)
  *
  * /me — per-user snapshot для initial state.

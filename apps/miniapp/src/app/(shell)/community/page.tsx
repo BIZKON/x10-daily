@@ -1,4 +1,4 @@
-import { ChevronRight, MapPin, MessageSquare, Users } from "lucide-react";
+import { ChevronRight, MapPin, Users } from "lucide-react";
 import { Suspense } from "react";
 import { TopBar } from "@/components/top-bar";
 import {
@@ -6,15 +6,13 @@ import {
   loadCommunityStats,
   type CommunityEvent,
 } from "@/lib/community";
-import { COMMUNITY_PATHS, MY_CLUMP } from "@/lib/feed";
+import { COMMUNITY_PATHS } from "@/lib/feed";
 
 const TONE_BG: Record<CommunityEvent["tone"], string> = {
   red: "[background:linear-gradient(135deg,var(--color-red),var(--color-red-deep))]",
   gold: "[background:linear-gradient(135deg,var(--color-gold),#8E5E1B)]",
   steel: "[background:linear-gradient(135deg,var(--color-steel),var(--color-night))]",
 };
-
-const AVATAR_COLORS = ["#E63946", "#D4A24C", "#3FB950", "#1F2937", "#8E1B26"];
 
 export default function CommunityPage() {
   return (
@@ -79,57 +77,23 @@ function StatsSkeleton() {
 }
 
 /**
- * MY_CLUMP — статичный мок до того как появится auth + user_clump_memberships
- * (см. brief §6 type Klamp и М1 в 3d).
+ * «Твой кламп» — честное состояние: членство в клампах ещё не реализовано
+ * (нет user_clump_memberships + онбординга), таблица klamps пока пуста. Вместо
+ * выдуманного клампа — приглашение вступить; реальные пути — в PathsSection ниже.
+ * Когда появятся данные клампов + membership — здесь будет реальный кламп юзера.
  */
 function MyKlampSection() {
   return (
     <section className="relative mx-5 mb-5 overflow-hidden rounded-[20px] border border-red/40 bg-card p-5">
       <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-red/[0.06]" />
       <span className="relative text-[10px] font-extrabold uppercase tracking-[0.15em] text-red">
-        Мой кламп
+        Твой кламп
       </span>
-      <h2 className="relative m-0 mt-2 font-display text-xl font-extrabold">{MY_CLUMP.name}</h2>
-      <p className="relative m-0 mt-1.5 text-[12.5px] text-mist">🎯 {MY_CLUMP.goal}</p>
-
-      <div className="relative mt-4 flex items-center gap-3">
-        <div className="flex">
-          {MY_CLUMP.avatars.map((l, i) => (
-            <div
-              key={l + i}
-              className="-ml-2 grid h-8 w-8 place-items-center rounded-full border-2 border-card font-display text-[10px] font-bold text-white first:ml-0"
-              style={{
-                background: `linear-gradient(135deg, ${AVATAR_COLORS[i % AVATAR_COLORS.length]}, var(--color-red))`,
-              }}
-            >
-              {l}
-            </div>
-          ))}
-        </div>
-        <span className="text-[12px] text-mist">+{MY_CLUMP.extraCount} участника</span>
-      </div>
-
-      <div className="relative mt-4">
-        <div className="mb-1.5 flex justify-between text-[11px] text-mist">
-          <span>Прогресс цели</span>
-          <span className="x10-num font-bold text-gold">
-            {Math.round(MY_CLUMP.progress * 100)}%
-          </span>
-        </div>
-        <div className="h-1.5 overflow-hidden rounded-pill bg-fence">
-          <div
-            className="h-full rounded-pill [background:linear-gradient(to_right,var(--color-red),var(--color-gold))]"
-            style={{ width: `${MY_CLUMP.progress * 100}%` }}
-          />
-        </div>
-      </div>
-
-      <button
-        type="button"
-        className="relative mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-red py-3 font-display text-[13.5px] font-semibold text-white"
-      >
-        <MessageSquare size={16} strokeWidth={1.75} /> Открыть чат · {MY_CLUMP.nextMeet}
-      </button>
+      <h2 className="relative m-0 mt-2 font-display text-xl font-extrabold">Вступи в кламп</h2>
+      <p className="relative m-0 mt-1.5 text-[12.5px] leading-[1.5] text-mist">
+        Кламп — твоя малая группа в Х10: 6–10 человек, общая цель и регулярные встречи.
+        Выбери путь ниже, чтобы найти свой кламп или создать новый.
+      </p>
     </section>
   );
 }

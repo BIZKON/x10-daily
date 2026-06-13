@@ -7,6 +7,7 @@ import {
   eq,
   gte,
   sql,
+  userPreferences,
   userReadingHistory,
 } from "@x10/db";
 import { Hono } from "hono";
@@ -29,6 +30,22 @@ import { getEnv } from "../env";
 const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
+
+/** Рубрики первого уровня (brief §5). */
+const CATEGORIES = ["taxes", "money", "practice", "power", "tech", "rybakov"] as const;
+const DEFAULT_CATEGORIES: string[] = [...CATEGORIES];
+const DEFAULT_SCHEDULE = { morning: true, lunch: true, evening: false };
+
+const prefsPatchSchema = z
+  .object({
+    subscribedCategories: z.array(z.enum(CATEGORIES)).max(6).optional(),
+    digestSchedule: z
+      .object({ morning: z.boolean(), lunch: z.boolean(), evening: z.boolean() })
+      .optional(),
+  })
+  .refine((d) => d.subscribedCategories !== undefined || d.digestSchedule !== undefined, {
+    message: "нужно хотя бы одно поле: subscribedCategories или digestSchedule",
+  });
 
 export const profileRoute = new Hono<AppEnv>()
   /**
@@ -175,5 +192,79 @@ export const profileRoute = new Hono<AppEnv>()
       ipsScore,
       streakDays,
       weekActivity,
+    });
+  })
+
+  /**
+   * GET /v1/profile/preferences
+   * Returns: { subscribedCategories: string[], digestSchedule: {morning,lunch,evening} }
+   * Нет строки → дефолт (все рубрики + утро/обед вкл, вечер выкл).
+   */
+  .get("/preferences", async (c) => {
+    const { userId } = await extractSession(c);
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    const [row] = await db
+      .select({
+        subscribedCategories: userPreferences.subscribedCategories,
+        digestSchedule: userPreferences.digestSchedule,
+      })
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, userId))
+      .limit(1);
+    if (!row) {
+      return c.json({
+        subscribedCategories: DEFAULT_CATEGORIES,
+        digestSchedule: DEFAULT_SCHEDULE,
+      });
+    }
+    return c.json({
+      subscribedCategories: row.subscribedCategories,
+      digestSchedule: row.digestSchedule,
+    });
+  })
+
+  /**
+   * PATCH /v1/profile/preferences
+   * Body: { subscribedCategories?: string[], digestSchedule?: {...} } (полный набор).
+   * Upsert одной строки на пользователя. Возвращает актуальное состояние.
+   */
+  .patch("/preferences", zValidator("json", prefsPatchSchema), async (c) => {
+    const { userId } = await extractSession(c);
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    const patch = c.req.valid("json");
+
+    const [existing] = await db
+      .select({
+        subscribedCategories: userPreferences.subscribedCategories,
+        digestSchedule: userPreferences.digestSchedule,
+      })
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, userId))
+      .limit(1);
+
+    // Дедуп рубрик (контракт допускает дубли; клиент их не шлёт, но защищаемся
+    // от засорения данных для будущего потребителя — персонального дайджеста).
+    const subscribedCategories = [
+      ...new Set(patch.subscribedCategories ?? existing?.subscribedCategories ?? DEFAULT_CATEGORIES),
+    ];
+    const digestSchedule = patch.digestSchedule ?? existing?.digestSchedule ?? DEFAULT_SCHEDULE;
+
+    const [row] = await db
+      .insert(userPreferences)
+      .values({ userId, subscribedCategories, digestSchedule })
+      .onConflictDoUpdate({
+        target: userPreferences.userId,
+        set: { subscribedCategories, digestSchedule, updatedAt: sql`now()` },
+      })
+      .returning({
+        subscribedCategories: userPreferences.subscribedCategories,
+        digestSchedule: userPreferences.digestSchedule,
+      });
+
+    return c.json({
+      subscribedCategories: row?.subscribedCategories ?? subscribedCategories,
+      digestSchedule: row?.digestSchedule ?? digestSchedule,
     });
   });

@@ -78,6 +78,13 @@
       "when": 1780665372448,
       "tag": "0010_channels_posting",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1780751772448,
+      "tag": "0011_user_preferences",
+      "breakpoints": true
     }
   ]
 }

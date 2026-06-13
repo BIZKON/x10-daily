@@ -4,10 +4,17 @@
  * Источник: /v1/profile/stats → ApiProfileStats.
  * Auth: session cookie x10_session → Authorization Bearer (HIGH-2).
  *
- * Fallback на мок-цифры из прототипа (CLAUDE.md §1, прототип fonts.ts).
- * PROFILE/SUBSCRIPTIONS/SCHEDULE остаются мок до auth + user_topic_subscriptions (3d/4).
+ * Источники (s25, все живые): stats → /v1/profile/stats; identity →
+ * /v1/auth/me (loadProfileIdentity); подписки+расписание → /v1/profile/preferences
+ * (loadPreferences). Fallback на дефолты при отсутствии auth (гость).
  */
-import { fetchAuthMe, fetchProfileStats, type ApiProfileStats } from "./api";
+import {
+  fetchAuthMe,
+  fetchPreferences,
+  fetchProfileStats,
+  type ApiPreferences,
+  type ApiProfileStats,
+} from "./api";
 
 export type ProfileStatTone = "red" | "gold" | "success";
 export type ProfileStatIcon = "flame" | "book" | "bookmark" | "crown";
@@ -110,4 +117,15 @@ export async function loadProfileIdentity(): Promise<ProfileIdentity> {
     initial: name.charAt(0).toUpperCase() || "Х",
     authed: true,
   };
+}
+
+/** Дефолт настроек (нет авторизации / нет строки): все рубрики, утро+обед вкл. */
+export const DEFAULT_PREFERENCES: ApiPreferences = {
+  subscribedCategories: ["taxes", "money", "practice", "power", "tech", "rybakov"],
+  digestSchedule: { morning: true, lunch: true, evening: false },
+};
+
+export async function loadPreferences(): Promise<ApiPreferences> {
+  const prefs = await fetchPreferences();
+  return prefs ?? DEFAULT_PREFERENCES;
 }

@@ -14,3 +14,4 @@ export * from "./events";
 export * from "./digests";
 export * from "./user_engagement";
 export * from "./uploads";
+export * from "./user_preferences";

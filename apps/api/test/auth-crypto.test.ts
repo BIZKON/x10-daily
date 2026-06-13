@@ -70,6 +70,66 @@ async function buildValidInitData(opts: {
   return qs.toString();
 }
 
+/**
+ * Реалистичное initData (фикс s26): `query_id` содержит ЛИТЕРАЛЬНЫЙ `+` (как
+ * шлёт Telegram, base64 без percent-encoding) + присутствует поле `signature`
+ * (должно исключаться из data-check-string). Воспроизводит реальную грабля,
+ * где URLSearchParams ломал `+` → пробел → hash mismatch.
+ */
+async function buildInitDataWithPlusAndSignature(
+  opts: { authDateSeconds?: number } = {},
+): Promise<string> {
+  const authDate = opts.authDateSeconds ?? Math.floor(Date.now() / 1000);
+  const user = JSON.stringify({ id: 555, first_name: "Real", username: "real_user" });
+  const queryId = "AAH+xY/z9w=="; // литеральные '+' '/' '=' — Telegram их не кодирует
+  // data-check-string: исключаем hash+signature, сорт по ключу, значения как есть.
+  const pairs: Array<[string, string]> = [
+    ["auth_date", String(authDate)],
+    ["query_id", queryId],
+    ["user", user],
+  ];
+  pairs.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  const dataCheckString = pairs.map(([k, v]) => `${k}=${v}`).join("\n");
+
+  const enc = new TextEncoder();
+  const secretKey = await crypto.subtle.sign(
+    "HMAC",
+    await crypto.subtle.importKey(
+      "raw",
+      enc.encode("WebAppData") as BufferSource,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    ),
+    enc.encode(BOT_TOKEN),
+  );
+  const hashBuf = await crypto.subtle.sign(
+    "HMAC",
+    await crypto.subtle.importKey(
+      "raw",
+      secretKey as BufferSource,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    ),
+    enc.encode(dataCheckString),
+  );
+  const hash = Array.from(new Uint8Array(hashBuf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  // Сериализуем ВРУЧНУЮ: query_id с литеральным '+', signature с '+' (исключается),
+  // user через encodeURIComponent, hash hex.
+  const signature = "sigAbc+def/ghi==";
+  return [
+    `auth_date=${authDate}`,
+    `query_id=${queryId}`,
+    `signature=${signature}`,
+    `user=${encodeURIComponent(user)}`,
+    `hash=${hash}`,
+  ].join("&");
+}
+
 async function buildValidWidgetPayload(opts: {
   id?: number;
   authDateSeconds?: number;
@@ -117,6 +177,15 @@ describe("verifyInitData (Mini App)", () => {
     const result = await verifyInitData(initData, { botToken: BOT_TOKEN });
     expect(result.user.id).toBe(42);
     expect(result.user.username).toBe("tester");
+  });
+
+  it("принимает реальное initData с '+' в query_id и полем signature (фикс s26)", async () => {
+    const initData = await buildInitDataWithPlusAndSignature({});
+    const result = await verifyInitData(initData, { botToken: BOT_TOKEN });
+    // Канон-конструкция (decodeURIComponent сохраняет '+') сходится несмотря на
+    // литеральный '+' в query_id и присутствие поля signature.
+    expect(result.user.id).toBe(555);
+    expect(result.user.username).toBe("real_user");
   });
 
   it("отвергает initData с подделанным hash", async () => {

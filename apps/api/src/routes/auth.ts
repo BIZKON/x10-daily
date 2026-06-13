@@ -92,9 +92,10 @@ export const authRoute = new Hono<AppEnv>()
         const p = new URLSearchParams(initData);
         const keys = [...p.keys()].sort().join(",");
         const authDate = Number(p.get("auth_date") ?? 0);
-        const nowS = Math.floor(Date.now() / 1000);
+        const ageSec = Math.floor(Date.now() / 1000) - authDate;
+        // PII-safe: только имена ключей (не значения) + производный возраст.
         console.warn(
-          `[auth/telegram] FAIL reason="${err instanceof Error ? err.message : "unknown"}" keys=[${keys}] hashLen=${(p.get("hash") ?? "").length} authDate=${authDate} now=${nowS} ageSec=${nowS - authDate} hasSignature=${p.has("signature")}`,
+          `[auth/telegram] FAIL reason="${err instanceof Error ? err.message : "unknown"}" keys=[${keys}] hashLen=${(p.get("hash") ?? "").length} ageSec=${ageSec} hasSignature=${p.has("signature")}`,
         );
       } catch {
         // ignore — диагностика не должна влиять на ответ

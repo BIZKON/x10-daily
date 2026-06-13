@@ -121,6 +121,48 @@ function buildCheckString(pairs: Array<[string, string]>, exclude: Set<string>):
     .join("\n");
 }
 
+/**
+ * ВРЕМЕННАЯ ДИАГНОСТИКА (s26): перебирает все правдоподобные конструкции
+ * data-check-string × деривации секрета и возвращает имена совпавших с `hash`.
+ * "NONE" → ни одна не сошлась (вероятно, initData подписан ДРУГИМ ботом, не тем,
+ * чей токен в env). Не принимает auth — только логируется в auth.ts. Снять после
+ * того как точная конструкция/причина найдена.
+ */
+export async function diagnoseInitData(initData: string, botToken: string): Promise<string> {
+  const hash = (parsePairs(initData, false).find(([k]) => k === "hash")?.[1] ?? "").toLowerCase();
+  if (!hash) return "no-hash";
+
+  const parses: Record<string, Array<[string, string]>> = {
+    decoded: parsePairs(initData, true),
+    url: [...new URLSearchParams(initData).entries()],
+    raw: parsePairs(initData, false),
+  };
+  const exclusions: Record<string, Set<string>> = {
+    "excl-hash+sig": new Set(["hash", "signature"]),
+    "excl-hash": new Set(["hash"]),
+  };
+
+  const tokenBytes = encoder.encode(botToken);
+  const webAppBytes = encoder.encode("WebAppData");
+  const secrets: Record<string, ArrayBuffer> = {
+    "hmac(webapp,token)": await hmacSha256(webAppBytes, botToken),
+    "hmac(token,webapp)": await hmacSha256(tokenBytes, "WebAppData"),
+    "sha256(token)": await crypto.subtle.digest("SHA-256", tokenBytes as BufferSource),
+  };
+
+  const matches: string[] = [];
+  for (const [pn, pairs] of Object.entries(parses)) {
+    for (const [en, excl] of Object.entries(exclusions)) {
+      const cs = buildCheckString(pairs, excl);
+      for (const [sn, secret] of Object.entries(secrets)) {
+        const expected = toHex(await hmacSha256(secret, cs));
+        if (expected === hash) matches.push(`${pn}/${en}/${sn}`);
+      }
+    }
+  }
+  return matches.length > 0 ? matches.join(",") : "NONE";
+}
+
 export interface VerifyInitDataOptions {
   /** Bot token формата `<id>:<secret>`. */
   botToken: string;

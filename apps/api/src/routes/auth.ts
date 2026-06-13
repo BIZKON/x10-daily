@@ -16,7 +16,7 @@ import { z } from "zod";
 import type { AppEnv } from "../app";
 import { getDb } from "../db";
 import { getEnv } from "../env";
-import { verifyInitData, type TelegramInitDataUser } from "../lib/initdata";
+import { diagnoseInitData, verifyInitData, type TelegramInitDataUser } from "../lib/initdata";
 import { verifyTelegramWidget } from "../lib/telegram-widget";
 import { signSession, verifySession } from "../lib/jwt";
 import { applyRateLimit } from "../rate-limit";
@@ -97,6 +97,14 @@ export const authRoute = new Hono<AppEnv>()
         console.warn(
           `[auth/telegram] FAIL reason="${err instanceof Error ? err.message : "unknown"}" keys=[${keys}] hashLen=${(p.get("hash") ?? "").length} ageSec=${ageSec} hasSignature=${p.has("signature")}`,
         );
+        // Перебор конструкций data-check-string × секрет → какая совпала.
+        const diag = await diagnoseInitData(initData, botToken).catch(() => "diag-err");
+        console.warn(`[auth/telegram] DIAG match=${diag}`);
+        if (diag === "NONE") {
+          // Ни одна не сошлась → подпись чужим ботом? Логируем RAW для оффлайн-
+          // анализа (PII, ВРЕМЕННО — очистить логи после разбора).
+          console.warn(`[auth/telegram] RAW=${initData}`);
+        }
       } catch {
         // ignore — диагностика не должна влиять на ответ
       }

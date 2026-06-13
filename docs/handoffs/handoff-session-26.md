@@ -2,8 +2,10 @@
 
 **Дата:** 13 июня 2026
 **Что произошло:** Реализованы и задеплоены **3 правки Константина** (приоритет s25 §5), которые он дал после использования запущенного Mini App. Все три — чистый фронт `apps/miniapp` (БД/воркеры/автономный контур НЕ тронуты). Adversarial Workflow-ревью (34 агента) ДО деплоя поймал HIGH-находки (race в реакциях, контраст статусов, будущие даты) — устранены. Задеплоено `./deploy.sh` + live-верифицировано на проде.
-**HEAD кода:** `4b1405e` · `origin/main` synced · задеплоено.
+**HEAD кода:** `55f41d9` · `origin/main` synced · задеплоено.
 **Предыдущий handoff:** [handoff-session-25.md](./handoff-session-25.md). Inventory/доступы/грабли — memory `project_x10_deploy_state.md`.
+
+> **ОБНОВЛЕНИЕ (та же сессия, после 3 правок):** Константин открыл запущенный Mini App и сообщил, что **реакции не ставятся**. Диагностика на проде вскрыла **🔴 критический баг входа**: реальный TG-`initData` падал на `POST /v1/auth/telegram → 401` → блокировал ВЕСЬ auth (реакции/закладки/prefs/профиль). Починено (см. §7). Затем — **закладки** (header-кнопка + экран «Сохранённое», §8). Всё подтверждено Константином вживую: вход, реакции, закладки работают.
 
 ---
 
@@ -55,6 +57,30 @@
 - **dedicated-бот** — ⚠️ коуплинг auth+постинг на одном токене @Sekretar_Syrov_IP_bot.
 - **Фичи-потребители prefs** — персональный дайджест/push читают `user_preferences` (preference-center готов, потребителя нет).
 - **Тюнинг П3-статусов** по фидбеку Константина (пороги в `deriveCardStatus`).
+- **История чтения** — бэкенд `GET /v1/profile/history` ГОТОВ; построить экран как `/profile/saved` (пункт меню «История чтения» сейчас заглушка).
+
+---
+
+## 7. 🔴 Фикс входа в Mini App (initData HMAC) — переиспользуемая грабля
+
+**Симптом:** Константин (первый реальный юзер) — реакции не ставятся. Логи API: `POST /v1/auth/telegram → 401` повторно → **вход падал → блокировал ВЕСЬ auth** (реакции/закладки/prefs/реальный профиль).
+
+**Корень (найден эмпирически):** `verifyInitData` ([apps/api/src/lib/initdata.ts]) строил data-check-string, **исключая `hash` И `signature`**. Но Telegram считает **bot-token HMAC-`hash` ПОВЕРХ поля `signature`** — исключать надо **ТОЛЬКО `hash`**. ⚠️ Доковое/библиотечное «exclude hash AND signature» относится к **Ed25519 third-party** валидации (по публичному ключу Telegram), НЕ к bot-token HMAC.
+
+⚠️ **Ловушка s25:** «auth-цепочка проверена вживую» была **самоподделкой initData тем же алгоритмом** (без поля `signature`) → проходила против самого себя; реальное Telegram-`initData` (с `signature`) — нет. Урок: НЕ верифицировать криптопроверку самоподделкой тем же кодом.
+
+**Как нашёл:** добавил диагностику-перебор (3 парсинга × 2 исключения × 3 деривации секрета = 18 конструкций) с логом совпавшей против РЕАЛЬНОГО initData на проде → матч `decoded/excl-hash/hmac(webapp,token)`.
+
+**Фикс:** `buildCheckString(decodedPairs, new Set(["hash"]))`; парсинг ручной `decodeURIComponent` (сохраняет `+`; URLSearchParams трактует как form-urlencoded → `+`→пробел — защитно на будущее, здесь не влияло); +clock-skew допуск 60с. Регресс-тест с `+` в query_id + полем signature, hash ВКЛЮЧАЯ signature. 29/29 api-тестов. Adversarial-ревью (13 агентов) → мультивариантный приём (страховка) убран до канон-1. **Подтверждено Константином вживую.**
+
+## 8. 🔖 Закладки — header-кнопка читалки + экран «Сохранённое»
+
+Toggle РАБОТАЛ (POST /bookmark 200 после фикса auth), но кнопка была спрятана внизу читалки и не было экрана списка.
+- **HeaderBookmark** [components/article/header-bookmark.tsx] — кнопка в sticky-шапке читалки; ленивое состояние (`getBookmarkStateAction`) + optimistic + persist; `isPending`→`disabled` (сериализует тапы, нет out-of-order рассинхрона), cleanup hint-таймера, focus-visible.
+- Закладка **убрана из engagement-бара** (там реакции+комменты) — единый контрол.
+- **Экран `/profile/saved`** [app/(shell)/profile/saved/page.tsx] — список (`GET /v1/profile/bookmarks` БЫЛ готов), `SavedCard`, состояния гость/пусто/список; `connection()` в Suspense → PPR-дыра (per-user, НЕ "use cache").
+- `PROFILE_MENU` «Сохранённое» → Link на /profile/saved (была мёртвая кнопка).
+- Adversarial-ревью (12 агентов, 8 находок): race-fix/timer-cleanup/focus-visible внесены. **Подтверждено Константином.**
 
 ---
 
@@ -62,6 +88,6 @@
 
 > Прочитай (в порядке): `docs/handoffs/handoff-session-26.md` + memory `project_x10_deploy_state.md` + CLAUDE.md. Timeweb-инфра — skill `timeweb-telegram-deploy`.
 >
-> Состояние: M0 + walking-skeleton ЖИВ+АВТОНОМЕН на Timeweb. **HEAD кода `4b1405e`.** Автономный постинг 4/день (DeepSeek v4-flash, IPv6-watchdog, языковой гейт «только русский»). **Mini App ЗАПУЩЕН** (@Sekretar_Syrov_IP_bot). **3 правки Константина (s26) ЗАКРЫТЫ+на проде:** П1 дата+время МСК, П2 живые реакции в ленте (popover 🔥/💡/🤔, `useOptimistic`, stretched-link), П3 обложки text-only без фоновых картинок + убран «воздух» у deep-dive + статус-пилюли Срочно/Горячая/Важная (`deriveCardStatus` эвристика).
+> Состояние: M0 + walking-skeleton ЖИВ+АВТОНОМЕН на Timeweb. **HEAD кода `55f41d9`.** Автономный постинг 4/день (DeepSeek v4-flash, IPv6-watchdog, языковой гейт «только русский»). **Mini App ЗАПУЩЕН + ВХОД РЕАЛЬНО РАБОТАЕТ** (@Sekretar_Syrov_IP_bot; фикс initData в s26 — см. §7). **s26 ЗАКРЫТО+на проде, подтверждено Константином вживую:** 3 правки (П1 дата+время МСК, П2 живые реакции popover 🔥/💡/🤔 `useOptimistic` stretched-link, П3 обложки text-only + статус-пилюли `deriveCardStatus`) + **фикс входа** (initData HMAC — исключать ТОЛЬКО hash, signature ВКЛЮЧАЕТСЯ; §7) + **закладки** (header-кнопка читалки + экран `/profile/saved`; §8).
 >
-> **ЗАДАЧА — опции (выбери):** P1-платежи (Stars+ЮKassa→`subscriptions`→paywall) / PostHog (измерить запуск) / dedicated-бот / фичи-потребители prefs (персональный дайджест/push) / тюнинг порогов статусов. ⚠️ Грабли: деплой только `./deploy.sh` (+ push main блокируется авто-классификатором — нужно явное «да»); api.telegram.org только IPv6 (watchdog, `netplan apply` НЕЛЬЗЯ); PPR — `connection()` ВНУТРИ Suspense + `"use cache"` на data-fn (не на странице/не в кэше — `Date.now()`); миграции hand-written + журнал, `db:generate` НЕЛЬЗЯ. VM: ssh root@37.77.105.82, репо /opt/x10-daily. Режим: многоагентность ВКЛ (Workflow-ревью перед деплоем), полная автономия. НЕ пересоздавай VM.
+> **ЗАДАЧА — опции (выбери):** P1-платежи (Stars+ЮKassa→`subscriptions`→paywall) / PostHog (измерить запуск — вход работает, есть engagement) / История чтения (бэкенд `/v1/profile/history` готов → экран как `/profile/saved`) / dedicated-бот / фичи-потребители prefs / тюнинг порогов статусов. ⚠️ Грабли: **push в main блокируется авто-классификатором на КАЖДЫЙ коммит — нужно явное «да» юзера**; деплой только `./deploy.sh`; api.telegram.org только IPv6 (watchdog, `netplan apply` НЕЛЬЗЯ); PPR — `connection()` ВНУТРИ Suspense + `"use cache"` на data-fn (per-user НЕ кэшировать); **TG initData: исключать ТОЛЬКО hash из data-check-string (signature ВКЛЮЧАЕТСЯ для bot-token HMAC); НЕ верифицировать самоподделкой тем же кодом**; миграции hand-written + журнал, `db:generate` НЕЛЬЗЯ. VM: ssh root@37.77.105.82, репо /opt/x10-daily. Режим: многоагентность ВКЛ (Workflow-ревью перед деплоем), полная автономия. НЕ пересоздавай VM.

@@ -54,7 +54,7 @@ export function DeepDiveCard({ item }: { item: FeedItem }) {
               {item.category}
             </span>
           </div>
-          <h3 className="m-0 font-display text-[22px] font-extrabold leading-[1.2] text-paper">
+          <h3 className="m-0 line-clamp-3 font-display text-[22px] font-extrabold leading-[1.2] text-paper">
             {item.title}
           </h3>
         </div>

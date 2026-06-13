@@ -19,6 +19,48 @@ export function slugify(text: string): string {
     .slice(0, 80);
 }
 
+/**
+ * Доля кириллицы среди буквенных символов (кириллица + латиница) по ВСЕМУ
+ * драфту: tease+lede+whyItMatters+тело. Жёсткое правило «только русский»
+ * (кейс англоязычных источников, давших английский драфт). Латинские бренды/
+ * термины допустимы → у нормальной русской статьи (даже tech-heavy) полный
+ * драфт ≈0.7, у полностью английского ≈0. Гейт в draft-article режет ниже порога.
+ *
+ * Порог 0.2 — НАМЕРЕННО консервативный (не 0.5): отказ модели бинарен (пишет
+ * либо целиком по-русски ≈0.7, либо целиком по-английски ≈0), разрыв огромен.
+ * 0.2 ловит английский с запасом и почти исключает ложный halt легитимной
+ * латино-тяжёлой русской статьи с коротким телом (ревью s26).
+ */
+export const MIN_RUSSIAN_RATIO = 0.2;
+
+export function russianRatio(draft: DraftShape): number {
+  const texts: string[] = [draft.tease, draft.lede, draft.whyItMatters];
+  for (const block of draft.body) {
+    switch (block.type) {
+      case "paragraph":
+      case "callout":
+      case "quote":
+        texts.push(block.text);
+        break;
+      case "numbers":
+        for (const n of block.items) texts.push(`${n.label} ${n.value}`);
+        break;
+      case "list":
+        texts.push(...block.items);
+        break;
+    }
+  }
+  let cyr = 0;
+  let lat = 0;
+  for (const ch of texts.join(" ")) {
+    const c = ch.toLowerCase();
+    if ((c >= "а" && c <= "я") || c === "ё") cyr++;
+    else if (c >= "a" && c <= "z") lat++;
+  }
+  const total = cyr + lat;
+  return total === 0 ? 1 : cyr / total;
+}
+
 export function countWords(draft: DraftShape): number {
   const texts: string[] = [draft.tease, draft.lede, draft.whyItMatters];
   for (const block of draft.body) {

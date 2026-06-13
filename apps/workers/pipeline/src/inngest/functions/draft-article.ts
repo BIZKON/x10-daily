@@ -18,7 +18,12 @@ import { DEFAULT_SECTION, DEFAULT_TEMPLATE, topicIngestedEvent } from "../../eve
 import { getTodaySpendUsd, mskDayString, recordRun } from "../../lib/cost-ledger";
 import { deliverOpsAlert } from "../../lib/ops-alert";
 import { cleanPostText } from "../../lib/text";
-import { persistArticle, serializeDraftForNumbers } from "../../persist";
+import {
+  MIN_RUSSIAN_RATIO,
+  persistArticle,
+  russianRatio,
+  serializeDraftForNumbers,
+} from "../../persist";
 import type { PipelineInngest } from "../client";
 
 /**
@@ -112,6 +117,48 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
           ctx,
         ),
       );
+
+      // ⚠️ ЯЗЫКОВОЙ ГЕЙТ (жёсткое правило «только русский»). Англоязычные источники
+      // иногда дают английский драфт (DraftAgent эхо-ит язык источника). Считаем
+      // долю кириллицы по всему драфту; ниже порога → НЕ продолжаем дорогую цепочку
+      // (numbers/tov/brevity/...) и НЕ публикуем. Дешёвый ранний halt: записываем
+      // расход draft в ledger и ВЫХОДИМ (return, не throw → без ретраев, иначе
+      // 3× draft на тот же английский источник).
+      const ruRatio = russianRatio(draft.output);
+      if (ruRatio < MIN_RUSSIAN_RATIO) {
+        // Видимость (ревью s26): попадает в логи pipeline + Sentry. Сигнал, что
+        // RSS-источник деградировал (много англ.) ИЛИ правило «только русский» в
+        // промпте перестало работать (напр. после смены модели). Мониторить:
+        // pipeline_runs WHERE output->>'haltReason'='non-russian-draft'.
+        console.warn(
+          `[language-gate] draft отклонён: не русский (кириллица ${(ruRatio * 100).toFixed(0)}% < ${MIN_RUSSIAN_RATIO * 100}%), tease="${draft.output.tease.slice(0, 80)}"`,
+        );
+        await step.run("record-run-nonrussian", async () => {
+          const db = createDb(env.DATABASE_URL);
+          await recordRun(db, {
+            articleId: null,
+            agent: "draft",
+            status: "halted",
+            costUsd: draft.costUsd,
+            modelUsed: draft.modelUsed,
+            inputTokens: draft.usage?.inputTokens ?? 0,
+            outputTokens: draft.usage?.outputTokens ?? 0,
+            cachedInputTokens: draft.usage?.cachedInputTokens ?? 0,
+            output: {
+              halted: true,
+              haltReason: "non-russian-draft",
+              russianRatio: ruRatio,
+              tease: draft.output.tease.slice(0, 120),
+            },
+          });
+        });
+        return {
+          skipped: true as const,
+          reason: "non-russian-draft" as const,
+          russianRatio: ruRatio,
+          tease: draft.output.tease,
+        };
+      }
 
       const [numbers, tov] = await Promise.all([
         step.run("numbers", () =>

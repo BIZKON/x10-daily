@@ -49,7 +49,7 @@ export function NewsCard({ item }: { item: FeedItem }) {
         <span className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-red">
           {item.category}
         </span>
-        <h4 className="mt-1.5 mb-2 font-display text-[17px] font-extrabold leading-[1.3] text-paper">
+        <h4 className="mt-1.5 mb-2 line-clamp-3 font-display text-[17px] font-extrabold leading-[1.3] text-paper">
           {item.title}
         </h4>
         <p className="m-0 text-[13.5px] leading-[1.5] text-mist">{item.excerpt}</p>

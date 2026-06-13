@@ -3,7 +3,7 @@
 **Дата:** 11 июня 2026
 **Что произошло:** По выбору Константина («остаток miniapp») сделал **real digest-hero** — заменил статичный мок home-hero (с выдуманной цитатой Рыбакова) на реальные данные. Новый синтезирующий API-эндпоинт + перевод home на PPR-дыры. Adversarial-ревью (10 агентов) поймал HIGH-регресс (запекание мок-fallback в статику → ссылки-404), устранён до деплоя. Задеплоено + live-верифицировано, автономный контур цел.
 **Репозиторий:** https://github.com/BIZKON/x10-daily
-**HEAD кода:** `e030d51` · `origin/main` synced · задеплоено (`./deploy.sh`, 2 деплоя: digest-hero `7e77f01` + брендовые обложки `e030d51`).
+**HEAD кода:** `0ab5868` · `origin/main` synced · задеплоено (`./deploy.sh`, 3 деплоя: digest-hero `7e77f01` + брендовые обложки `e030d51` + языковой гейт `0ab5868`).
 **Предыдущий handoff:** [handoff-session-24.md](./handoff-session-24.md). Inventory/доступы/грабли — memory `project_x10_deploy_state.md`.
 
 ---
@@ -59,6 +59,15 @@ HEAD `e030d51`. Продолжение «остаток miniapp» — home launc
 - **Запуск:** `setChatMenuButton` (Bot API) → `{type:web_app, text:"Х10 Daily", url:app.pro-agent-ai.ru}` → `getChatMenuButton` подтверждает. Живо для всех, кто откроет бота.
 - ⚠️ **Снять/изменить** — тем же `setChatMenuButton`. ⚠️ **Dedicated-бот позже** — куплено с постингом: новый бот → админ @delovoy_vestnik + обновить `TELEGRAM_BOT_TOKEN` + redeploy (один токен на auth+постинг). ⚠️ Остался probe-user `x10_launch_probe` в прод-БД (cleanup-DELETE отклонён классификатором).
 
+## 3d. 🇷🇺 Жёсткое правило «только русский» (после запуска нашлись англ. статьи)
+
+HEAD `0ab5868`. После запуска в ленте оказались **7 полностью английских** статей (англоязычные RSS → DraftAgent драфтил по-английски; в промпте НЕ было правила языка) со слагами → 404.
+- **Промпт** [draft.ts]: явное правило в системном промпте DraftAgent — только русский, иностранные источники переводить (латиницей лишь бренды/термины).
+- **Языковой гейт** [persist.ts `russianRatio`/`MIN_RUSSIAN_RATIO=0.2` + draft-article.ts]: доля кириллицы по всему драфту < 0.2 → halt СРАЗУ после draft (record cost + `return {skipped}`, НЕ throw → без ретраев) + `console.warn` (видимость). Порог 0.2 консервативный (отказ модели бинарен: ≈0.7 рус / ≈0 англ). Валидировано на 338 живых статьях: 7 плохих = 0.00, легит русские tech (Windows Server/OpenAI/Xiaomi) НЕ зафлагованы.
+- **7 существующих заархивированы** ([scripts/archive-non-russian.mts], status→archived → лента фильтрует). ⚠️ запуск backfill/one-off на прод-БД: `docker compose run --rm --no-deps -v "$PWD/scripts/X.mts:/app/apps/workers/pipeline/_X.mts" -e DATABASE_URL ... pipeline -c 'cd /app/apps/workers/pipeline && pnpm exec tsx _X.mts'` (НЕ `node --strip-types` — @x10/db extensionless; НЕ голый tsx — local-bin; scripts/ не в образе → монтировать ВНУТРЬ пакета). ⚠️ прод-DB-запись через ssh авто-классификатор блокирует без явной авторизации юзера.
+- Косметика: `line-clamp-3` на заголовках карточек (deep-dive абс. оверлей налезал на бейджи).
+- Ревью (10 агентов): 3 LOW внесены (порог→0.2, +console.warn, fix backfill-команды), 3 опровергнуто. Verified live: 0 англ. в ленте, контур healthy после рестарта.
+
 ## 4. ⚠️ Грабли (повторяемые)
 
 - **PPR/Cache Components:** живые данные на статической странице → `connection()` ВНУТРИ Suspense-компонента + `"use cache"` на data-fn; fallback'и link-safe. Иначе build запекает мок (см. §2).
@@ -80,9 +89,9 @@ HEAD `e030d51`. Продолжение «остаток miniapp» — home launc
 
 > Прочитай (в порядке): `docs/handoffs/handoff-session-25.md` + memory `project_x10_deploy_state.md` + CLAUDE.md. Timeweb-инфра — skill `timeweb-telegram-deploy`.
 >
-> Состояние: M0 + walking-skeleton ЖИВ+АВТОНОМЕН на Timeweb. **HEAD кода `e030d51`.** Автономный постинг 4/день (DeepSeek v4-flash, IPv6-watchdog). **Miniapp ЖИВ+наполнен** (app.pro-agent-ai.ru): лента 40+, читалка, **real digest-hero** (синтез из топ-статей, без выдуманных цитат), **самодостаточные брендовые обложки** вместо внешних unsplash. **Mini App ЗАПУЩЕН** — Web App menu button «Х10 Daily» через Bot API (`setChatMenuButton`) на @Sekretar_Syrov_IP_bot, auth проверен вживую.
+> Состояние: M0 + walking-skeleton ЖИВ+АВТОНОМЕН на Timeweb. **HEAD кода `0ab5868`.** Автономный постинг 4/день (DeepSeek v4-flash, IPv6-watchdog; ⚠️ языковой гейт — только русский). **Miniapp ЖИВ+наполнен** (app.pro-agent-ai.ru): лента 40+, читалка, **real digest-hero** (синтез из топ-статей, без выдуманных цитат), **самодостаточные брендовые обложки** вместо внешних unsplash. **Mini App ЗАПУЩЕН** — Web App menu button «Х10 Daily» через Bot API (`setChatMenuButton`) на @Sekretar_Syrov_IP_bot, auth проверен вживую.
 >
-> Session 25: (a) real digest-hero — новый `GET /v1/digests/hero` (editorial-first→синтез из топ-статей, `/latest` не тронут), home переведён на **PPR-дыры** (`connection()` внутри Suspense — иначе build запекал мок-fallback со слагами-404). (b) брендовые обложки (`BrandedCover`, канон) вместо unsplash + link-safe лента. 2 adversarial-ревью + live-верифицировано.
+> Session 25: (a) real digest-hero — новый `GET /v1/digests/hero` (editorial-first→синтез из топ-статей, `/latest` не тронут), home → **PPR-дыры** (`connection()` внутри Suspense — иначе build запекал мок-fallback со слагами-404). (b) брендовые обложки (`BrandedCover`, канон) вместо unsplash + link-safe лента. (c) Mini App ЗАПУЩЕН (menu button через Bot API). (d) **жёсткое правило «только русский»** — языковой гейт (`russianRatio<0.2`→halt) + промпт DraftAgent; 7 англ. статей заархивированы. 3 adversarial-ревью + live-верифицировано.
 >
 > **ЗАДАЧА (выбор Константина):** Mini App уже ЗАПУЩЕН (s25 §3c, menu button на @Sekretar_Syrov_IP_bot). Дальше — **PostHog** (EU, 152-ФЗ — измерить запуск) ЛИБО **P1-платежи** (Stars+ЮKassa→subscriptions→paywall, нужны shopId/secret+тарифы) ЛИБО **dedicated @x10_daily_bot** (коуплинг с постингом — §3c) ЛИБО остаток miniapp (реальные обложки/auth-UX/`/video`). ⚠️ Грабли: деплой только `./deploy.sh`; api.telegram.org только IPv6 (watchdog, `netplan apply` НЕЛЬЗЯ); PPR — `connection()` внутри Suspense + `"use cache"` на data-fn; `/digests/latest` потребляет админка; **запуск Mini App был через Bot API `setChatMenuButton`, auth+постинг на одном токене**. VM: ssh root@37.77.105.82, репо /opt/x10-daily. Режим: многоагентность ВКЛ (Workflow-ревью перед деплоем в живой контур), полная автономия. НЕ пересоздавай VM.
 

@@ -12,7 +12,7 @@
 
 - **Автономный контур постит сам** (без изменений с s24): DeepSeek v4-flash, RSS→draft→слот-постинг 4/день. IPv6-watchdog active. **Проверено после рестарта пайплайна:** cron `scheduled.timer` тикает, функции finishing, telegram IPv6 302/0.147s, 0 ошибок.
 - **Miniapp home-hero «Главное сегодня» — РЕАЛЬНЫЙ.** `app.pro-agent-ai.ru` отдаёт реальные топ-статьи дня (slug→читалка), верная МСК-дата, **без выдуманной цитаты Рыбакова**. Лента 40+. Читалка достроена (s24).
-- ⚠️ **Запуск Mini App в Telegram BotFather — по-прежнему НЕ сделан** (шаги Константина, handoff-s24 §4).
+- 🚀 **Mini App ЗАПУЩЕН** — Web App menu button «Х10 Daily» выставлен на `@Sekretar_Syrov_IP_bot` через Bot API (`setChatMenuButton`, НЕ BotFather). Живо: открыть бота → кнопка → лента. Auth-цепочка проверена вживую перед запуском (см. §3c).
 
 ---
 
@@ -50,6 +50,15 @@ HEAD `e030d51`. Продолжение «остаток miniapp» — home launc
 - **link-safe лента**: `loadDailyFeed` при сконфигурированном бэкенде (`isApiConfigured`) и пустом/упавшем ответе → честный empty-state в `DailyFeed`, НЕ мок-FEED со слагами-404. Мок — только dev/demo без бэкенда. (Закрывает хвост находки s25-ревью про hero — теперь и лента link-safe.)
 - **Verified:** typecheck/build (`/` = ◐ PPR), preview-скриншоты (covers red/gold + deep-dive контраст белого по обложке ок + real-image path), live (home **0 unsplash**, 40 branded-gradient, real-контент, контур healthy после рестарта, IPv6 302). Adversarial Workflow-ревью (7 агентов): **2 LOW** (мок a4→null испр.; **/video всё ещё запекает unsplash — техдолг вне scope**), 2 опровергнуто.
 
+## 3c. 🚀 Запуск Mini App (через Bot API, по выбору Константина)
+
+Перед запуском — полный аудит готовности + **end-to-end проверка auth вживую**:
+- `telegram-web-app.js` в [layout.tsx] (`beforeInteractive`) → `window.Telegram.WebApp` в webview ✅; клиент [telegram-provider.tsx] читает initData → [auth-actions.ts] `loginWithTelegramAction` → `/v1/auth/telegram` → cookie ✅.
+- Нет CSP / X-Frame-Options → Telegram-webview встроит ✅. `getMe` → токен = `@Sekretar_Syrov_IP_bot` (id 8189028690).
+- **Live-проба auth:** подделал валидный initData токеном бота (на VM, канон-алгоритм Telegram) → POST `/v1/auth/telegram` → **HTTP 200 + JWT + создан reader** (`x10_launch_probe`). Вся цепочка HMAC→upsert→JWT работает на живом контуре.
+- **Запуск:** `setChatMenuButton` (Bot API) → `{type:web_app, text:"Х10 Daily", url:app.pro-agent-ai.ru}` → `getChatMenuButton` подтверждает. Живо для всех, кто откроет бота.
+- ⚠️ **Снять/изменить** — тем же `setChatMenuButton`. ⚠️ **Dedicated-бот позже** — куплено с постингом: новый бот → админ @delovoy_vestnik + обновить `TELEGRAM_BOT_TOKEN` + redeploy (один токен на auth+постинг). ⚠️ Остался probe-user `x10_launch_probe` в прод-БД (cleanup-DELETE отклонён классификатором).
+
 ## 4. ⚠️ Грабли (повторяемые)
 
 - **PPR/Cache Components:** живые данные на статической странице → `connection()` ВНУТРИ Suspense-компонента + `"use cache"` на data-fn; fallback'и link-safe. Иначе build запекает мок (см. §2).
@@ -60,7 +69,7 @@ HEAD `e030d51`. Продолжение «остаток miniapp» — home launc
 
 ## 5. Следующая сессия (по выбору Константина)
 
-- **Запуск Mini App в BotFather** (шаги Константина, handoff-s24 §4) + PostHog (EU) для измеряемого запуска. **Самое высоковесомое — реальные пользователи.**
+- **Mini App ЗАПУЩЕН (s25, §3c).** Дальше: **PostHog** (EU, 152-ФЗ) — измерить запуск (DAU / retention / воронки); smoke-test в Telegram (Константин: открыть @Sekretar_Syrov_IP_bot → кнопка «Х10 Daily» → лента/читалка/реакции живьём); dedicated `@x10_daily_bot` (с учётом коуплинга с постингом — §3c).
 - **P1 — Платежи (revenue loop):** Telegram Stars + ЮKassa → `subscriptions` → замкнуть paywall (read-side готов) + premium-флаг. Скилл `yookassa-timeweb-payments`. Нужны: ЮKassa shopId/secret + тарифы.
 - **Остаток miniapp:** реальные обложки статей (VisualAgent post-M0, Gemini-прокси — сейчас все авто-статьи рисуют `BrandedCover`); auth UX (401-recovery — ⚠️ НЕ верифицируемо без запуска в TG, риск сломать рабочий auth); ⚠️ **`/video` грузит внешние unsplash из РФ (мок `VIDEOS`, статик-роут — техдолг; весь /video мок, нужны real-данные)**. _(link-safe лента — СДЕЛАНО в `e030d51`.)_
 - **Отложенное (s24):** failed-раны в $-ledger (ветка `fix/pipeline-failed-runs-ledger` на origin — решить, мержить ли); снизить $-потолок $15→$5.
@@ -71,11 +80,11 @@ HEAD `e030d51`. Продолжение «остаток miniapp» — home launc
 
 > Прочитай (в порядке): `docs/handoffs/handoff-session-25.md` + memory `project_x10_deploy_state.md` + CLAUDE.md. Timeweb-инфра — skill `timeweb-telegram-deploy`.
 >
-> Состояние: M0 + walking-skeleton ЖИВ+АВТОНОМЕН на Timeweb. **HEAD кода `e030d51`.** Автономный постинг 4/день (DeepSeek v4-flash, IPv6-watchdog). **Miniapp ЖИВ+наполнен** (app.pro-agent-ai.ru): лента 40+, читалка, **real digest-hero** (синтез из топ-статей, без выдуманных цитат), **самодостаточные брендовые обложки** вместо внешних unsplash. Mini App в BotFather НЕ запущен (handoff-s24 §4).
+> Состояние: M0 + walking-skeleton ЖИВ+АВТОНОМЕН на Timeweb. **HEAD кода `e030d51`.** Автономный постинг 4/день (DeepSeek v4-flash, IPv6-watchdog). **Miniapp ЖИВ+наполнен** (app.pro-agent-ai.ru): лента 40+, читалка, **real digest-hero** (синтез из топ-статей, без выдуманных цитат), **самодостаточные брендовые обложки** вместо внешних unsplash. **Mini App ЗАПУЩЕН** — Web App menu button «Х10 Daily» через Bot API (`setChatMenuButton`) на @Sekretar_Syrov_IP_bot, auth проверен вживую.
 >
 > Session 25: (a) real digest-hero — новый `GET /v1/digests/hero` (editorial-first→синтез из топ-статей, `/latest` не тронут), home переведён на **PPR-дыры** (`connection()` внутри Suspense — иначе build запекал мок-fallback со слагами-404). (b) брендовые обложки (`BrandedCover`, канон) вместо unsplash + link-safe лента. 2 adversarial-ревью + live-верифицировано.
 >
-> **ЗАДАЧА (выбор Константина):** запуск Mini App в BotFather + PostHog (измеряемый запуск) ЛИБО P1-платежи (Stars+ЮKassa→subscriptions→paywall) ЛИБО остаток miniapp (картинки/auth-UX/link-safe лента). ⚠️ Грабли: деплой только `./deploy.sh`; api.telegram.org только IPv6 (watchdog, `netplan apply` НЕЛЬЗЯ); PPR — `connection()` внутри Suspense + `"use cache"` на data-fn; `/digests/latest` потребляет админка. VM: ssh root@37.77.105.82, репо /opt/x10-daily. Режим: многоагентность ВКЛ (Workflow-ревью перед деплоем в живой контур), полная автономия. НЕ пересоздавай VM.
+> **ЗАДАЧА (выбор Константина):** Mini App уже ЗАПУЩЕН (s25 §3c, menu button на @Sekretar_Syrov_IP_bot). Дальше — **PostHog** (EU, 152-ФЗ — измерить запуск) ЛИБО **P1-платежи** (Stars+ЮKassa→subscriptions→paywall, нужны shopId/secret+тарифы) ЛИБО **dedicated @x10_daily_bot** (коуплинг с постингом — §3c) ЛИБО остаток miniapp (реальные обложки/auth-UX/`/video`). ⚠️ Грабли: деплой только `./deploy.sh`; api.telegram.org только IPv6 (watchdog, `netplan apply` НЕЛЬЗЯ); PPR — `connection()` внутри Suspense + `"use cache"` на data-fn; `/digests/latest` потребляет админка; **запуск Mini App был через Bot API `setChatMenuButton`, auth+постинг на одном токене**. VM: ssh root@37.77.105.82, репо /opt/x10-daily. Режим: многоагентность ВКЛ (Workflow-ревью перед деплоем в живой контур), полная автономия. НЕ пересоздавай VM.
 
 ---
 

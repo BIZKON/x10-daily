@@ -304,6 +304,30 @@ export async function fetchProfileStats(): Promise<ApiProfileStats | null> {
   return (await res.json()) as ApiProfileStats;
 }
 
+/** Сохранённая статья (закладка) — GET /v1/profile/bookmarks. */
+export type ApiBookmarkItem = {
+  articleId: string;
+  savedAt: string;
+  slug: string;
+  category: ApiCategory;
+  template: ApiTemplate;
+  tease: string;
+  lede: string;
+  readSeconds: number;
+  isPaid: boolean;
+};
+
+/**
+ * Список закладок авторизованного юзера. null → нет auth (гость) / API down /
+ * не сконфигурирован; [] → авторизован, но закладок нет. Caller различает.
+ */
+export async function fetchBookmarks(limit = 50): Promise<ApiBookmarkItem[] | null> {
+  const res = await fetchAuthed(`/v1/profile/bookmarks?limit=${limit}`);
+  if (!res || !res.ok) return null;
+  const body = (await res.json()) as { items: ApiBookmarkItem[]; count: number };
+  return body.items;
+}
+
 /** Личность авторизованного пользователя — для шапки профиля (GET /v1/auth/me). */
 export type ApiMeUser = {
   id: string;

@@ -52,6 +52,15 @@ export async function getReactionStateAction(
   return state.userReactions;
 }
 
+/**
+ * В закладках ли статья у этого пользователя — для header-кнопки читалки
+ * (ленивая подгрузка при маунте, как getReactionStateAction). Без auth → false.
+ */
+export async function getBookmarkStateAction(articleId: string): Promise<boolean> {
+  const state = await fetchArticleUserState(articleId);
+  return state.isBookmarked;
+}
+
 export async function toggleReactionAction(
   articleId: string,
   kind: ReactionKind,

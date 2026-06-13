@@ -407,10 +407,15 @@ export const COMMUNITY_PATHS = [
 // loadPreferences + PreferenceToggles (таблица user_preferences). PROFILE_MENU —
 // статичная навигация (пункты ведут на ещё не построенные экраны).
 
-export const PROFILE_MENU = [
-  { title: "Сохранённое", icon: "bookmark" as const },
-  { title: "История чтения", icon: "book" as const },
-  { title: "Скачанные подкасты", icon: "headphones" as const },
-  { title: "Х10 Premium", icon: "crown" as const },
-  { title: "Настройки", icon: "settings" as const },
+export const PROFILE_MENU: Array<{
+  title: string;
+  icon: "bookmark" | "book" | "headphones" | "crown" | "settings";
+  /** Если задан — пункт ведёт на готовый экран (Link). Иначе пока заглушка. */
+  href?: string;
+}> = [
+  { title: "Сохранённое", icon: "bookmark", href: "/profile/saved" },
+  { title: "История чтения", icon: "book" },
+  { title: "Скачанные подкасты", icon: "headphones" },
+  { title: "Х10 Premium", icon: "crown" },
+  { title: "Настройки", icon: "settings" },
 ];

@@ -10,11 +10,14 @@
  */
 import {
   fetchAuthMe,
+  fetchBookmarks,
   fetchPreferences,
   fetchProfileStats,
+  type ApiCategory,
   type ApiPreferences,
   type ApiProfileStats,
 } from "./api";
+import { formatPublishedAt } from "./format";
 
 export type ProfileStatTone = "red" | "gold" | "success";
 export type ProfileStatIcon = "flame" | "book" | "bookmark" | "crown";
@@ -128,4 +131,51 @@ export const DEFAULT_PREFERENCES: ApiPreferences = {
 export async function loadPreferences(): Promise<ApiPreferences> {
   const prefs = await fetchPreferences();
   return prefs ?? DEFAULT_PREFERENCES;
+}
+
+/* ----------------------------------------------------------------
+ * Закладки (раздел «Сохранённое») — GET /v1/profile/bookmarks.
+ * ---------------------------------------------------------------- */
+
+const CATEGORY_LABELS: Record<ApiCategory, string> = {
+  taxes: "НАЛОГИ",
+  money: "ДЕНЬГИ",
+  practice: "ПРАКТИКА",
+  power: "ВЛАСТЬ",
+  tech: "ТЕХНОЛОГИИ",
+  rybakov: "РЫБАКОВ ГОВОРИТ",
+};
+
+export type SavedArticle = {
+  slug: string;
+  category: string;
+  title: string;
+  excerpt: string;
+  readMinutes: number;
+  /** «Сохранено 13 июня, 14:30» (МСК) или null. */
+  savedAtLabel: string | null;
+  isPremium: boolean;
+};
+
+export type BookmarksResult = {
+  /** Авторизован ли (false → гость/недоступно → подсказка вместо пустого списка). */
+  authed: boolean;
+  items: SavedArticle[];
+};
+
+export async function loadBookmarks(): Promise<BookmarksResult> {
+  const items = await fetchBookmarks(50);
+  if (items === null) return { authed: false, items: [] };
+  return {
+    authed: true,
+    items: items.map((b) => ({
+      slug: b.slug,
+      category: CATEGORY_LABELS[b.category],
+      title: b.tease,
+      excerpt: b.lede,
+      readMinutes: Math.max(1, Math.round(b.readSeconds / 60)),
+      savedAtLabel: formatPublishedAt(b.savedAt),
+      isPremium: b.isPaid,
+    })),
+  };
 }

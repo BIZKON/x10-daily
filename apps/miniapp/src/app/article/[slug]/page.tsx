@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ArticleBody } from "@/components/article/article-body";
 import { EngagementBar } from "@/components/article/engagement-bar";
+import { HeaderBookmark } from "@/components/article/header-bookmark";
 import { HeaderShare } from "@/components/article/header-share";
 import { ReadingProgress } from "@/components/article/reading-progress";
 import { ANONYMOUS_USER_STATE, fetchArticleUserState } from "@/lib/api";
@@ -42,6 +43,7 @@ export default async function ArticlePage({
           <button type="button" aria-label="Аудио (скоро)" disabled className="opacity-40">
             <Headphones size={20} strokeWidth={1.75} />
           </button>
+          <HeaderBookmark articleId={article.id} />
           <HeaderShare title={article.title} slug={article.slug} />
         </div>
       </header>
@@ -173,7 +175,6 @@ async function ArticleEngagement({ article }: { article: ArticleDetail }) {
       articleId={article.id}
       initialUserState={userState}
       initialReactions={article.reactionBreakdown}
-      initialBookmarkCount={article.bookmarkCount}
       commentCount={article.comments}
     />
   );
@@ -186,7 +187,6 @@ function EngagementBarFallback({ article }: { article: ArticleDetail }) {
       articleId={article.id}
       initialUserState={ANONYMOUS_USER_STATE}
       initialReactions={article.reactionBreakdown}
-      initialBookmarkCount={article.bookmarkCount}
       commentCount={article.comments}
     />
   );

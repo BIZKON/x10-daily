@@ -1,6 +1,7 @@
 import { cn } from "@x10/ui";
 import { Book, Bookmark, ChevronRight, Crown, Flame, Headphones, Settings } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { PreferenceToggles } from "@/components/profile/preference-toggles";
@@ -55,17 +56,25 @@ export default function ProfilePage() {
       <section className="flex flex-col gap-2 p-4 pt-6">
         {PROFILE_MENU.map((m) => {
           const Icon = menuIconMap[m.icon];
-          return (
-            <button
-              key={m.title}
-              type="button"
-              className="flex w-full items-center justify-between rounded-xl border border-fence bg-card px-4 py-3 text-left text-[13.5px]"
-            >
+          const cls =
+            "flex w-full items-center justify-between rounded-xl border border-fence bg-card px-4 py-3 text-left text-[13.5px]";
+          const inner = (
+            <>
               <span className="flex items-center gap-3">
                 <Icon size={16} strokeWidth={1.75} className="text-mist" />
                 {m.title}
               </span>
               <ChevronRight size={16} strokeWidth={1.75} className="text-haze" />
+            </>
+          );
+          // Пункт с href ведёт на готовый экран; остальные — пока заглушки.
+          return m.href ? (
+            <Link key={m.title} href={m.href} className={cls}>
+              {inner}
+            </Link>
+          ) : (
+            <button key={m.title} type="button" className={cls}>
+              {inner}
             </button>
           );
         })}

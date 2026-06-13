@@ -421,30 +421,9 @@ export const COMMUNITY_PATHS = [
 ];
 
 // ---------- Profile ----------
-
-export const PROFILE = {
-  name: "Алексей Петров",
-  role: "Клампер",
-  city: "Краснодар",
-  avatarInitial: "А",
-};
-
-export const PROFILE_STATS = [
-  { icon: "flame" as const, k: "23", v: "дней стрик", tone: "red" as const },
-  { icon: "book" as const, k: "312", v: "прочитано", tone: "gold" as const },
-  { icon: "bookmark" as const, k: "47", v: "сохранено", tone: "success" as const },
-  { icon: "crown" as const, k: "1240", v: "IPS", tone: "gold" as const },
-];
-
-export const WEEK_STREAK = [
-  { d: "П", on: true },
-  { d: "В", on: true },
-  { d: "С", on: true },
-  { d: "Ч", on: true },
-  { d: "П", on: true },
-  { d: "С", on: false },
-  { d: "В", on: false },
-];
+// PROFILE (имя/город) → реальная identity через loadProfileIdentity (/v1/auth/me);
+// PROFILE_STATS/WEEK_STREAK → реальные статы через loadProfileSnapshot.
+// Мок удалён в s25. SUBSCRIPTIONS/SCHEDULE — пока мок (Tier-2: user_preferences).
 
 export const SUBSCRIPTIONS = [
   "Налоги",

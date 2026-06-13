@@ -7,13 +7,19 @@ import {
   Crown,
   Flame,
   Headphones,
-  MapPin,
   Settings,
 } from "lucide-react";
+import Image from "next/image";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { TopBar } from "@/components/top-bar";
-import { PROFILE, PROFILE_MENU, SCHEDULE, SUBSCRIPTIONS } from "@/lib/feed";
-import { loadProfileSnapshot, type ProfileStatIcon, type ProfileStatTone } from "@/lib/profile";
+import { PROFILE_MENU, SCHEDULE, SUBSCRIPTIONS } from "@/lib/feed";
+import {
+  loadProfileIdentity,
+  loadProfileSnapshot,
+  type ProfileStatIcon,
+  type ProfileStatTone,
+} from "@/lib/profile";
 
 const statIconMap: Record<ProfileStatIcon, typeof Flame> = {
   flame: Flame,
@@ -56,29 +62,9 @@ export default function ProfilePage() {
     <>
       <TopBar title="Профиль" />
 
-      <section className="relative mx-4 mt-3 overflow-hidden rounded-[20px] border border-fence p-5 [background:linear-gradient(135deg,var(--color-steel),var(--color-night))]">
-        <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-red/[0.05]" />
-        <div className="relative flex items-center gap-4">
-          <div className="grid h-16 w-16 place-items-center rounded-full font-display text-[26px] font-extrabold text-white [background:linear-gradient(135deg,var(--color-red),var(--color-gold))]">
-            {PROFILE.avatarInitial}
-          </div>
-          <div>
-            <h2 className="m-0 font-display text-xl font-extrabold">{PROFILE.name}</h2>
-            <p className="m-0 mt-0.5 flex items-center gap-1.5 text-[12.5px] text-mist">
-              <span className="rounded bg-red/20 px-2 py-0.5 text-[10px] font-bold text-red">
-                {PROFILE.role}
-              </span>
-              <MapPin size={12} strokeWidth={1.75} /> {PROFILE.city}
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          className="relative mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-gold/50 bg-gold/[0.08] py-3 font-display text-[13.5px] font-semibold text-gold"
-        >
-          <Crown size={16} strokeWidth={1.75} /> Активировать Х10 Premium · 1 500 ₽/мес
-        </button>
-      </section>
+      <Suspense fallback={<HeaderSkeleton />}>
+        <ProfileHeader />
+      </Suspense>
 
       <Suspense fallback={<StatsSkeleton />}>
         <StatsAndStreak />
@@ -141,6 +127,68 @@ export default function ProfilePage() {
         })}
       </section>
     </>
+  );
+}
+
+/**
+ * Шапка профиля — реальная identity авторизованного юзера (PPR-дыра:
+ * connection() в Suspense, как StatsAndStreak). Гость (вне TG / до auth) →
+ * честный «Гость», НЕ выдуманный «Алексей Петров».
+ */
+async function ProfileHeader() {
+  await connection();
+  const id = await loadProfileIdentity();
+
+  return (
+    <section className="relative mx-4 mt-3 overflow-hidden rounded-[20px] border border-fence p-5 [background:linear-gradient(135deg,var(--color-steel),var(--color-night))]">
+      <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-red/[0.05]" />
+      <div className="relative flex items-center gap-4">
+        {id.avatarUrl ? (
+          <Image
+            src={id.avatarUrl}
+            alt=""
+            width={64}
+            height={64}
+            className="h-16 w-16 rounded-full object-cover"
+            unoptimized
+          />
+        ) : (
+          <div className="grid h-16 w-16 place-items-center rounded-full font-display text-[26px] font-extrabold text-white [background:linear-gradient(135deg,var(--color-red),var(--color-gold))]">
+            {id.initial}
+          </div>
+        )}
+        <div className="min-w-0">
+          <h2 className="m-0 truncate font-display text-xl font-extrabold">{id.name}</h2>
+          <p className="m-0 mt-0.5 truncate text-[12.5px] text-mist">
+            {id.handle ?? (id.authed ? "Участник Х10" : "Войдите через Telegram")}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        className="relative mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-gold/50 bg-gold/[0.08] py-3 font-display text-[13.5px] font-semibold text-gold"
+      >
+        <Crown size={16} strokeWidth={1.75} /> Активировать Х10 Premium · 1 500 ₽/мес
+      </button>
+    </section>
+  );
+}
+
+function HeaderSkeleton() {
+  return (
+    <section
+      aria-busy="true"
+      className="mx-4 mt-3 rounded-[20px] border border-fence p-5 [background:linear-gradient(135deg,var(--color-steel),var(--color-night))]"
+    >
+      <div className="flex items-center gap-4">
+        <div className="h-16 w-16 animate-pulse rounded-full bg-white/10" />
+        <div className="flex-1 space-y-2">
+          <div className="h-5 w-40 animate-pulse rounded bg-white/10" />
+          <div className="h-3 w-24 animate-pulse rounded bg-white/10" />
+        </div>
+      </div>
+      <div className="mt-4 h-11 w-full animate-pulse rounded-xl bg-white/10" />
+    </section>
   );
 }
 

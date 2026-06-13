@@ -278,6 +278,23 @@ export async function fetchProfileStats(): Promise<ApiProfileStats | null> {
   return (await res.json()) as ApiProfileStats;
 }
 
+/** Личность авторизованного пользователя — для шапки профиля (GET /v1/auth/me). */
+export type ApiMeUser = {
+  id: string;
+  role: string;
+  displayName: string | null;
+  username: string | null;
+  avatarUrl: string | null;
+  locale: string;
+};
+
+export async function fetchAuthMe(): Promise<ApiMeUser | null> {
+  const res = await fetchAuthed(`/v1/auth/me`);
+  if (!res || !res.ok) return null;
+  const body = (await res.json()) as { user: ApiMeUser };
+  return body.user;
+}
+
 /* ----------------------------------------------------------------
  * Article engagement (optimistic UI — brief §11)
  *

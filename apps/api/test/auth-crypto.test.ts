@@ -82,10 +82,13 @@ async function buildInitDataWithPlusAndSignature(
   const authDate = opts.authDateSeconds ?? Math.floor(Date.now() / 1000);
   const user = JSON.stringify({ id: 555, first_name: "Real", username: "real_user" });
   const queryId = "AAH+xY/z9w=="; // литеральные '+' '/' '=' — Telegram их не кодирует
-  // data-check-string: исключаем hash+signature, сорт по ключу, значения как есть.
+  const signature = "sigAbc+def/ghi==";
+  // data-check-string: исключаем ТОЛЬКО hash (signature ВКЛЮЧАЕТСЯ — так считает
+  // реальный Telegram, подтверждено диагностикой s26), сорт по ключу, значения как есть.
   const pairs: Array<[string, string]> = [
     ["auth_date", String(authDate)],
     ["query_id", queryId],
+    ["signature", signature],
     ["user", user],
   ];
   pairs.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
@@ -118,9 +121,8 @@ async function buildInitDataWithPlusAndSignature(
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
-  // Сериализуем ВРУЧНУЮ: query_id с литеральным '+', signature с '+' (исключается),
+  // Сериализуем ВРУЧНУЮ: query_id с литеральным '+', signature с '+',
   // user через encodeURIComponent, hash hex.
-  const signature = "sigAbc+def/ghi==";
   return [
     `auth_date=${authDate}`,
     `query_id=${queryId}`,

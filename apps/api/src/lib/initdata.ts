@@ -22,11 +22,11 @@
  * совпадал. Самоподделка s25 не содержала ни `+`, ни поля `signature`, поэтому
  * проходила против того же кода (ловушка «валидируем против самих себя»).
  *
- * Фикс: парсим ВРУЧНУЮ через `decodeURIComponent` (сохраняет `+`, в отличие от
- * URLSearchParams). Одна каноническая конструкция data-check-string по спеке:
- * исключить hash+signature, сортировка по ключу, join '\n'. (Ревью s26 убрало
- * мультивариантный приём как техдолг/нарушение спеки — signature ВСЕГДА
- * исключается.)
+ * Фикс s26: исключать из data-check-string ТОЛЬКО `hash` (поле `signature`
+ * ВКЛЮЧАЕТСЯ — эмпирически: bot-token HMAC у Telegram считается поверх signature;
+ * «exclude hash+signature» из доков — про Ed25519 third-party, не про этот путь).
+ * Парсинг — ручной decodeURIComponent (сохраняет `+`, в отличие от URLSearchParams,
+ * который трактует строку как form-urlencoded → '+'→пробел; защитно на будущее).
  *
  * Возвращает разобранного `user` (JSON в поле user) при успехе. Бросает Error
  * с понятным message при любой ошибке (caller отображает 401).
@@ -121,48 +121,6 @@ function buildCheckString(pairs: Array<[string, string]>, exclude: Set<string>):
     .join("\n");
 }
 
-/**
- * ВРЕМЕННАЯ ДИАГНОСТИКА (s26): перебирает все правдоподобные конструкции
- * data-check-string × деривации секрета и возвращает имена совпавших с `hash`.
- * "NONE" → ни одна не сошлась (вероятно, initData подписан ДРУГИМ ботом, не тем,
- * чей токен в env). Не принимает auth — только логируется в auth.ts. Снять после
- * того как точная конструкция/причина найдена.
- */
-export async function diagnoseInitData(initData: string, botToken: string): Promise<string> {
-  const hash = (parsePairs(initData, false).find(([k]) => k === "hash")?.[1] ?? "").toLowerCase();
-  if (!hash) return "no-hash";
-
-  const parses: Record<string, Array<[string, string]>> = {
-    decoded: parsePairs(initData, true),
-    url: [...new URLSearchParams(initData).entries()],
-    raw: parsePairs(initData, false),
-  };
-  const exclusions: Record<string, Set<string>> = {
-    "excl-hash+sig": new Set(["hash", "signature"]),
-    "excl-hash": new Set(["hash"]),
-  };
-
-  const tokenBytes = encoder.encode(botToken);
-  const webAppBytes = encoder.encode("WebAppData");
-  const secrets: Record<string, ArrayBuffer> = {
-    "hmac(webapp,token)": await hmacSha256(webAppBytes, botToken),
-    "hmac(token,webapp)": await hmacSha256(tokenBytes, "WebAppData"),
-    "sha256(token)": await crypto.subtle.digest("SHA-256", tokenBytes as BufferSource),
-  };
-
-  const matches: string[] = [];
-  for (const [pn, pairs] of Object.entries(parses)) {
-    for (const [en, excl] of Object.entries(exclusions)) {
-      const cs = buildCheckString(pairs, excl);
-      for (const [sn, secret] of Object.entries(secrets)) {
-        const expected = toHex(await hmacSha256(secret, cs));
-        if (expected === hash) matches.push(`${pn}/${en}/${sn}`);
-      }
-    }
-  }
-  return matches.length > 0 ? matches.join(",") : "NONE";
-}
-
 export interface VerifyInitDataOptions {
   /** Bot token формата `<id>:<secret>`. */
   botToken: string;
@@ -203,7 +161,12 @@ export async function verifyInitData(
   // достаточно; legacy-варианты убраны (ревью s26: spec-compliance, signature
   // ВСЕГДА исключается).
   const decodedPairs = parsePairs(initData, true);
-  const dataCheckString = buildCheckString(decodedPairs, new Set(["hash", "signature"]));
+  // ⚠️ Исключаем ТОЛЬКО `hash`. Поле `signature` ВКЛЮЧАЕТСЯ в data-check-string —
+  // эмпирически подтверждено диагностикой s26 против реального initData: Telegram
+  // считает bot-token HMAC ПОВЕРХ поля signature. Распространённое «exclude hash
+  // AND signature» из доков относится к Ed25519 third-party валидации, НЕ к
+  // bot-token HMAC. (Исключение signature ломало вход для всех реальных клиентов.)
+  const dataCheckString = buildCheckString(decodedPairs, new Set(["hash"]));
 
   const secretKey = await hmacSha256(encoder.encode("WebAppData"), botToken);
   const expected = toHex(await hmacSha256(secretKey, dataCheckString));

@@ -14,11 +14,17 @@
  */
 import {
   fetchArticle,
+  fetchDigest,
   fetchFeed,
+  isApiConfigured,
+  type ApiArticle,
+  type ApiArticleBlock,
   type ApiCategory,
   type ApiFeedItem,
   type ApiTemplate,
 } from "./api";
+
+export type { ApiArticleBlock };
 
 /** brief §5 — категории первого уровня (rubrics). */
 export type FeedSection = ApiCategory;
@@ -31,11 +37,15 @@ export type FeedTemplate = ApiTemplate;
 export type FeedItem = {
   id: string;
   slug: string;
+  /** Русский label рубрики (для отображения). */
   category: FeedCategoryLabel;
+  /** Сырой ключ рубрики (для брендовой обложки/фильтров). */
+  categoryKey: ApiCategory;
   template: FeedTemplate;
   title: string;
   excerpt: string;
-  imageUrl: string;
+  /** Реальная обложка из БД; null → карточка рисует BrandedCover (не unsplash). */
+  imageUrl: string | null;
   readMinutes: number;
   /** Агрегированный счётчик для list-карточек (sum по 3 kinds). */
   reactions: number;
@@ -70,16 +80,6 @@ const CATEGORY_LABELS: Record<ApiCategory, string> = {
   rybakov: "РЫБАКОВ ГОВОРИТ",
 };
 
-/** Картинка-заглушка per category. БД хранит coverImageUrl — используется при наличии. */
-const CATEGORY_PLACEHOLDER_IMAGES: Record<ApiCategory, string> = {
-  taxes: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&q=80",
-  money: "https://images.unsplash.com/photo-1633158829585-23ba8f7c8caf?w=800&q=80",
-  practice: "https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&q=80",
-  power: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&q=80",
-  tech: "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=800&q=80",
-  rybakov: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=800&q=80",
-};
-
 function mapApiItem(row: ApiFeedItem): FeedItem {
   const breakdown = {
     fire: row.reactions?.fire ?? 0,
@@ -94,10 +94,11 @@ function mapApiItem(row: ApiFeedItem): FeedItem {
     id: row.id,
     slug: row.slug,
     category: CATEGORY_LABELS[row.category],
+    categoryKey: row.category,
     template: row.template,
     title: row.tease,
     excerpt: row.lede,
-    imageUrl: row.coverImageUrl ?? CATEGORY_PLACEHOLDER_IMAGES[row.category],
+    imageUrl: row.coverImageUrl,
     readMinutes: Math.max(1, Math.round(row.readSeconds / 60)),
     reactions: totalReactions,
     reactionBreakdown: breakdown,
@@ -109,25 +110,35 @@ function mapApiItem(row: ApiFeedItem): FeedItem {
   };
 }
 
-export const DAILY_DIGEST = {
-  date: "Понедельник, 26 мая",
-  title: "Утренний разбор от Рыбакова",
-  videoMinutes: 8,
-  bullets: [
-    {
-      n: "01",
-      t: "ЦБ оставил ставку 17%. Рыбаков: «Кредитное окно закрыто, время своих денег».",
-    },
-    {
-      n: "02",
-      t: "Минфин предложил поднять порог УСН до 350 млн. Что делать малому бизнесу.",
-    },
-    {
-      n: "03",
-      t: "Wildberries купил три сервиса такси. Передел рынка логистики начался.",
-    },
-  ],
+/**
+ * Home-hero «Главное сегодня» (brief §6 DailyDigest).
+ *
+ * Реальные данные приходят из GET /v1/digests/hero: редакционный выпуск, а
+ * пока его нет — синтез из топ-статей дня. ⚠️ Никаких выдуманных цитат/
+ * атрибуций здесь быть НЕ должно (ToV, кейс Романчук) — bullets = реальные
+ * заголовки статей, ведущие в читалку.
+ */
+export type DigestBullet = {
+  /** «01» / «02» / «03» — порядковый номер. */
+  n: string;
+  /** Slug статьи — bullet кликабелен, ведёт в читалку. */
+  slug: string;
+  /** Заголовок статьи (tease). */
+  text: string;
 };
+
+export type Digest = {
+  /** YYYY-MM-DD (МСК) — hero форматирует в «Среда, 11 июня». "" → eyebrow без даты. */
+  issueDate: string;
+  /** Короткая врезка-подзаголовок. */
+  intro: string;
+  bullets: DigestBullet[];
+  /** CTA «Читать разбор» → slug топ-статьи; null → CTA скрыт. */
+  ctaSlug: string | null;
+};
+
+/** Сколько сюжетов показываем в hero. */
+const DIGEST_BULLET_COUNT = 3;
 
 /** Mock feed для разработки без backend'a — покрывает все 3 template (M0 brief §10). */
 const FEED: FeedItem[] = [
@@ -135,12 +146,12 @@ const FEED: FeedItem[] = [
     id: "00000000-0000-0000-0000-0000000000a1",
     slug: "usn-350mln-three-steps",
     category: "НАЛОГИ",
+    categoryKey: "taxes",
     template: "card-news",
     title: "Новый порог УСН 350 млн: кому грозит, кому выгодно",
     excerpt:
       "Разобрали с налоговым адвокатом, что меняется и какие три шага сделать сейчас.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&q=80",
+    imageUrl: null,
     readMinutes: 12,
     reactions: 142,
     reactionBreakdown: { fire: 88, insight: 39, question: 15 },
@@ -154,12 +165,12 @@ const FEED: FeedItem[] = [
     id: "00000000-0000-0000-0000-0000000000a2",
     slug: "rybakov-no-startup-2026",
     category: "РЫБАКОВ ГОВОРИТ",
+    categoryKey: "rybakov",
     template: "daily-take",
     title: "Почему я не верю в стартап-инвестиции в 2026",
     excerpt:
       "«Хайп-экономика заканчивается. Что покупать вместо стартапов».",
-    imageUrl:
-      "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=800&q=80",
+    imageUrl: null,
     readMinutes: 1,
     reactions: 891,
     reactionBreakdown: { fire: 612, insight: 187, question: 92 },
@@ -173,12 +184,12 @@ const FEED: FeedItem[] = [
     id: "00000000-0000-0000-0000-0000000000a3",
     slug: "ruble-100-three-scenarios",
     category: "ДЕНЬГИ",
+    categoryKey: "money",
     template: "card-news",
     title: "Рубль по 100: три сценария на лето",
     excerpt:
       "Что говорят валютные стратеги Сбера, Тинькоффа и независимые аналитики.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1633158829585-23ba8f7c8caf?w=800&q=80",
+    imageUrl: null,
     readMinutes: 4,
     reactions: 67,
     reactionBreakdown: { fire: 28, insight: 24, question: 15 },
@@ -192,12 +203,12 @@ const FEED: FeedItem[] = [
     id: "00000000-0000-0000-0000-0000000000a4",
     slug: "wildberries-buys-taxi",
     category: "ПРАКТИКА",
+    categoryKey: "practice",
     template: "deep-dive",
     title: "Wildberries собирает логистическую империю. Разбор сделки на три такси-сервиса",
     excerpt:
       "Маркетплейс купил три такси за квартал. Что это даёт WB, что теряют продавцы, и какие 5 уроков для российского ритейла.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&q=80",
+    imageUrl: null,
     readMinutes: 9,
     reactions: 234,
     reactionBreakdown: { fire: 128, insight: 71, question: 35 },
@@ -210,17 +221,102 @@ const FEED: FeedItem[] = [
 ];
 
 export async function loadDailyFeed(limit = 20): Promise<FeedItem[]> {
+  "use cache";
   const api = await fetchFeed(limit);
   if (api && api.items.length > 0) {
     return api.items.map(mapApiItem);
   }
+  // Бэкенд сконфигурирован, но ответ пуст/упал → честный empty (DailyFeed
+  // покажет empty-state), НЕ мок со слагами-404. Мок — только dev/demo без бэкенда.
+  if (isApiConfigured()) return [];
   return FEED.slice(0, limit);
 }
 
-export async function loadArticle(slug: string): Promise<FeedItem | null> {
+/**
+ * Нейтральный link-safe fallback (api недоступен в рантайме). ⚠️ НЕ фабрикуем
+ * статьи/слаги: иначе на первом экране появятся выдуманные заголовки и мёртвые
+ * ссылки, ведущие в 404 (находка ревью s25 — мок-bullets запекались в статику).
+ * Без bullets/CTA — честный пустой hero, направляющий в ленту ниже.
+ */
+function fallbackDigest(): Digest {
+  return {
+    issueDate: "",
+    intro: "Свежие деловые материалы — в ленте ниже.",
+    bullets: [],
+    ctaSlug: null,
+  };
+}
+
+/**
+ * Данные home-hero (дайджест одинаков для всех — per-day), кэш 15м.
+ * Динамическая граница — connection() в HeroDigest (чтобы build не запекал
+ * fallback в статику); здесь только кэш результата живого fetch.
+ */
+export async function loadDigest(): Promise<Digest> {
+  "use cache";
+  const api = await fetchDigest();
+  if (!api || api.topArticles.length === 0) return fallbackDigest();
+  const top = api.topArticles.slice(0, DIGEST_BULLET_COUNT);
+  return {
+    issueDate: api.issueDate,
+    intro: api.intro,
+    bullets: top.map((a, i) => ({
+      n: String(i + 1).padStart(2, "0"),
+      slug: a.slug,
+      text: a.tease,
+    })),
+    ctaSlug: api.topArticles[0]?.slug ?? null,
+  };
+}
+
+/**
+ * Полная статья для читалки (brief §3): FeedItem + тело (body-блоки),
+ * «почему важно», источники, обложка (raw nullable — читалка решает рисовать
+ * картинку или чистый хедер), дата.
+ */
+export type ArticleDetail = FeedItem & {
+  whyItMatters: string | null;
+  body: ApiArticleBlock[];
+  /** Реальная обложка из БД (null = нет → читалка рисует типографский хедер). */
+  coverImageUrl: string | null;
+  citations: Array<{ url: string; title: string; publisher: string; publishedAt?: string }>;
+  audioUrl: string | null;
+  publishedAt: string | null;
+};
+
+function mapApiArticle(row: ApiArticle): ArticleDetail {
+  return {
+    ...mapApiItem(row),
+    whyItMatters: row.whyItMatters,
+    body: row.body ?? [],
+    coverImageUrl: row.coverImageUrl,
+    citations: row.citations ?? [],
+    audioUrl: row.audioUrl,
+    publishedAt: row.publishedAt,
+  };
+}
+
+/**
+ * `"use cache"` (Next 16 Cache Components): статья — статичный per-slug контент,
+ * кэшируется. Это ОБЯЗАТЕЛЬНО здесь — без кэша uncached-fetch в теле страницы
+ * читалки (вне <Suspense>) роняет рендер («blocking route»). Per-user state
+ * (реакции/закладки) грузится отдельно в Suspense (ArticleEngagement).
+ */
+export async function loadArticle(slug: string): Promise<ArticleDetail | null> {
+  "use cache";
   const api = await fetchArticle(slug);
-  if (api) return mapApiItem(api);
-  return FEED.find((i) => i.slug === slug) ?? null;
+  if (api) return mapApiArticle(api);
+  const mock = FEED.find((i) => i.slug === slug);
+  if (!mock) return null;
+  return {
+    ...mock,
+    whyItMatters: null,
+    body: [],
+    coverImageUrl: null,
+    citations: [],
+    audioUrl: null,
+    publishedAt: null,
+  };
 }
 
 // ---------- Taxes (rubric) ----------

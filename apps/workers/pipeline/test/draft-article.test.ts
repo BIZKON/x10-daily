@@ -187,6 +187,11 @@ vi.mock("@x10/agents", async () => {
 vi.mock("../src/persist", () => ({
   persistArticle: vi.fn().mockResolvedValue({ id: "art-uuid-1", slug: "tsb-stavka-17" }),
   serializeDraftForNumbers: vi.fn().mockReturnValue("serialized draft"),
+  // По умолчанию драфт «русский» (ratio=1) → языковой гейт пропускает, цепочка
+  // идёт полностью. Поведение самого гейта — language-gate.test.ts; halt-путь
+  // в pipeline — отдельный тест ниже (mockReturnValueOnce низкого ratio).
+  russianRatio: vi.fn().mockReturnValue(1),
+  MIN_RUSSIAN_RATIO: 0.3,
 }));
 
 // save-tg-channel step делает прямой INSERT в channels (Walking Skeleton, ТЗ #1).
@@ -236,7 +241,7 @@ import {
 import { NonRetriableError } from "inngest";
 import { createPipelineInngest } from "../src/inngest/client";
 import { createDraftArticleFunction } from "../src/inngest/functions/draft-article";
-import { persistArticle } from "../src/persist";
+import { persistArticle, russianRatio } from "../src/persist";
 
 const BINDINGS: Record<string, string> = {
   NODE_ENV: "test",
@@ -348,6 +353,36 @@ describe("draft-article pipeline", () => {
     expect(result.score.total).toBe(39);
     expect(result.score.breakdown.hookStrength).toBe(8);
     expect(result.score.fixes).toHaveLength(1);
+  });
+
+  it("языковой гейт: не-русский драфт → halt до цепочки (persist НЕ вызван, return skipped)", async () => {
+    vi.mocked(russianRatio).mockReturnValueOnce(0.08);
+    const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
+    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
+    const step = makeStep();
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
+
+    const result = (await handler({ event: EVENT, step })) as {
+      skipped?: boolean;
+      reason?: string;
+    };
+
+    expect(DraftAgent.run).toHaveBeenCalledOnce();
+    expect(NumbersAgent.run).not.toHaveBeenCalled();
+    expect(persistArticle).not.toHaveBeenCalled();
+    expect(result.skipped).toBe(true);
+    expect(result.reason).toBe("non-russian-draft");
+    expect(recordRun).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ status: "halted", articleId: null }),
+    );
+    const stepIds = step.run.mock.calls.map((c) => c[0]);
+    expect(stepIds).toContain("record-run-nonrussian");
+    expect(stepIds).not.toContain("persist");
   });
 
   it("Social и Score получают compressed от Brevity, persist тоже", async () => {

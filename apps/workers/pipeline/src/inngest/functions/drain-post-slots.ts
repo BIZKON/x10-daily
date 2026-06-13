@@ -9,6 +9,7 @@ import {
   gte,
   isNull,
   isPostingPaused,
+  sql,
 } from "@x10/db";
 import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
@@ -177,9 +178,12 @@ export function createDrainPostSlotsFunction(
       if (tgPosted) {
         await step.run("mark-published", async () => {
           const db = createDb(env.DATABASE_URL);
+          // status='published' статья уже получает при persist (session 24); здесь
+          // НЕ перезатираем publishedAt (coalesce) — сохраняем время первой
+          // публикации в ленте, иначе TG-постинг сдвигал бы её в топ фида.
           await db
             .update(articles)
-            .set({ status: "published", publishedAt: new Date() })
+            .set({ status: "published", publishedAt: sql`coalesce(${articles.publishedAt}, now())` })
             .where(eq(articles.id, articleId));
           return { published: true };
         });

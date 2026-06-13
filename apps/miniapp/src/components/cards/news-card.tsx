@@ -2,6 +2,7 @@ import { Bookmark, Flame, Heart, MessageCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { FeedItem } from "@/lib/feed";
+import { BrandedCover } from "./branded-cover";
 
 /**
  * NewsCard — brief §3.1 (card-news).
@@ -15,15 +16,21 @@ export function NewsCard({ item }: { item: FeedItem }) {
       className="block overflow-hidden rounded-[20px] border border-fence bg-card transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
     >
       <div className="relative">
-        <Image
-          src={item.imageUrl}
-          alt=""
-          width={800}
-          height={400}
-          className="h-44 w-full object-cover"
-          unoptimized
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-night/50 to-transparent" />
+        {item.imageUrl ? (
+          <>
+            <Image
+              src={item.imageUrl}
+              alt=""
+              width={800}
+              height={400}
+              className="h-44 w-full object-cover"
+              unoptimized
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-night/50 to-transparent" />
+          </>
+        ) : (
+          <BrandedCover category={item.categoryKey} className="h-44 w-full" />
+        )}
 
         {item.badge && (
           <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded bg-gold px-2.5 py-1 font-display text-[10px] font-extrabold uppercase tracking-[0.1em] text-steel">
@@ -42,7 +49,7 @@ export function NewsCard({ item }: { item: FeedItem }) {
         <span className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-red">
           {item.category}
         </span>
-        <h4 className="mt-1.5 mb-2 font-display text-[17px] font-extrabold leading-[1.3] text-paper">
+        <h4 className="mt-1.5 mb-2 line-clamp-3 font-display text-[17px] font-extrabold leading-[1.3] text-paper">
           {item.title}
         </h4>
         <p className="m-0 text-[13.5px] leading-[1.5] text-mist">{item.excerpt}</p>

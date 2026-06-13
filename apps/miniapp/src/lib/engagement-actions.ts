@@ -16,6 +16,7 @@
  * критического пути клика; useOptimistic уже показал нужное состояние.
  */
 import {
+  fetchArticleUserState,
   postBookmark,
   postProgress,
   postReaction,
@@ -36,6 +37,19 @@ export type ToggleBookmarkResult =
 async function classifyFailure(): Promise<"no_auth" | "api_error"> {
   const token = await getSessionToken();
   return token ? "api_error" : "no_auth";
+}
+
+/**
+ * Какие реакции этот пользователь уже поставил статье (для карточек ленты).
+ * Лениво вызывается из CardReactions при открытии popover-панели — чтобы
+ * подсветить активные реакции и сделать toggle корректным (а не «всегда +»).
+ * Без auth / api down → все false (fetchArticleUserState вернёт ANONYMOUS).
+ */
+export async function getReactionStateAction(
+  articleId: string,
+): Promise<{ fire: boolean; insight: boolean; question: boolean }> {
+  const state = await fetchArticleUserState(articleId);
+  return state.userReactions;
 }
 
 export async function toggleReactionAction(

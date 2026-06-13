@@ -59,6 +59,11 @@ export type FeedItem = {
   hot: boolean;
   /** Автор — для DailyTakeCard. Имя + инициал для аватарки-заглушки. */
   authorName: string | null;
+  /**
+   * ISO момента публикации (МСК-эффективное: publishedAt ?? createdAt из API).
+   * Рендерится под карточкой/в читалке как абсолютная дата+время (П1).
+   */
+  publishedAt: string | null;
 };
 
 /** brief §1 — порядок отражает приоритет, taxes первый (главная боль ЦА в 2026). */
@@ -108,6 +113,7 @@ function mapApiItem(row: ApiFeedItem): FeedItem {
     badge: row.isPaid ? "PREMIUM" : null,
     hot: row.isFeatured,
     authorName: null, // М1 — будет приходить из API когда добавим Authors сущность.
+    publishedAt: row.publishedAt,
   };
 }
 
@@ -161,6 +167,7 @@ const FEED: FeedItem[] = [
     badge: null,
     hot: true,
     authorName: null,
+    publishedAt: "2026-06-13T08:15:00Z",
   },
   {
     id: "00000000-0000-0000-0000-0000000000a2",
@@ -180,6 +187,7 @@ const FEED: FeedItem[] = [
     badge: "PREMIUM",
     hot: false,
     authorName: "Игорь Рыбаков",
+    publishedAt: "2026-06-13T06:40:00Z",
   },
   {
     id: "00000000-0000-0000-0000-0000000000a3",
@@ -199,6 +207,7 @@ const FEED: FeedItem[] = [
     badge: null,
     hot: false,
     authorName: null,
+    publishedAt: "2026-06-12T15:20:00Z",
   },
   {
     id: "00000000-0000-0000-0000-0000000000a4",
@@ -218,6 +227,7 @@ const FEED: FeedItem[] = [
     badge: null,
     hot: false,
     authorName: null,
+    publishedAt: "2026-06-11T12:05:00Z",
   },
 ];
 
@@ -298,18 +308,16 @@ export type ArticleDetail = FeedItem & {
   coverImageUrl: string | null;
   citations: Array<{ url: string; title: string; publisher: string; publishedAt?: string }>;
   audioUrl: string | null;
-  publishedAt: string | null;
 };
 
 function mapApiArticle(row: ApiArticle): ArticleDetail {
   return {
-    ...mapApiItem(row),
+    ...mapApiItem(row), // publishedAt приходит отсюда (FeedItem)
     whyItMatters: row.whyItMatters,
     body: row.body ?? [],
     coverImageUrl: row.coverImageUrl,
     citations: row.citations ?? [],
     audioUrl: row.audioUrl,
-    publishedAt: row.publishedAt,
   };
 }
 
@@ -326,13 +334,12 @@ export async function loadArticle(slug: string): Promise<ArticleDetail | null> {
   const mock = FEED.find((i) => i.slug === slug);
   if (!mock) return null;
   return {
-    ...mock,
+    ...mock, // publishedAt приходит отсюда (FeedItem)
     whyItMatters: null,
     body: [],
     coverImageUrl: null,
     citations: [],
     audioUrl: null,
-    publishedAt: null,
   };
 }
 

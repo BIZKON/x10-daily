@@ -9,23 +9,13 @@ import { HeaderShare } from "@/components/article/header-share";
 import { ReadingProgress } from "@/components/article/reading-progress";
 import { ANONYMOUS_USER_STATE, fetchArticleUserState } from "@/lib/api";
 import { type ArticleDetail, loadArticle } from "@/lib/feed";
+import { formatPublishedAt } from "@/lib/format";
 
 export async function generateStaticParams() {
   // Cache Components (Next 16) требует ≥1 результат. Реальных статей на билде нет
   // (бэкенд недоступен) — отдаём sentinel-slug; настоящие slug'и рендерятся
   // server-side в рантайме (loadArticle кэшируется per-slug, см. lib/feed.ts).
   return [{ slug: "__prerender_placeholder__" }];
-}
-
-const MONTHS = [
-  "янв", "фев", "мар", "апр", "мая", "июн",
-  "июл", "авг", "сен", "окт", "ноя", "дек",
-];
-function formatDate(iso: string | null): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
 
 export default async function ArticlePage({
@@ -39,7 +29,7 @@ export default async function ArticlePage({
 
   const isDailyTake = article.template === "daily-take";
   const isDeepDive = article.template === "deep-dive";
-  const dateLabel = formatDate(article.publishedAt);
+  const dateLabel = formatPublishedAt(article.publishedAt);
 
   return (
     <main className="mx-auto min-h-dvh max-w-[640px]">
@@ -208,6 +198,7 @@ function EngagementBarFallback({ article }: { article: ArticleDetail }) {
 function DailyTakeHero({ article }: { article: ArticleDetail }) {
   const authorName = article.authorName ?? "Редакция";
   const initial = authorName.charAt(0);
+  const dateLabel = formatPublishedAt(article.publishedAt);
 
   return (
     <div className="border-b border-gold/30 bg-card px-5 py-7">
@@ -222,6 +213,7 @@ function DailyTakeHero({ article }: { article: ArticleDetail }) {
           <div className="font-display text-[15px] font-extrabold text-paper">{authorName}</div>
           <div className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-gold">
             {article.category} · реакция дня · {article.readMinutes} мин
+            {dateLabel ? ` · ${dateLabel}` : ""}
           </div>
         </div>
       </div>

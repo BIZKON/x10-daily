@@ -43,6 +43,16 @@ async function DailyFeed() {
   // loadDailyFeed («use cache»).
   await connection();
   const items = await loadDailyFeed();
+  if (items.length === 0) {
+    return (
+      <div className="rounded-[20px] border border-fence bg-card px-4 py-12 text-center">
+        <p className="m-0 font-display text-sm font-bold text-paper">Лента обновляется</p>
+        <p className="m-0 mt-1.5 text-[13px] leading-[1.5] text-haze">
+          Свежие материалы появятся совсем скоро — загляните чуть позже.
+        </p>
+      </div>
+    );
+  }
   return (
     <ul className="flex flex-col gap-3.5">
       {items.map((item) => (

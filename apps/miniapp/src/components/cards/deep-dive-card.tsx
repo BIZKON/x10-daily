@@ -2,6 +2,7 @@ import { ArrowRight, BookOpen, Flame } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { FeedItem } from "@/lib/feed";
+import { BrandedCover } from "./branded-cover";
 
 /**
  * DeepDiveCard — brief §3.2 (deep-dive).
@@ -15,15 +16,21 @@ export function DeepDiveCard({ item }: { item: FeedItem }) {
       className="block overflow-hidden rounded-[24px] border border-fence bg-card transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
     >
       <div className="relative">
-        <Image
-          src={item.imageUrl}
-          alt=""
-          width={1200}
-          height={700}
-          className="h-64 w-full object-cover"
-          unoptimized
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-night via-night/60 to-transparent" />
+        {item.imageUrl ? (
+          <>
+            <Image
+              src={item.imageUrl}
+              alt=""
+              width={1200}
+              height={700}
+              className="h-64 w-full object-cover"
+              unoptimized
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-night via-night/60 to-transparent" />
+          </>
+        ) : (
+          <BrandedCover category={item.categoryKey} className="h-64 w-full" />
+        )}
 
         {item.badge && (
           <span className="absolute left-4 top-4 inline-flex items-center gap-1 rounded bg-gold px-2.5 py-1 font-display text-[10px] font-extrabold uppercase tracking-[0.1em] text-steel">

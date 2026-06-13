@@ -79,6 +79,15 @@ function getBaseUrl(): string | null {
   return url.replace(/\/+$/, "");
 }
 
+/**
+ * Сконфигурирован ли реальный бэкенд. true → API ожидается (prod): при пустом
+ * ответе показываем честный empty-state, НЕ мок. false → dev/demo без бэкенда:
+ * можно показать мок-данные для UI. Отличает «бэкенд упал» от «бэкенда нет».
+ */
+export function isApiConfigured(): boolean {
+  return Boolean(process.env.X10_API_BASE_URL && process.env.X10_API_BASE_URL.trim() !== "");
+}
+
 async function fetchWithTimeout(url: string): Promise<Response> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);

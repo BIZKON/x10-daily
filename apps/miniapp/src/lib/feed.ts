@@ -16,6 +16,7 @@ import {
   fetchArticle,
   fetchDigest,
   fetchFeed,
+  isApiConfigured,
   type ApiArticle,
   type ApiArticleBlock,
   type ApiCategory,
@@ -36,11 +37,15 @@ export type FeedTemplate = ApiTemplate;
 export type FeedItem = {
   id: string;
   slug: string;
+  /** Русский label рубрики (для отображения). */
   category: FeedCategoryLabel;
+  /** Сырой ключ рубрики (для брендовой обложки/фильтров). */
+  categoryKey: ApiCategory;
   template: FeedTemplate;
   title: string;
   excerpt: string;
-  imageUrl: string;
+  /** Реальная обложка из БД; null → карточка рисует BrandedCover (не unsplash). */
+  imageUrl: string | null;
   readMinutes: number;
   /** Агрегированный счётчик для list-карточек (sum по 3 kinds). */
   reactions: number;
@@ -75,16 +80,6 @@ const CATEGORY_LABELS: Record<ApiCategory, string> = {
   rybakov: "РЫБАКОВ ГОВОРИТ",
 };
 
-/** Картинка-заглушка per category. БД хранит coverImageUrl — используется при наличии. */
-const CATEGORY_PLACEHOLDER_IMAGES: Record<ApiCategory, string> = {
-  taxes: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&q=80",
-  money: "https://images.unsplash.com/photo-1633158829585-23ba8f7c8caf?w=800&q=80",
-  practice: "https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&q=80",
-  power: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&q=80",
-  tech: "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=800&q=80",
-  rybakov: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=800&q=80",
-};
-
 function mapApiItem(row: ApiFeedItem): FeedItem {
   const breakdown = {
     fire: row.reactions?.fire ?? 0,
@@ -99,10 +94,11 @@ function mapApiItem(row: ApiFeedItem): FeedItem {
     id: row.id,
     slug: row.slug,
     category: CATEGORY_LABELS[row.category],
+    categoryKey: row.category,
     template: row.template,
     title: row.tease,
     excerpt: row.lede,
-    imageUrl: row.coverImageUrl ?? CATEGORY_PLACEHOLDER_IMAGES[row.category],
+    imageUrl: row.coverImageUrl,
     readMinutes: Math.max(1, Math.round(row.readSeconds / 60)),
     reactions: totalReactions,
     reactionBreakdown: breakdown,
@@ -150,12 +146,12 @@ const FEED: FeedItem[] = [
     id: "00000000-0000-0000-0000-0000000000a1",
     slug: "usn-350mln-three-steps",
     category: "НАЛОГИ",
+    categoryKey: "taxes",
     template: "card-news",
     title: "Новый порог УСН 350 млн: кому грозит, кому выгодно",
     excerpt:
       "Разобрали с налоговым адвокатом, что меняется и какие три шага сделать сейчас.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&q=80",
+    imageUrl: null,
     readMinutes: 12,
     reactions: 142,
     reactionBreakdown: { fire: 88, insight: 39, question: 15 },
@@ -169,12 +165,12 @@ const FEED: FeedItem[] = [
     id: "00000000-0000-0000-0000-0000000000a2",
     slug: "rybakov-no-startup-2026",
     category: "РЫБАКОВ ГОВОРИТ",
+    categoryKey: "rybakov",
     template: "daily-take",
     title: "Почему я не верю в стартап-инвестиции в 2026",
     excerpt:
       "«Хайп-экономика заканчивается. Что покупать вместо стартапов».",
-    imageUrl:
-      "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=800&q=80",
+    imageUrl: null,
     readMinutes: 1,
     reactions: 891,
     reactionBreakdown: { fire: 612, insight: 187, question: 92 },
@@ -188,12 +184,12 @@ const FEED: FeedItem[] = [
     id: "00000000-0000-0000-0000-0000000000a3",
     slug: "ruble-100-three-scenarios",
     category: "ДЕНЬГИ",
+    categoryKey: "money",
     template: "card-news",
     title: "Рубль по 100: три сценария на лето",
     excerpt:
       "Что говорят валютные стратеги Сбера, Тинькоффа и независимые аналитики.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1633158829585-23ba8f7c8caf?w=800&q=80",
+    imageUrl: null,
     readMinutes: 4,
     reactions: 67,
     reactionBreakdown: { fire: 28, insight: 24, question: 15 },
@@ -207,12 +203,12 @@ const FEED: FeedItem[] = [
     id: "00000000-0000-0000-0000-0000000000a4",
     slug: "wildberries-buys-taxi",
     category: "ПРАКТИКА",
+    categoryKey: "practice",
     template: "deep-dive",
     title: "Wildberries собирает логистическую империю. Разбор сделки на три такси-сервиса",
     excerpt:
       "Маркетплейс купил три такси за квартал. Что это даёт WB, что теряют продавцы, и какие 5 уроков для российского ритейла.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&q=80",
+    imageUrl: null,
     readMinutes: 9,
     reactions: 234,
     reactionBreakdown: { fire: 128, insight: 71, question: 35 },
@@ -230,6 +226,9 @@ export async function loadDailyFeed(limit = 20): Promise<FeedItem[]> {
   if (api && api.items.length > 0) {
     return api.items.map(mapApiItem);
   }
+  // Бэкенд сконфигурирован, но ответ пуст/упал → честный empty (DailyFeed
+  // покажет empty-state), НЕ мок со слагами-404. Мок — только dev/demo без бэкенда.
+  if (isApiConfigured()) return [];
   return FEED.slice(0, limit);
 }
 

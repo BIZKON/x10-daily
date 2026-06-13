@@ -16,6 +16,7 @@ import {
   fetchArticle,
   fetchDigest,
   fetchFeed,
+  fetchVideos,
   isApiConfigured,
   type ApiArticle,
   type ApiArticleBlock,
@@ -338,66 +339,48 @@ export async function loadArticle(slug: string): Promise<ArticleDetail | null> {
 // ---------- Taxes (rubric) — теперь живая лента через loadCategoryFeed("taxes") ----------
 // (мок TAXES_ITEMS/METRICS/FILTERS удалён в s25 — /taxes рендерит реальные статьи)
 
-// ---------- Video ----------
+// ---------- Video (живая лента YouTube-канала Рыбакова) ----------
+// Мок VIDEOS/VIDEO_TABS/PODCAST_OF_WEEK удалён в s25. Подкасты — post-M0 (AudioAgent).
 
-export type VideoItem = {
+export type Video = {
+  id: string;
   title: string;
-  views: string;
-  date: string;
-  duration: string;
-  imageUrl: string;
-  live: boolean;
+  /** Реальный YouTube URL (watch/shorts) — карточка ведёт туда. */
+  url: string;
+  thumbnailUrl: string;
+  /** Локализованная дата «7 июня». */
+  dateLabel: string;
 };
 
-export const VIDEOS: VideoItem[] = [
-  {
-    title: "Россия 2026: катастрофа или прорыв?",
-    views: "847K",
-    date: "23 мая",
-    duration: "14:22",
-    imageUrl:
-      "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&q=80",
-    live: false,
-  },
-  {
-    title: "Почему я не оставляю наследство детям",
-    views: "1.2M",
-    date: "21 мая",
-    duration: "8:45",
-    imageUrl:
-      "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=800&q=80",
-    live: false,
-  },
-  {
-    title: "ПРЯМОЙ ЭФИР: Разбор недели",
-    views: "12K",
-    date: "сейчас",
-    duration: "LIVE",
-    imageUrl:
-      "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&q=80",
-    live: true,
-  },
-  {
-    title: "Налоговая реформа 2026: вся правда",
-    views: "534K",
-    date: "19 мая",
-    duration: "21:08",
-    imageUrl:
-      "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&q=80",
-    live: false,
-  },
-];
+function formatVideoDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    timeZone: "Europe/Moscow",
+  }).format(d);
+}
 
-export const VIDEO_TABS = ["Все", "Утренний разбор", "Подкасты", "Shorts", "Интервью", "Эфиры"];
-
-export const PODCAST_OF_WEEK = {
-  title: "Разбор недели: что случилось в экономике",
-  hosts: "Игорь Рыбаков + Олег Хархордин",
-  durationLabel: "47 минут",
-  currentTime: "14:23",
-  totalTime: "47:08",
-  progress: 0.3,
-};
+/**
+ * Видео канала — реальные данные из API (YouTube RSS на бэкенде). `"use cache"`
+ * (per-15м) — YouTube дёргается редко. Возвращает ПОЛНЫЕ видео (Shorts-тизеры
+ * отфильтрованы). API down / dev без бэкенда → [] (честный empty, не фейк).
+ */
+export async function loadVideos(): Promise<Video[]> {
+  "use cache";
+  const api = await fetchVideos();
+  if (!api) return [];
+  return api
+    .filter((v) => !v.isShort)
+    .map((v) => ({
+      id: v.youtubeId,
+      title: v.title,
+      url: v.url,
+      thumbnailUrl: v.thumbnailUrl,
+      dateLabel: formatVideoDate(v.publishedAt),
+    }));
+}
 
 // ---------- Community (Х10) ----------
 // COMMUNITY_STATS и EVENTS переехали в @/lib/community (Этап 3c — подключены к API).

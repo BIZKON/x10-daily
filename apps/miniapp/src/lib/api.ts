@@ -168,6 +168,32 @@ export async function fetchDigest(): Promise<ApiDigest | null> {
 }
 
 /* ----------------------------------------------------------------
+ * Видео — лента YouTube-канала Рыбакова (GET /v1/videos, RSS на бэкенде).
+ * ---------------------------------------------------------------- */
+
+export type ApiVideo = {
+  youtubeId: string;
+  title: string;
+  url: string;
+  thumbnailUrl: string;
+  publishedAt: string;
+  isShort: boolean;
+};
+
+export async function fetchVideos(): Promise<ApiVideo[] | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  try {
+    const res = await fetchWithTimeout(`${base}/v1/videos`);
+    if (!res.ok) return null;
+    const body = (await res.json()) as { items: ApiVideo[] };
+    return body.items;
+  } catch {
+    return null;
+  }
+}
+
+/* ----------------------------------------------------------------
  * Community (Этап 3c — brief §2.1)
  * ---------------------------------------------------------------- */
 

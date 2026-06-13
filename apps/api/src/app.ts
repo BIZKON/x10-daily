@@ -18,6 +18,7 @@ import { feedRoute } from "./routes/feed";
 import { healthRoute } from "./routes/health";
 import { pipelineRoute } from "./routes/pipeline";
 import { profileRoute } from "./routes/profile";
+import { videosRoute } from "./routes/videos";
 
 export type AppEnv = {
   Bindings: AppBindings;
@@ -120,6 +121,7 @@ export function createApp() {
   app.route("/v1/admin/upload", uploadRoute);
   app.route("/v1/community", communityRoute);
   app.route("/v1/events", eventsRoute);
+  app.route("/v1/videos", videosRoute);
   app.route("/v1/authors", authorsRoute);
   app.route("/v1/digests", digestsRoute);
   // Engagement POST'ы — mounted прямо в /v1 (paths типа /v1/articles/:id/reactions).

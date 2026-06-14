@@ -19,6 +19,7 @@ import {
   recordChannelFailure,
   sendToChannel,
 } from "../../lib/post-channel";
+import { articleToTelegramHtml } from "../../lib/telegram-html";
 import type { PipelineInngest } from "../client";
 
 /**
@@ -139,7 +140,26 @@ export function createDrainPostSlotsFunction(
               `drain-post-slots: channels row не найден article=${articleId} channel=${channel}`,
             );
           }
-          return r;
+          // session 27: для TG строим rich-HTML из структуры статьи (заголовок/
+          // подзаг/выноска/ключ-блоки + ссылка «Читать в Х10»). baseUrl из
+          // X10_BASE_DOMAIN; нет домена/статьи/visualRef → html=null → плоский
+          // sendMessage (+ фолбэк на 400 в sendToChannel).
+          let html: string | null = null;
+          if (channel === "tg" && env.X10_BASE_DOMAIN && !r.visualRef) {
+            const [a] = await db
+              .select({
+                tease: articles.tease,
+                lede: articles.lede,
+                whyItMatters: articles.whyItMatters,
+                body: articles.body,
+                slug: articles.slug,
+              })
+              .from(articles)
+              .where(eq(articles.id, articleId))
+              .limit(1);
+            if (a) html = articleToTelegramHtml(a, `https://app.${env.X10_BASE_DOMAIN}`);
+          }
+          return { text: r.text, visualRef: r.visualRef, html };
         });
 
         // Send — отдельный step. Бросок (сеть/5xx) → Inngest ретраит функцию,
@@ -147,7 +167,13 @@ export function createDrainPostSlotsFunction(
         const outcome = await step.run(`send-${channel}`, () =>
           sendToChannel(
             env,
-            { channel, articleId, text: row.text, visualRef: row.visualRef },
+            {
+              channel,
+              articleId,
+              text: row.text,
+              visualRef: row.visualRef,
+              html: row.html,
+            },
             { fetchImpl: opts.fetchImpl },
           ),
         );

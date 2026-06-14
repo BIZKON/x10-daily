@@ -1,5 +1,6 @@
 "use client";
 
+import { track } from "@/lib/analytics";
 import { getBookmarkStateAction, toggleBookmarkAction } from "@/lib/engagement-actions";
 import { Bookmark } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -58,6 +59,7 @@ export function HeaderBookmark({ articleId }: { articleId: string }) {
       const res = await toggleBookmarkAction(articleId);
       if (res.ok) {
         setSaved(res.data.isBookmarked);
+        track("bookmark", { article_id: articleId, saved: res.data.isBookmarked });
       } else {
         setSaved(prev); // откат
         showHint(res.reason === "no_auth" ? "Войдите через Telegram" : "Не удалось");

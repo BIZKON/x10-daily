@@ -31,6 +31,15 @@ COPY packages ./packages
 # tsconfig.json наследует ../../tsconfig.base.json — без корневого файла
 # `next build` (Turbopack) падает «extends doesn't resolve correctly».
 COPY tsconfig.base.json ./
+# NEXT_PUBLIC_* инлайнятся Next'ом на БИЛДЕ, не в рантайме → приходят build-arg'ами
+# из docker-compose (значения из .env.production). Пустой ключ = PostHog выключен.
+# Дефолты ПУСТЫЕ — едино с docker-compose build.args и .env.example: пустой HOST →
+# клиент сам резолвит same-origin /ingest (Caddy → eu.i.posthog.com), чтобы НЕ
+# обходить EU-прокси при сборке вне compose. Пустой KEY → PostHog выключен.
+ARG NEXT_PUBLIC_POSTHOG_KEY=""
+ARG NEXT_PUBLIC_POSTHOG_HOST=""
+ENV NEXT_PUBLIC_POSTHOG_KEY=${NEXT_PUBLIC_POSTHOG_KEY}
+ENV NEXT_PUBLIC_POSTHOG_HOST=${NEXT_PUBLIC_POSTHOG_HOST}
 ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app/apps/miniapp
 RUN pnpm exec next build

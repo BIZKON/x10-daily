@@ -186,6 +186,13 @@ services:
     build:
       context: .
       dockerfile: apps/miniapp/Dockerfile
+      # NEXT_PUBLIC_* инлайнятся на БИЛДЕ → передаём build-arg'ами (значения из
+      # .env.production через deploy.sh `docker compose --env-file ... build`).
+      # KEY пуст → PostHog выключен. HOST пуст → клиент сам резолвит same-origin
+      # /ingest (Caddy reverse-proxy на eu.i.posthog.com) — домен не запекаем.
+      args:
+        NEXT_PUBLIC_POSTHOG_KEY: "${NEXT_PUBLIC_POSTHOG_KEY:-}"
+        NEXT_PUBLIC_POSTHOG_HOST: "${NEXT_PUBLIC_POSTHOG_HOST:-}"
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -198,8 +205,7 @@ services:
       X10_API_BASE_URL: "http://api:8080"
       NEXT_PUBLIC_API_URL: "https://api.${X10_BASE_DOMAIN:-x10.media}"
       NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: "${NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:-}"
-      NEXT_PUBLIC_POSTHOG_KEY: "${NEXT_PUBLIC_POSTHOG_KEY:-}"
-      NEXT_PUBLIC_POSTHOG_HOST: "${NEXT_PUBLIC_POSTHOG_HOST:-https://eu.posthog.com}"
+      # NEXT_PUBLIC_POSTHOG_* НЕ в рантайме — инлайнятся на билде (см. build.args выше).
       SENTRY_DSN: "${SENTRY_DSN:-}"
     expose:
       - "3000"

@@ -1,5 +1,6 @@
 "use client";
 
+import { track } from "@/lib/analytics";
 /**
  * HeaderShare — кнопка «Поделиться» в sticky-header.
  *
@@ -24,13 +25,17 @@ export function HeaderShare({
     if (typeof navigator.share === "function") {
       try {
         await navigator.share({ title, url });
+        track("share", { slug, method: "native" });
         return;
-      } catch {
-        // user cancelled or share failed — fall through to clipboard
+      } catch (err) {
+        // Отмена share-sheet (AbortError) — НЕ шер: не копируем и не трекаем,
+        // иначе clipboard-ветка завысит воронку. Реальная ошибка → fallthrough.
+        if (err instanceof Error && err.name === "AbortError") return;
       }
     }
     try {
       await navigator.clipboard.writeText(url);
+      track("share", { slug, method: "clipboard" });
       setToast("Скопировано");
       setTimeout(() => setToast(null), 1500);
     } catch {
@@ -40,12 +45,7 @@ export function HeaderShare({
   };
 
   return (
-    <button
-      type="button"
-      aria-label="Поделиться"
-      onClick={handle}
-      className="relative"
-    >
+    <button type="button" aria-label="Поделиться" onClick={handle} className="relative">
       <Share2 size={20} strokeWidth={1.75} />
       {toast && (
         <span

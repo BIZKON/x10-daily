@@ -1,16 +1,17 @@
-import { BookOpen, ChevronLeft, ExternalLink, Headphones, Quote } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { Suspense } from "react";
 import { ArticleBody } from "@/components/article/article-body";
 import { EngagementBar } from "@/components/article/engagement-bar";
 import { HeaderBookmark } from "@/components/article/header-bookmark";
 import { HeaderShare } from "@/components/article/header-share";
 import { ReadingProgress } from "@/components/article/reading-progress";
+import { TrackArticleOpen } from "@/components/article/track-article-open";
 import { ANONYMOUS_USER_STATE, fetchArticleUserState } from "@/lib/api";
 import { type ArticleDetail, loadArticle } from "@/lib/feed";
 import { formatPublishedAt } from "@/lib/format";
+import { BookOpen, ChevronLeft, ExternalLink, Headphones, Quote } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 export async function generateStaticParams() {
   // Cache Components (Next 16) требует ≥1 результат. Реальных статей на билде нет
@@ -127,7 +128,11 @@ export default async function ArticlePage({
                     rel="noopener noreferrer"
                     className="flex items-start gap-2 text-[13px] leading-snug"
                   >
-                    <ExternalLink size={13} strokeWidth={1.75} className="mt-0.5 shrink-0 text-haze" />
+                    <ExternalLink
+                      size={13}
+                      strokeWidth={1.75}
+                      className="mt-0.5 shrink-0 text-haze"
+                    />
                     <span>
                       <span className="text-paper">{c.title}</span>
                       {c.publisher ? <span className="text-haze"> · {c.publisher}</span> : null}
@@ -160,6 +165,13 @@ export default async function ArticlePage({
       </article>
 
       <ReadingProgress articleId={article.id} />
+      <TrackArticleOpen
+        slug={article.slug}
+        category={article.category}
+        template={article.template}
+        isPremium={article.badge === "PREMIUM"}
+        readMinutes={article.readMinutes}
+      />
     </main>
   );
 }
@@ -219,7 +231,12 @@ function DailyTakeHero({ article }: { article: ArticleDetail }) {
       </div>
 
       <div className="relative pl-7">
-        <Quote size={28} strokeWidth={1.25} className="absolute left-0 top-0 text-gold/70" aria-hidden />
+        <Quote
+          size={28}
+          strokeWidth={1.25}
+          className="absolute left-0 top-0 text-gold/70"
+          aria-hidden
+        />
         <h1 className="m-0 font-display text-[26px] font-extrabold leading-[1.15] text-paper">
           {article.title}
         </h1>

@@ -16,11 +16,30 @@
 # app.<domain> — Telegram Mini App, публичный.
 app.{$X10_BASE_DOMAIN:x10.media} {
 	encode gzip zstd
-	reverse_proxy miniapp:3000 {
-		header_up Host {host}
-		header_up X-Forwarded-Proto {scheme}
-		health_uri /
-		health_interval 30s
+
+	# PostHog analytics reverse-proxy. RU-устройства ходят на наш домен (доступен),
+	# а VM проксирует в PostHog Cloud EU (с VM eu.i.posthog.com отвечает за ~0.15s).
+	# handle_path срезает префикс /ingest → апстрим видит родной путь (/i/…, /static/…).
+	# /ingest/static/* — JS-ассеты (eu-assets), /ingest/* — приём событий (eu.i).
+	handle_path /ingest/static/* {
+		reverse_proxy https://eu-assets.i.posthog.com {
+			header_up Host eu-assets.i.posthog.com
+		}
+	}
+	handle_path /ingest/* {
+		reverse_proxy https://eu.i.posthog.com {
+			header_up Host eu.i.posthog.com
+		}
+	}
+
+	# Всё остальное → miniapp (fallback-handle, тот же прокси что был).
+	handle {
+		reverse_proxy miniapp:3000 {
+			header_up Host {host}
+			header_up X-Forwarded-Proto {scheme}
+			health_uri /
+			health_interval 30s
+		}
 	}
 }
 

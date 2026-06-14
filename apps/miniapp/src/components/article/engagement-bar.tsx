@@ -1,5 +1,6 @@
 "use client";
 
+import { track } from "@/lib/analytics";
 import type { ApiArticleUserState, ReactionKind } from "@/lib/api";
 import { toggleReactionAction } from "@/lib/engagement-actions";
 /**
@@ -68,6 +69,12 @@ export function EngagementBar({
           counts: result.data.reactions,
           mine: { ...prev.mine, [kind]: result.data.userReacted },
         }));
+        track("reaction", {
+          kind,
+          surface: "reader",
+          article_id: articleId,
+          active: result.data.userReacted,
+        });
       }
     });
   };

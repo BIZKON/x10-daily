@@ -1,5 +1,6 @@
 "use client";
 
+import { track } from "@/lib/analytics";
 import type { ReactionKind } from "@/lib/api";
 import { getReactionStateAction, toggleReactionAction } from "@/lib/engagement-actions";
 import { SmilePlus } from "lucide-react";
@@ -105,6 +106,12 @@ export function CardReactions({
           counts: result.data.reactions,
           mine: { ...prev.mine, [kind]: result.data.userReacted },
         }));
+        track("reaction", {
+          kind,
+          surface: "feed",
+          article_id: articleId,
+          active: result.data.userReacted,
+        });
       } else {
         // optimistic откатится сам при завершении transition (committed не менялся).
         setHint(

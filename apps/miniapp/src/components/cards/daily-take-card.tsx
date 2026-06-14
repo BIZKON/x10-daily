@@ -1,21 +1,43 @@
-import { Heart, MessageCircle, Quote } from "lucide-react";
-import Link from "next/link";
+import { deriveCardStatus } from "@/lib/card-status";
 import type { FeedItem } from "@/lib/feed";
+import { formatPublishedAt } from "@/lib/format";
+import { MessageCircle, Quote } from "lucide-react";
+import Link from "next/link";
+import { CardReactions } from "./card-reactions";
+import { StatusBadge } from "./status-badge";
 
 /**
  * DailyTakeCard — brief §3.3 (daily-take).
- * Карточка-цитата: большая аватарка автора, мнение курсивом, кнопка «обсудить».
- * Структура: автор + категория сверху, цитата по центру, реакции снизу.
+ * Карточка-цитата: большая аватарка автора, мнение курсивом, реакции снизу.
+ *
+ * «Stretched link» (см. NewsCard): absolute <Link> z-[1] делает всю карточку
+ * кликабельной; CardReactions (z-[2]) — сиблинг, тап по нему не навигирует.
  */
 export function DailyTakeCard({ item }: { item: FeedItem }) {
   const authorName = item.authorName ?? "Редакция";
   const initial = authorName.charAt(0);
+  const dateLabel = formatPublishedAt(item.publishedAt);
+  const status = deriveCardStatus(item);
 
   return (
-    <Link
-      href={`/article/${item.slug}`}
-      className="block overflow-hidden rounded-[20px] border border-gold/30 bg-card p-5 transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
-    >
+    <article className="relative rounded-[20px] border border-gold/30 bg-card p-5 transition-transform active:scale-[0.99]">
+      <Link
+        href={`/article/${item.slug}`}
+        aria-label={item.title}
+        className="absolute inset-0 z-[1] rounded-[20px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+      />
+
+      {(status || item.badge) && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <StatusBadge status={status} />
+          {item.badge && (
+            <span className="rounded bg-gold px-2 py-1 font-display text-[10px] font-extrabold uppercase tracking-[0.1em] text-steel">
+              ✦ {item.badge}
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="mb-4 flex items-center gap-3">
         <span
           className="grid h-11 w-11 place-items-center rounded-full font-display text-base font-extrabold text-night"
@@ -29,11 +51,6 @@ export function DailyTakeCard({ item }: { item: FeedItem }) {
             {item.category} · реакция дня
           </div>
         </div>
-        {item.badge && (
-          <span className="rounded bg-gold px-2 py-1 font-display text-[10px] font-extrabold uppercase tracking-[0.1em] text-steel">
-            ✦ {item.badge}
-          </span>
-        )}
       </div>
 
       <div className="relative pl-6">
@@ -51,19 +68,18 @@ export function DailyTakeCard({ item }: { item: FeedItem }) {
         </p>
       </div>
 
-      <div className="mt-4 flex items-center justify-between border-t border-fence pt-3 text-[11px] text-haze">
-        <span className="font-medium">{item.readMinutes} мин чтения</span>
-        <div className="flex items-center gap-3.5">
-          <span className="flex items-center gap-1.5">
-            <Heart size={14} strokeWidth={1.75} />
-            {item.reactions}
-          </span>
-          <span className="flex items-center gap-1.5 font-medium text-gold">
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-fence pt-3 text-[11px] text-haze">
+        <span className="font-medium">
+          {dateLabel ? `${dateLabel} · ${item.readMinutes} мин` : `${item.readMinutes} мин чтения`}
+        </span>
+        <div className="flex items-center gap-3">
+          <CardReactions articleId={item.id} initialCounts={item.reactionBreakdown} />
+          <span className="flex shrink-0 items-center gap-1.5 font-medium text-gold">
             <MessageCircle size={14} strokeWidth={1.75} />
-            Обсудить в клампе
+            Обсудить
           </span>
         </div>
       </div>
-    </Link>
+    </article>
   );
 }

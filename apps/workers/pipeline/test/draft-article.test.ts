@@ -238,6 +238,7 @@ import {
   SocialAmplifyAgent,
   ToVAgent,
 } from "@x10/agents";
+import { NonRetriableError } from "inngest";
 import { createPipelineInngest } from "../src/inngest/client";
 import { createDraftArticleFunction } from "../src/inngest/functions/draft-article";
 import { persistArticle, russianRatio } from "../src/persist";
@@ -503,7 +504,16 @@ describe("draft-article pipeline", () => {
 
     const politicalEvent = { data: { ...EVENT.data, political: true } };
 
-    await expect(handler({ event: politicalEvent, step })).rejects.toThrow(/FactCheck halt/);
+    // handler вызываем ОДИН раз (FactCheckAgent замокан mockResolvedValueOnce —
+    // halt только на первом вызове), один и тот же rejected-промис проверяем дважды.
+    const haltRun = handler({ event: politicalEvent, step });
+    await expect(haltRun).rejects.toThrow(/FactCheck halt/);
+    // follow-up к failed-учёту (ветка fix/pipeline-failed-runs-ledger): halt бросается
+    // как NonRetriableError, чтобы Inngest финализировал ран сразу, без 2 бессмысленных
+    // ретраев (функция настроена retries:2). Обычный Error был бы retriable.
+    // NonRetriableError — подкласс Error с тем же message, поэтому toThrow выше тоже
+    // проходит; здесь дополнительно фиксируем точный тип.
+    await expect(haltRun).rejects.toBeInstanceOf(NonRetriableError);
     expect(FactCheckAgent.run).toHaveBeenCalledOnce();
     expect(HookGenAgent.run).not.toHaveBeenCalled();
     expect(SocialAmplifyAgent.run).not.toHaveBeenCalled();
@@ -514,6 +524,108 @@ describe("draft-article pipeline", () => {
     const haltRow = recordRun.mock.calls[0]![1] as { status: string; costUsd: number };
     expect(haltRow.status).toBe("halted");
     expect(haltRow.costUsd).toBeCloseTo(0.01 + 0.001 + 0.008 + 0.007 + 0.02, 6);
+  });
+
+  // audit M2: failed-учёт. До фикса упавший финально шаг (5xx/ZodError/таймаут/
+  // пустой JSON reasoning-модели) НЕ писал строку pipeline_runs → стоимость уже
+  // отработавших агентов была невидима дневному потолку (его обход). Теперь
+  // catch вокруг цепочки пишет status='failed' с суммой успевших агентов.
+  it("шаг упал финально (brevity reject) → failed-строка с расходом успевших, без record-run", async () => {
+    vi.mocked(BrevityAgent.run).mockRejectedValueOnce(new Error("502 Bad Gateway"));
+
+    const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
+    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
+    const step = makeStep();
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
+
+    // Цепочка бросает → Inngest пометит ран failed; ре-throw сохраняется.
+    await expect(handler({ event: EVENT, step })).rejects.toThrow(/502 Bad Gateway/);
+
+    // draft+numbers+tov успели; brevity и всё после него — нет.
+    expect(DraftAgent.run).toHaveBeenCalledOnce();
+    expect(NumbersAgent.run).toHaveBeenCalledOnce();
+    expect(ToVAgent.run).toHaveBeenCalledOnce();
+    expect(HookGenAgent.run).not.toHaveBeenCalled();
+    expect(SocialAmplifyAgent.run).not.toHaveBeenCalled();
+    expect(PreviewScoreAgent.run).not.toHaveBeenCalled();
+    expect(persistArticle).not.toHaveBeenCalled();
+
+    // Ровно одна строка ledger — failed, сумма = draft+numbers+tov (brevity упал
+    // ДО возврата usage → его стоимость в строку не попадает, известный недоучёт).
+    expect(recordRun).toHaveBeenCalledOnce();
+    const row = recordRun.mock.calls[0]![1] as {
+      agent: string;
+      status: string;
+      costUsd: number;
+      error: string;
+      output: { failed: boolean; billedAgents: number };
+    };
+    expect(row.agent).toBe("draft");
+    expect(row.status).toBe("failed");
+    expect(row.costUsd).toBeCloseTo(0.01 + 0.001 + 0.008, 6);
+    expect(row.error).toMatch(/502 Bad Gateway/);
+    expect(row.output.billedAgents).toBe(3);
+
+    const stepIds = step.run.mock.calls.map((c) => c[0]);
+    expect(stepIds).toContain("record-run-failed");
+    expect(stepIds).not.toContain("record-run");
+    expect(stepIds).not.toContain("persist");
+  });
+
+  it("поздний шаг упал (persist reject) → failed-строка с полной суммой агентов (включая параллельные)", async () => {
+    vi.mocked(persistArticle).mockRejectedValueOnce(new Error("DB write timeout"));
+
+    const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
+    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
+    const step = makeStep();
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
+
+    await expect(handler({ event: EVENT, step })).rejects.toThrow(/DB write timeout/);
+
+    // Вся B2-цепочка отработала: .then(bill) учитывает и параллельные hookgen/
+    // social/score (await Promise.all резолвится только когда все три зарезолвлены,
+    // т.е. каждый успел запушиться). persist упал уже после агентов.
+    expect(recordRun).toHaveBeenCalledOnce();
+    const row = recordRun.mock.calls[0]![1] as { status: string; costUsd: number };
+    expect(row.status).toBe("failed");
+    expect(row.costUsd).toBeCloseTo(0.01 + 0.001 + 0.008 + 0.007 + 0.0015 + 0.009 + 0.006, 6);
+  });
+
+  it("первый агент упал (draft reject) → failed-строка costUsd=0, modelUsed=null", async () => {
+    vi.mocked(DraftAgent.run).mockRejectedValueOnce(new Error("ZodError: invalid draft output"));
+
+    const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
+    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
+    const step = makeStep();
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
+
+    await expect(handler({ event: EVENT, step })).rejects.toThrow(/ZodError/);
+
+    // draft упал первым → billed пуст → строка есть, но cost=0 (usage упавшего
+    // шага недоступен), modelUsed=null. Для гейта это честный «расход не виден»,
+    // но строка хотя бы фиксирует факт провала.
+    expect(NumbersAgent.run).not.toHaveBeenCalled();
+    expect(recordRun).toHaveBeenCalledOnce();
+    const row = recordRun.mock.calls[0]![1] as {
+      status: string;
+      costUsd: number;
+      modelUsed: string | null;
+    };
+    expect(row.status).toBe("failed");
+    expect(row.costUsd).toBe(0);
+    expect(row.modelUsed).toBeNull();
   });
 
   it("political=false (default): FactCheck НЕ запускается, шагов 8", async () => {

@@ -80,6 +80,12 @@ const baseSchema = z
      */
     TG_TEST_CHANNEL_ID: z.string().optional(),
     /**
+     * Базовый домен публичных адресов (миниапп/admin/api): напр. `pro-agent-ai.ru`.
+     * Нужен пайплайну для ссылки «Читать в Х10» в rich-постах канала (session 27):
+     * `https://app.${X10_BASE_DOMAIN}/article/{slug}`. Опционален.
+     */
+    X10_BASE_DOMAIN: z.string().optional(),
+    /**
      * Пост-M0 hardening (session 20): чат для $-алертов автономного конвейера
      * (личка с ботом или приватный ops-канал). Формат как у TG_TEST_CHANNEL_ID.
      * Опционален — если пуст, алерты пишутся только в логи (console.warn), без

@@ -35,6 +35,14 @@ export type SendInput = {
   articleId: string;
   text: string;
   visualRef: string | null;
+  /**
+   * Форматированный Telegram-HTML для `sendMessage` + `parse_mode=HTML` (Слой 1,
+   * session 27) — жирный заголовок/подзаг/выноска/блоки, как в миниапп. Рендерится
+   * на ВСЕХ клиентах (Bot API 10.1 sendRichMessage показывает «обновитесь» на
+   * клиентах без поддержки). Только tg и без visualRef. Пусто → плоский текст.
+   * См. lib/telegram-html.ts.
+   */
+  html?: string | null;
 };
 
 /**
@@ -58,15 +66,36 @@ export async function sendToChannel(
     if (!token || !chatId) {
       throw new Error("sendToChannel(tg): TELEGRAM_BOT_TOKEN / TG_TEST_CHANNEL_ID не заданы.");
     }
+    const tgOpts = {
+      token,
+      proxyUrl: env.TELEGRAM_PROXY_URL || undefined,
+      fetchImpl: opts.fetchImpl,
+    };
+
+    // Форматированный пост (session 27): html без картинки → sendMessage с
+    // parse_mode=HTML (Слой 1 — рендерится у ВСЕХ клиентов). Золотое правило (skill
+    // telegram-rich-text): бот НЕ молчит — при 400 (битый HTML / лимит) фолбэк на
+    // plain (parse_mode снят). Прочие ошибки (сеть/5xx) пробрасываем → Inngest ретраит.
+    if (input.html && !input.visualRef) {
+      try {
+        const res = await callTelegram(
+          "sendMessage",
+          { chat_id: chatId, text: input.html, parse_mode: "HTML" },
+          tgOpts,
+        );
+        return { ok: true, postRef: res.messageId != null ? String(res.messageId) : null };
+      } catch (e) {
+        if (!(e instanceof Error) || !/HTTP 400/.test(e.message)) throw e;
+        console.warn(`sendToChannel(tg): HTML 400 → фолбэк на plain. ${e.message}`);
+      }
+    }
+
+    // visualRef → sendPhoto (M0 не использует, VisualAgent выключен); иначе sendMessage.
     const method = input.visualRef ? "sendPhoto" : "sendMessage";
     const body = input.visualRef
       ? { chat_id: chatId, photo: input.visualRef, caption: text }
       : { chat_id: chatId, text };
-    const res = await callTelegram(method, body, {
-      token,
-      proxyUrl: env.TELEGRAM_PROXY_URL || undefined,
-      fetchImpl: opts.fetchImpl,
-    });
+    const res = await callTelegram(method, body, tgOpts);
     return { ok: true, postRef: res.messageId != null ? String(res.messageId) : null };
   }
 

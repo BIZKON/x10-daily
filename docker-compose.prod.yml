@@ -121,6 +121,9 @@ services:
       AI_GATEWAY_API_KEY: "${AI_GATEWAY_API_KEY}"
       TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"
       TG_TEST_CHANNEL_ID: "${TG_TEST_CHANNEL_ID:-}"
+      # session 27: базовый домен для ссылки «Читать в Х10» в форматированных
+      # TG-постах (drain-post-slots → telegram-html). Без него html=null → плоский.
+      X10_BASE_DOMAIN: "${X10_BASE_DOMAIN:-x10.media}"
       # Escape-hatch прокси для api.telegram.org (audit M2). Пуст → IPv6/NAT66.
       TELEGRAM_PROXY_URL: "${TELEGRAM_PROXY_URL:-}"
       # $-мониторинг (session 20): чат ops-алертов + дневной потолок/warn.

@@ -31,6 +31,8 @@ export interface PipelineBindings {
   // ---- Telegram posting (ТЗ #1, N5 — реальный sendMessage в тестовый канал) ----
   TELEGRAM_BOT_TOKEN?: string;
   TG_TEST_CHANNEL_ID?: string;
+  /** Базовый домен (напр. `pro-agent-ai.ru`) — ссылка «Читать в Х10» в rich-постах (session 27). */
+  X10_BASE_DOMAIN?: string;
   /**
    * HTTP/HTTPS-прокси для api.telegram.org (escape-hatch, если IPv6/NAT66
    * отвалится). Пуст → прямой fetch (IPv6). Потребители: drain-post-slots, ops-alert.
@@ -100,6 +102,7 @@ export function readBindingsFromEnv(): PipelineBindings {
 
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
     TG_TEST_CHANNEL_ID: process.env.TG_TEST_CHANNEL_ID,
+    X10_BASE_DOMAIN: process.env.X10_BASE_DOMAIN,
     TELEGRAM_PROXY_URL: process.env.TELEGRAM_PROXY_URL,
 
     TG_OPS_CHAT_ID: process.env.TG_OPS_CHAT_ID,

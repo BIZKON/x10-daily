@@ -113,3 +113,6 @@ bun.lockb
 # ===== Старые артефакты (если кто-то случайно положит) =====
 *.orig
 *.rej
+
+# Graphify generated knowledge graph (rebuilt by git post-commit hook)
+graphify-out/

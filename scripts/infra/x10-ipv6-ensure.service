@@ -1,0 +1,6 @@
+[Unit]
+Description=x10-daily ensure IPv6 egress on eth0 (api.telegram.org is IPv6-only in RU)
+After=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/x10-ipv6-ensure.sh

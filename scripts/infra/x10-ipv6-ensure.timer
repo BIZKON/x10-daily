@@ -1,0 +1,8 @@
+[Unit]
+Description=Run x10 IPv6 ensure every 2 minutes (self-heal Telegram egress)
+[Timer]
+OnBootSec=45s
+OnUnitActiveSec=2min
+AccuracySec=10s
+[Install]
+WantedBy=timers.target

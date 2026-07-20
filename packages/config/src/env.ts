@@ -81,7 +81,7 @@ const baseSchema = z
     TG_TEST_CHANNEL_ID: z.string().optional(),
     /**
      * Базовый домен публичных адресов (миниапп/admin/api): напр. `pro-agent-ai.ru`.
-     * Нужен пайплайну для ссылки «Читать в Х10» в rich-постах канала (session 27):
+     * Нужен пайплайну для ссылки «Читать в ProAgent AI» в rich-постах канала (session 27):
      * `https://app.${X10_BASE_DOMAIN}/article/{slug}`. Опционален.
      */
     X10_BASE_DOMAIN: z.string().optional(),

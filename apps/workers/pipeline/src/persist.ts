@@ -4,10 +4,39 @@ import { articles, createDb, eq } from "@x10/db";
 /** Slug: транслит русского → латиница, ≤ 80 символов. */
 export function slugify(text: string): string {
   const map: Record<string, string> = {
-    а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh",
-    з: "z", и: "i", й: "y", к: "k", л: "l", м: "m", н: "n", о: "o",
-    п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f", х: "h", ц: "ts",
-    ч: "ch", ш: "sh", щ: "sch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya",
+    а: "a",
+    б: "b",
+    в: "v",
+    г: "g",
+    д: "d",
+    е: "e",
+    ё: "e",
+    ж: "zh",
+    з: "z",
+    и: "i",
+    й: "y",
+    к: "k",
+    л: "l",
+    м: "m",
+    н: "n",
+    о: "o",
+    п: "p",
+    р: "r",
+    с: "s",
+    т: "t",
+    у: "u",
+    ф: "f",
+    х: "h",
+    ц: "ts",
+    ч: "ch",
+    ш: "sh",
+    щ: "sch",
+    ъ: "",
+    ы: "y",
+    ь: "",
+    э: "e",
+    ю: "yu",
+    я: "ya",
   };
   return text
     .toLowerCase()
@@ -155,9 +184,9 @@ export type PersistInput = {
   revised: DraftShape;
   /** Pipeline-internal section (наследие). */
   section: "main" | "numbers" | "people" | "playbook" | "weekend" | "longread";
-  /** brief §5 — user-facing category. По умолчанию 'practice'. */
-  category?: "taxes" | "money" | "practice" | "power" | "tech" | "rybakov";
-  /** brief §1 — "taxes.news", "practice.stories" и т.д. */
+  /** User-facing category — рубрикатор ProAgent AI. По умолчанию 'news'. */
+  category?: "news" | "cases" | "howto" | "tools" | "business" | "founder";
+  /** Подкатегория — "news.agents", "cases.retail" и т.д. (открытая строка). */
   subcategory?: string;
   /** brief §3 — шаблон материала. По умолчанию 'card-news'. */
   template?: "card-news" | "deep-dive" | "daily-take" | "guide" | "digest";
@@ -200,7 +229,7 @@ export async function persistArticle({
     .values({
       slug: finalSlug,
       section,
-      category: category ?? "practice",
+      category: category ?? "news",
       subcategory: subcategory ?? null,
       template: template ?? "card-news",
       tags: tags ?? [],

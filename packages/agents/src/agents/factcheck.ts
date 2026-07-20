@@ -64,7 +64,7 @@ const outputSchema = z.object({
   haltReason: z.string().nullable(),
 });
 
-const SYSTEM = `Ты — FactCheckAgent редакции Х10 Daily. Получаешь готовый к публикации draft по политически чувствительной теме и проверяешь каждое утверждение против предоставленных sources.
+const SYSTEM = `Ты — FactCheckAgent редакции ProAgent AI. Получаешь готовый к публикации draft по политически чувствительной теме и проверяешь каждое утверждение против предоставленных sources.
 
 КРИТИЧНО:
 - НЕ используй внешние знания о мире для проверки. Только sources из input.

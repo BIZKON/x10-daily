@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createDigest } from "../actions";
 import { DigestForm } from "../digest-form";
 
-export const metadata = { title: "Новый дайджест — X10 Admin" };
+export const metadata = { title: "Новый дайджест — ProAgent AI Admin" };
 
 export default function NewDigestPage() {
   return (

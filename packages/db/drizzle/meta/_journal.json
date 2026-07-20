@@ -85,6 +85,13 @@
       "when": 1780751772448,
       "tag": "0011_user_preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1780838172448,
+      "tag": "0012_proagent_categories",
+      "breakpoints": true
     }
   ]
 }

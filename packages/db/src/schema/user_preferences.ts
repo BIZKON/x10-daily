@@ -28,7 +28,12 @@ export const userPreferences = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    /** Ключи рубрик: taxes/money/practice/power/tech/rybakov. */
+    /**
+     * Ключи рубрик: news/cases/howto/tools/business/founder (рубрикатор
+     * ProAgent AI). ⚠️ text[] без enum-механики: в легаси-строках могут
+     * встречаться старые X10-ключи (taxes/money/…) — API молча фильтрует
+     * неизвестные (см. apps/api/src/routes/profile.ts).
+     */
     subscribedCategories: text("subscribed_categories")
       .array()
       .notNull()

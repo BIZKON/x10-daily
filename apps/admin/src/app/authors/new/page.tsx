@@ -1,9 +1,9 @@
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
-import { AuthorForm } from "../author-form";
 import { createAuthor } from "../actions";
+import { AuthorForm } from "../author-form";
 
-export const metadata = { title: "Новый автор — X10 Admin" };
+export const metadata = { title: "Новый автор — ProAgent AI Admin" };
 
 export default function NewAuthorPage() {
   return (

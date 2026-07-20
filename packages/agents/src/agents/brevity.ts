@@ -37,10 +37,10 @@ function buildSystem(template: DraftTemplate): string {
       `Структура Cite→Opinion→Implication обязательна. Никаких numbers/quote/callouts.`,
     guide:
       `Шаблон guide — НЕ удаляй шаги list ordered=true. Сжимай только описания в шагах. ` +
-      `Cohмpon mistakes (callout yes-but) и Resources (callout what-next) обязательны.`,
+      `Common mistakes (callout yes-but) и Resources (callout what-next) обязательны.`,
   };
 
-  return `Ты — BrevityAgent редакции Х10 Daily. Получаешь готовый по тону draft и сжимаешь до лимитов шаблона.
+  return `Ты — BrevityAgent редакции ProAgent AI. Получаешь готовый по тону draft и сжимаешь до лимитов шаблона.
 
 ЦЕЛЬ:
 - Итоговый объём ≤ ${limits.MAX_WORDS} слов суммарно (tease + lede + whyItMatters + все text-поля body)
@@ -99,7 +99,7 @@ export const BrevityAgent = {
   tier: "SONNET" as const,
   run(
     input: z.infer<typeof inputSchema>,
-    ctx: Parameters<typeof agentByTemplate["card-news"]["run"]>[1],
+    ctx: Parameters<(typeof agentByTemplate)["card-news"]["run"]>[1],
   ) {
     const template = (input.template ?? "card-news") as DraftTemplate;
     return agentByTemplate[template].run(input, ctx);

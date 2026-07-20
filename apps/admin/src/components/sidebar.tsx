@@ -1,17 +1,6 @@
 "use client";
 
-import {
-  Calendar,
-  Cpu,
-  FileCheck2,
-  Layers,
-  Mic,
-  Power,
-  Users,
-  UsersRound,
-  Video,
-  Wallet,
-} from "lucide-react";
+import { Calendar, Cpu, FileCheck2, Layers, Mic, Power, Users, Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -28,9 +17,9 @@ export function Sidebar() {
       <div className="border-b border-fence px-5 py-5">
         <Link href="/" className="flex items-center gap-2.5">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-red font-display text-[13px] font-extrabold text-white">
-            X10
+            PA
           </span>
-          <span className="font-display text-[15px] font-extrabold">Admin</span>
+          <span className="font-display text-[15px] font-extrabold">ProAgent AI Admin</span>
         </Link>
       </div>
 
@@ -39,13 +28,11 @@ export function Sidebar() {
 
         <NavSection label="Контент" />
         <NavItem href="/authors" label="Авторы" icon={Users} active={isActive("/authors")} />
-        <NavItem href="/klamps" label="Клампы" icon={UsersRound} active={isActive("/klamps")} />
         <NavItem href="/events" label="События" icon={Calendar} active={isActive("/events")} />
         <NavItem href="/digests" label="Дайджесты" icon={Mic} active={isActive("/digests")} />
 
         <NavSection label="Настройки" />
         <NavItem href="/rubrics" label="Рубрики" icon={Layers} active={isActive("/rubrics")} />
-        <NavItem href="/video" label="Видео" icon={Video} active={isActive("/video")} />
         <NavItem
           href="/pipeline-config"
           label="Pipeline config"

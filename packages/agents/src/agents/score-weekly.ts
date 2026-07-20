@@ -70,7 +70,7 @@ const outputSchema = z.object({
   previewScoreCorrelation: z.number().min(-1).max(1),
 });
 
-const SYSTEM = `Ты — ScoreWeeklyAgent редакции Х10 Daily. Получаешь сырые статистики за неделю и предлагаешь тюнинг pipeline_config.
+const SYSTEM = `Ты — ScoreWeeklyAgent редакции ProAgent AI. Получаешь сырые статистики за неделю и предлагаешь тюнинг pipeline_config.
 
 ТВОЯ ЗАДАЧА:
 1. Посчитать composite engagement для каждой статьи: views * scrollDepthAvg + shares * 5 + newsletterSignups * 10

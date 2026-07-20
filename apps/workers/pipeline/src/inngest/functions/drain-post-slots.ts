@@ -141,7 +141,7 @@ export function createDrainPostSlotsFunction(
             );
           }
           // session 27: для TG строим rich-HTML из структуры статьи (заголовок/
-          // подзаг/выноска/ключ-блоки + ссылка «Читать в Х10»). baseUrl из
+          // подзаг/выноска/ключ-блоки + ссылка «Читать в ProAgent AI»). baseUrl из
           // X10_BASE_DOMAIN; нет домена/статьи/visualRef → html=null → плоский
           // sendMessage (+ фолбэк на 400 в sendToChannel).
           let html: string | null = null;
@@ -209,7 +209,10 @@ export function createDrainPostSlotsFunction(
           // публикации в ленте, иначе TG-постинг сдвигал бы её в топ фида.
           await db
             .update(articles)
-            .set({ status: "published", publishedAt: sql`coalesce(${articles.publishedAt}, now())` })
+            .set({
+              status: "published",
+              publishedAt: sql`coalesce(${articles.publishedAt}, now())`,
+            })
             .where(eq(articles.id, articleId));
           return { published: true };
         });

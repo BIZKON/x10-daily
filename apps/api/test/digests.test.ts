@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildSyntheticDigest,
-  SYNTHETIC_DIGEST_INTRO,
-  todayMskIsoDate,
   type HeroArticle,
+  SYNTHETIC_DIGEST_INTRO,
+  buildSyntheticDigest,
+  todayMskIsoDate,
 } from "../src/routes/digests";
 
 const ARTICLE: HeroArticle = {
@@ -11,7 +11,7 @@ const ARTICLE: HeroArticle = {
   slug: "usn-350mln",
   tease: "Новый порог УСН 350 млн: кому грозит, кому выгодно",
   lede: "Разобрали с налоговым адвокатом.",
-  category: "taxes",
+  category: "news",
 };
 
 describe("buildSyntheticDigest", () => {

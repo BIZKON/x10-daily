@@ -19,19 +19,36 @@ export function AuthorForm({
     <form action={action} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Slug (URL)" required hint="Латиница, дефисы. Используется в /author/...">
-          <TextInput name="slug" defaultValue={defaults?.slug} required maxLength={80} placeholder="igor-rybakov" />
+          <TextInput
+            name="slug"
+            defaultValue={defaults?.slug}
+            required
+            maxLength={80}
+            placeholder="founder"
+          />
         </Field>
         <Field label="Имя" required>
-          <TextInput name="name" defaultValue={defaults?.name} required maxLength={120} placeholder="Игорь Рыбаков" />
+          <TextInput
+            name="name"
+            defaultValue={defaults?.name}
+            required
+            maxLength={120}
+            placeholder="Основатель ProAgent AI"
+          />
         </Field>
       </div>
 
-      <Field label="Роль" required hint='"Главный редактор", "Гость", "Игорь Рыбаков"'>
+      <Field label="Роль" required hint='"Главный редактор", "Гость", "Основатель"'>
         <TextInput name="role" defaultValue={defaults?.role} required maxLength={80} />
       </Field>
 
       <Field label="Bio">
-        <TextArea name="bio" defaultValue={defaults?.bio ?? ""} rows={4} placeholder="Кто это, что делает, почему ему доверяют." />
+        <TextArea
+          name="bio"
+          defaultValue={defaults?.bio ?? ""}
+          rows={4}
+          placeholder="Кто это, что делает, почему ему доверяют."
+        />
       </Field>
 
       <Field label="Avatar" hint="URL или загрузка с диска (R2)">
@@ -39,12 +56,25 @@ export function AuthorForm({
       </Field>
 
       <Field label="Byline color" hint="Hex или CSS-цвет. По умолчанию red→gold градиент.">
-        <TextInput name="bylineColor" defaultValue={defaults?.bylineColor ?? ""} maxLength={16} placeholder="#E63946" />
+        <TextInput
+          name="bylineColor"
+          defaultValue={defaults?.bylineColor ?? ""}
+          maxLength={16}
+          placeholder="#E63946"
+        />
       </Field>
 
       <div className="flex flex-wrap gap-6 border-t border-fence pt-4">
-        <CheckboxInput name="isStaff" label="Сотрудник редакции" defaultChecked={defaults?.isStaff ?? false} />
-        <CheckboxInput name="isFlagship" label="Flagship (главный голос — Рыбаков)" defaultChecked={defaults?.isFlagship ?? false} />
+        <CheckboxInput
+          name="isStaff"
+          label="Сотрудник редакции"
+          defaultChecked={defaults?.isStaff ?? false}
+        />
+        <CheckboxInput
+          name="isFlagship"
+          label="Flagship (главный голос — основатель)"
+          defaultChecked={defaults?.isFlagship ?? false}
+        />
       </div>
 
       <div className="flex justify-end border-t border-fence pt-4">

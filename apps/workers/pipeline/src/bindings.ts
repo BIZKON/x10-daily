@@ -31,7 +31,7 @@ export interface PipelineBindings {
   // ---- Telegram posting (ТЗ #1, N5 — реальный sendMessage в тестовый канал) ----
   TELEGRAM_BOT_TOKEN?: string;
   TG_TEST_CHANNEL_ID?: string;
-  /** Базовый домен (напр. `pro-agent-ai.ru`) — ссылка «Читать в Х10» в rich-постах (session 27). */
+  /** Базовый домен (напр. `pro-agent-ai.ru`) — ссылка «Читать в ProAgent AI» в rich-постах (session 27). */
   X10_BASE_DOMAIN?: string;
   /**
    * HTTP/HTTPS-прокси для api.telegram.org (escape-hatch, если IPv6/NAT66

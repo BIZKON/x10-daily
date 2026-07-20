@@ -1,4 +1,9 @@
-# X10 Daily — Deploy Guide
+# Deploy Guide — АРХИВ X10-эпохи (CF/Neon/Vercel-путь)
+
+> ⚠️ **АРХИВ.** Документ описывает старый Cloudflare/Neon/Vercel-стек и бренд X10 Daily.
+> Фактический прод ProAgent AI живёт на одной VM (Timeweb Cloud, РФ):
+> `docker compose --env-file .env.production` + Caddy; деплой — `./deploy.sh` из корня репо
+> (см. README.md «Деплой (prod)»). Ниже — исторический чек-лист, НЕ применять как есть.
 
 Пошаговый чек-лист для развёртывания production-стека из чистого workspace.
 

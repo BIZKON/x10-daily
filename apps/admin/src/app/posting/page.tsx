@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { updatePostingControl } from "./actions";
 import { PostingForm } from "./posting-form";
 
-export const metadata = { title: "Постинг — X10 Admin" };
+export const metadata = { title: "Постинг — ProAgent AI Admin" };
 
 /**
  * Стоп-кран автопостинга (session 20): ручная пауза + тихие часы (МСК).

@@ -1,10 +1,11 @@
+import { type AdminEvent, fetchAdminEvents } from "@/lib/api";
 import { Calendar, MapPin, Plus, Ticket, Users } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import { fetchAdminEvents, type AdminEvent } from "@/lib/api";
 
+// Ключ "kod-x10" — мёртвое значение PG-enum (X10-наследие), из UI не создаётся.
 const TYPE_LABEL: Record<AdminEvent["type"], string> = {
-  "kod-x10": "КОД Х10",
+  "kod-x10": "Конференция",
   "meet-up": "Meet Up",
   breakfast: "Завтрак",
   festival: "Фестиваль",
@@ -96,9 +97,7 @@ async function EventsContent() {
           )}
           {past.length > 0 && (
             <section>
-              <h2 className="mb-3 font-display text-[15px] font-extrabold text-haze">
-                Прошедшие
-              </h2>
+              <h2 className="mb-3 font-display text-[15px] font-extrabold text-haze">Прошедшие</h2>
               <div className="grid gap-3 opacity-70">
                 {past.map((e) => (
                   <EventRow key={e.id} event={e} />
@@ -160,7 +159,8 @@ function EventRow({ event }: { event: AdminEvent }) {
           </div>
           {event.ticketPriceFrom !== null ? (
             <div className="mt-1 flex items-center justify-end gap-1 text-gold">
-              <Ticket size={11} strokeWidth={2} /> от {event.ticketPriceFrom.toLocaleString("ru-RU")} ₽
+              <Ticket size={11} strokeWidth={2} /> от{" "}
+              {event.ticketPriceFrom.toLocaleString("ru-RU")} ₽
             </div>
           ) : (
             <div className="mt-1 text-success">бесплатно</div>

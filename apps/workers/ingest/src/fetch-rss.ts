@@ -41,7 +41,7 @@ export async function fetchRss(
 
   const res = await fetchFn(url, {
     headers: {
-      "User-Agent": "x10-daily-ingest/0.1 (+https://x10.media)",
+      "User-Agent": "ProAgentAI-ingest/0.1 (+https://pro-agent-ai.ru)",
       Accept: "application/rss+xml, application/xml; q=0.9, */*; q=0.8",
     },
   });

@@ -2,7 +2,7 @@
   "name": "x10-daily",
   "private": true,
   "version": "0.1.0",
-  "description": "X10 Daily — ежедневное мини-апп-медиа на стеке 2026 (Next.js 16 + Hono + Cloudflare Workers + Neon + AI-пайплайн на Claude)",
+  "description": "ProAgent AI — мини-апп-медиа об ИИ-агентах для малого и среднего бизнеса (Next.js miniapp + Hono API + AI-конвейер, деплой docker compose на Timeweb Cloud)",
   "packageManager": "pnpm@10.33.4",
   "engines": { "node": ">=22" },
   "scripts": {

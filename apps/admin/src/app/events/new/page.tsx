@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createEvent } from "../actions";
 import { EventForm } from "../event-form";
 
-export const metadata = { title: "Новое событие — X10 Admin" };
+export const metadata = { title: "Новое событие — ProAgent AI Admin" };
 
 export default function NewEventPage() {
   return (

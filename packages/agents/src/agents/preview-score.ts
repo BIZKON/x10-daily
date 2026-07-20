@@ -3,7 +3,7 @@ import { defineAgent } from "../define-agent";
 import { draftShapeSchema } from "./schemas";
 
 /**
- * 5 критериев из skills repo (post-scorer), адаптированных под Х10:
+ * 5 критериев из skills repo (post-scorer), адаптированных под ProAgent AI:
  * - hookStrength       — насколько крючок (tease) останавливает скролл
  * - voiceMatch         — соответствие voice.md/about-me, отсутствие blacklist
  * - valueDensity       — конкретика, цифры, инсайт против воды
@@ -22,11 +22,7 @@ const inputSchema = z.object({
   draft: draftShapeSchema,
 });
 
-const scoreSchema = z
-  .number()
-  .int()
-  .min(1)
-  .max(10);
+const scoreSchema = z.number().int().min(1).max(10);
 
 const fixSchema = z.object({
   /** На какой критерий тянет этот фикс. .catch: advisory-метка, отклонение enum'а не должно ронять score. */
@@ -46,13 +42,13 @@ const outputSchema = z.object({
   total: z.number().int().min(5).max(50),
   /** Одна фраза-вердикт, как в скилле post-scorer. */
   verdict: z.string(),
-  /** Что у Х10 работает в топ-постах (бенчмарк). Может быть синтетика — модель ссылается на Smart Brevity и voice.md. */
+  /** Что у ProAgent AI работает в топ-постах (бенчмарк). Может быть синтетика — модель ссылается на Smart Brevity и voice.md. */
   topPerformerComparison: z.string(),
   /** Приоритезированные правки, до 5 штук. Каждая привязана к критерию. */
   fixes: z.array(fixSchema).max(5),
 });
 
-const SYSTEM = `Ты — PreviewScoreAgent редакции Х10 Daily. Получаешь готовую к публикации статью (compressed) и оцениваешь её по 5 критериям перед HumanGate.
+const SYSTEM = `Ты — PreviewScoreAgent редакции ProAgent AI. Получаешь готовую к публикации статью (compressed) и оцениваешь её по 5 критериям перед HumanGate.
 
 КРИТЕРИИ (каждый 1-10):
 
@@ -86,7 +82,7 @@ const SYSTEM = `Ты — PreviewScoreAgent редакции Х10 Daily. Полу
 ОБЯЗАТЕЛЬНО:
 - total = сумма пяти оценок (5-50). Считай корректно
 - verdict — одна фраза, прямой вердикт ("Готово к publish", "Перепиши открывалку", и т.д.)
-- topPerformerComparison — 1-2 фразы, что отличает топ-статьи Х10 (Smart Brevity + цифры + контр-аргумент) и насколько эта попадает
+- topPerformerComparison — 1-2 фразы, что отличает топ-статьи ProAgent AI (Smart Brevity + цифры + контр-аргумент) и насколько эта попадает
 - fixes ≤ 5, каждый с criterion / issue / suggestion. Если оценка ≥ 9 — fixes можно пропустить для этого критерия
 
 Возвращай через tool_use x10_emit_score.`;

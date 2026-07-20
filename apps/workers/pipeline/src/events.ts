@@ -2,21 +2,14 @@ import { sourceRefSchema } from "@x10/agents";
 import { eventType } from "inngest";
 import { z } from "zod";
 
-export const sectionEnum = z.enum([
-  "main",
-  "numbers",
-  "people",
-  "playbook",
-  "weekend",
-  "longread",
-]);
+export const sectionEnum = z.enum(["main", "numbers", "people", "playbook", "weekend", "longread"]);
 export type Section = z.infer<typeof sectionEnum>;
 export const DEFAULT_SECTION: Section = "main";
 
-/** brief §5 — user-facing категория. Обязательная таксономия для UI. */
-export const categoryEnum = z.enum(["taxes", "money", "practice", "power", "tech", "rybakov"]);
+/** User-facing категория — рубрикатор ProAgent AI (Р4). Обязательная таксономия для UI. */
+export const categoryEnum = z.enum(["news", "cases", "howto", "tools", "business", "founder"]);
 export type Category = z.infer<typeof categoryEnum>;
-export const DEFAULT_CATEGORY: Category = "practice";
+export const DEFAULT_CATEGORY: Category = "news";
 
 /** brief §3 — шаблон материала. */
 export const templateEnum = z.enum(["card-news", "deep-dive", "daily-take", "guide"]);
@@ -29,9 +22,9 @@ export const topicIngestedDataSchema = z.object({
   context: z.string().min(1),
   sources: z.array(sourceRefSchema).min(1),
   section: sectionEnum.optional(),
-  /** brief §5 — целевая категория для UI. Если не задана, persist возьмёт DEFAULT_CATEGORY. */
+  /** Целевая категория для UI (рубрикатор ProAgent AI). Если не задана, persist возьмёт DEFAULT_CATEGORY. */
   category: categoryEnum.optional(),
-  /** brief §1 — "taxes.news", "practice.stories", опционально. */
+  /** Подкатегория — "news.agents", "cases.retail", опционально (открытая строка). */
   subcategory: z.string().optional(),
   /** brief §3 — шаблон для DraftAgent. Если не задан, DEFAULT_TEMPLATE. */
   template: templateEnum.optional(),
@@ -89,14 +82,11 @@ export const newsletterAssembleRequestedDataSchema = z.object({
   articles: z.array(newsletterArticleSummarySchema).min(1),
   editorialNote: z.string().optional(),
 });
-export type NewsletterAssembleRequestedData = z.infer<
-  typeof newsletterAssembleRequestedDataSchema
->;
+export type NewsletterAssembleRequestedData = z.infer<typeof newsletterAssembleRequestedDataSchema>;
 
-export const newsletterAssembleRequestedEvent = eventType(
-  "newsletter.assemble.requested",
-  { schema: newsletterAssembleRequestedDataSchema },
-);
+export const newsletterAssembleRequestedEvent = eventType("newsletter.assemble.requested", {
+  schema: newsletterAssembleRequestedDataSchema,
+});
 export const NEWSLETTER_ASSEMBLE_REQUESTED = newsletterAssembleRequestedEvent.event;
 
 /* ----------------------------------------------------------------

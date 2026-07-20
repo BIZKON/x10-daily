@@ -12,8 +12,8 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
-import { authors } from "./authors";
 import { id, timestamps } from "./_shared";
+import { authors } from "./authors";
 import { users } from "./users";
 
 export const articleStatus = pgEnum("article_status", [
@@ -41,16 +41,29 @@ export const articleSection = pgEnum("article_section", [
 ]);
 
 /**
- * User-facing категории по X10ContentArchitectureBrief v1.0 §5.
- * Обязательная таксономия первого уровня — отображается во всех UI.
+ * User-facing категории — рубрикатор ProAgent AI (ребрендинг Р4, июль 2026).
+ * Актуальный набор: news «Новости ИИ» (дефолт) / cases «Кейсы» / howto
+ * «Обучение» / tools «Инструменты» / business «Практика» / founder «От основателя».
+ *
+ * ⚠️ Первые 6 значений — мёртвое наследие X10: PG не умеет DROP VALUE из
+ * enum, значения остаются в типе, но из кода/UI выведены (миграция 0012 —
+ * ADD VALUE, 0013 — новый DEFAULT).
  */
 export const articleCategory = pgEnum("article_category", [
+  // — мёртвые значения X10 (в новых записях НЕ использовать) —
   "taxes",
   "money",
   "practice",
   "power",
   "tech",
   "rybakov",
+  // — рубрикатор ProAgent AI —
+  "news",
+  "cases",
+  "howto",
+  "tools",
+  "business",
+  "founder",
 ]);
 
 /**
@@ -73,9 +86,9 @@ export const articles = pgTable(
     section: articleSection("section").notNull().default("main"),
     status: articleStatus("status").notNull().default("draft"),
 
-    /** User-facing рубрика (brief §5). */
-    category: articleCategory("category").notNull().default("practice"),
-    /** Подкатегория второго уровня — "taxes.news", "practice.stories" и т.д. (brief §1). */
+    /** User-facing рубрика (рубрикатор ProAgent AI, дефолт — «Новости ИИ»). */
+    category: articleCategory("category").notNull().default("news"),
+    /** Подкатегория второго уровня — "news.agents", "cases.retail" и т.д. (открытая строка). */
     subcategory: varchar("subcategory", { length: 64 }),
     /** Шаблон материала — brief §3. */
     template: articleTemplate("template").notNull().default("card-news"),
@@ -103,14 +116,8 @@ export const articles = pgTable(
     wordCount: integer("word_count").notNull().default(0),
     readSeconds: integer("read_seconds").notNull().default(0),
 
-    sourceIds: jsonb("source_ids")
-      .$type<string[]>()
-      .notNull()
-      .default(sql`'[]'::jsonb`),
-    citations: jsonb("citations")
-      .$type<Citation[]>()
-      .notNull()
-      .default(sql`'[]'::jsonb`),
+    sourceIds: jsonb("source_ids").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    citations: jsonb("citations").$type<Citation[]>().notNull().default(sql`'[]'::jsonb`),
 
     audioUrl: text("audio_url"),
     audioDurationSec: integer("audio_duration_sec"),

@@ -18,7 +18,7 @@ import { users } from "./users";
  * Отличается от users: не все авторы зарегистрированы в системе (гостевые посты),
  * и не каждый user — автор. user_id опциональная связь, slug — публичный URL.
  *
- * isFlagship = true для Игоря Рыбакова (главный авторский голос медиа, brief §1.6).
+ * isFlagship = true для флагман-автора (основатель ProAgent AI — главный авторский голос медиа).
  */
 export const authors = pgTable(
   "authors",
@@ -26,7 +26,7 @@ export const authors = pgTable(
     id: id(),
     slug: varchar("slug", { length: 80 }).notNull(),
     name: varchar("name", { length: 120 }).notNull(),
-    /** "Главный редактор", "Журналист", "Гость", "Игорь Рыбаков". */
+    /** "Главный редактор", "Журналист", "Гость", "Основатель ProAgent AI". */
     role: varchar("role", { length: 80 }).notNull(),
     bio: text("bio").notNull().default(""),
     avatarUrl: text("avatar_url"),
@@ -34,7 +34,7 @@ export const authors = pgTable(
     bylineColor: varchar("byline_color", { length: 16 }),
     /** Сотрудник редакции (не гостевой автор). */
     isStaff: boolean("is_staff").notNull().default(false),
-    /** Игорь Рыбаков — главный голос. */
+    /** Флагман-автор (основатель) — главный голос. */
     isFlagship: boolean("is_flagship").notNull().default(false),
     /** Подписчики на автора (brief §11 — engagement метрика). */
     subscriberCount: integer("subscriber_count").notNull().default(0),

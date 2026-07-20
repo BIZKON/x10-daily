@@ -79,7 +79,7 @@ export const PERF_BUDGETS = {
  *
  * - card-news: классическая Smart Brevity новость. 70% материалов.
  * - deep-dive: глубокий разбор в стиле Lenny's. Brevity почти не режет — только убирает воду.
- * - daily-take: реакция автора (Рыбаков), короткая. Структура Cite→Opinion→Implication.
+ * - daily-take: «Разбор от основателя», короткий. Структура Cite→Opinion→Implication.
  * - guide: пошаговая методичка, длинный формат с шагами. Brevity сохраняет всю структуру.
  */
 export const TEMPLATE_LIMITS = {

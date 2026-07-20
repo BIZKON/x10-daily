@@ -1,19 +1,10 @@
-import {
-  boolean,
-  index,
-  integer,
-  pgTable,
-  text,
-  uniqueIndex,
-  varchar,
-} from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, text, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { id, timestamps } from "./_shared";
 
 /**
- * Klamps — сообщество Рыбакова, малые группы 6-10 человек (brief §2.1, §6 type Klamp).
- *
- * ~30 885 кламперов по 124 городам (см. CLAUDE.md §1, COMMUNITY_STATS mock).
- * Регулярные встречи (offline/online), лидер ведёт.
+ * Klamps — ЛЕГАСИ X10-эпохи (малые группы сообщества). Таблица в проде пуста,
+ * UI/API-потребители удалены при ребрендинге в ProAgent AI; схему держим,
+ * т.к. таблица существует в PG (дроп — отдельной миграцией при необходимости).
  */
 export const klamps = pgTable(
   "klamps",
@@ -24,7 +15,7 @@ export const klamps = pgTable(
     city: varchar("city", { length: 80 }).notNull(),
     /** ISO-3166 страна — РФ, KZ, AE, KG и т.д. */
     country: varchar("country", { length: 4 }).notNull().default("РФ"),
-    /** Имя лидера клампа (региональный кламп-лидер). */
+    /** Имя лидера группы (легаси). */
     leadName: varchar("lead_name", { length: 120 }).notNull(),
     /** Контакт лидера — TG username, email или телефон. */
     leadContact: text("lead_contact"),
@@ -34,7 +25,7 @@ export const klamps = pgTable(
     /** "каждый второй четверг 19:00", "ежемесячно последняя суббота" и т.д. */
     meetingSchedule: varchar("meeting_schedule", { length: 200 }).notNull(),
     description: text("description").notNull().default(""),
-    /** Опциональная цель клампа: "Запустить совместный AI-сервис за 90 дней" (см. MY_CLUMP mock). */
+    /** Опциональная цель группы (легаси). */
     goal: text("goal"),
     ...timestamps,
   },

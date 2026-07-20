@@ -10,12 +10,12 @@ import type { ApiCategory } from "@/lib/api";
  */
 // Тинт-полоса — строго канон (red/gold, CLAUDE.md §5); рубрики различаются ею.
 const TINT: Record<ApiCategory, string> = {
-  taxes: "var(--color-red)",
-  money: "var(--color-gold)",
-  practice: "var(--color-gold)",
-  power: "var(--color-red)",
-  tech: "var(--color-gold)",
-  rybakov: "var(--color-red)",
+  news: "var(--color-red)",
+  cases: "var(--color-gold)",
+  howto: "var(--color-gold)",
+  tools: "var(--color-gold)",
+  business: "var(--color-red)",
+  founder: "var(--color-red)",
 };
 
 export function BrandedCover({
@@ -27,7 +27,8 @@ export function BrandedCover({
   className?: string;
   children?: React.ReactNode;
 }) {
-  const tint = TINT[category];
+  // Фолбэк-тинт на легаси-категории из прод-БД (не в ApiCategory) — см. feed.ts.
+  const tint = (TINT as Record<string, string>)[category] ?? "var(--color-red)";
   return (
     <div
       className={`relative overflow-hidden ${className ?? ""}`}

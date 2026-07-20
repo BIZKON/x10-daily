@@ -14,12 +14,12 @@ import {
 import { id, timestamps } from "./_shared";
 
 /**
- * Brief §2.2 — типы событий Х10.
+ * Типы событий. `kod-x10` — мёртвое легаси-значение X10-эпохи (PG не умеет DROP VALUE).
  */
 export const eventType = pgEnum("event_type", [
-  "kod-x10", // КОД Х10 — главное ежегодное событие
+  "kod-x10", // легаси X10 (мёртвое значение; в UI — «Конференция»)
   "meet-up", // Business Meet Up в городах
-  "breakfast", // Кламперский бизнес-завтрак
+  "breakfast", // Бизнес-завтрак
   "festival", // PRO Женщин и аналоги
   "webinar", // Онлайн-разбор
 ]);
@@ -60,10 +60,7 @@ export const events = pgTable(
     ticketPriceFrom: integer("ticket_price_from"),
     ticketUrl: text("ticket_url"),
     /** Спикеры — массив authors.id. Хранится как jsonb для совместимости с pgvector miragtions. */
-    speakerIds: jsonb("speaker_ids")
-      .$type<string[]>()
-      .notNull()
-      .default(sql`'[]'::jsonb`),
+    speakerIds: jsonb("speaker_ids").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     description: text("description").notNull(),
     coverImageUrl: text("cover_image_url"),
     registeredCount: integer("registered_count").notNull().default(0),

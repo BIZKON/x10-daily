@@ -25,14 +25,14 @@ import { getEnv } from "../env";
  * Все endpoints закрыты `requireRole(["editor","admin"])` (см. auth.ts).
  * Закрывает CRITICAL-1 из docs/SECURITY-AUDIT.md — `/publish` ранее был без auth.
  * HIGH-2: auth basis — Telegram-issued JWT в Authorization Bearer (Login Widget
- * для admin или Mini App initData для editor-кламперов).
+ * для admin или Mini App initData для редакторов).
  */
 
 const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
-  /** brief §5 — фильтр по user-facing категории. Используется на странице /rubrics. */
-  category: z.enum(["taxes", "money", "practice", "power", "tech", "rybakov"]).optional(),
-  /** Подкатегория второго уровня — "taxes.news" и т.д. brief §1. */
+  /** Фильтр по user-facing категории (рубрикатор ProAgent AI). Используется на странице /rubrics. */
+  category: z.enum(["news", "cases", "howto", "tools", "business", "founder"]).optional(),
+  /** Подкатегория второго уровня — "news.agents" и т.д. (открытая строка). */
   subcategory: z.string().max(64).optional(),
 });
 

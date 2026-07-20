@@ -92,7 +92,7 @@ vi.mock("@x10/agents", async () => {
           decision: "accept",
           topic: "Тема walking skeleton",
           context: "Контекст из vc.ru фикстуры.",
-          category: "tech",
+          category: "tools",
           subcategory: null,
           template: "card-news",
           tags: ["test"],
@@ -170,7 +170,7 @@ vi.mock("@x10/agents", async () => {
         output: {
           channel: "tg-x10",
           framework: "BAB",
-          post: "Тестовый TG-пост walking skeleton для канала Х10.",
+          post: "Тестовый TG-пост walking skeleton для канала ProAgent AI.",
           hookLine: "Hook walking",
           twistLine: null,
           wordCount: 10,

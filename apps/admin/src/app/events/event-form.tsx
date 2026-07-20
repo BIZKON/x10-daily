@@ -1,17 +1,11 @@
-import {
-  CheckboxInput,
-  Field,
-  SelectInput,
-  TextArea,
-  TextInput,
-} from "@/components/form/field";
+import { CheckboxInput, Field, SelectInput, TextArea, TextInput } from "@/components/form/field";
 import { ImageUrlField } from "@/components/form/image-url-field";
 import { SubmitButton } from "@/components/form/submit-button";
 import type { AdminEvent } from "@/lib/api";
 
+// "kod-x10" — мёртвое значение PG-enum (X10-наследие), новые события его не используют.
 const TYPE_OPTIONS = [
-  { value: "kod-x10", label: "КОД Х10" },
-  { value: "meet-up", label: "Meet Up" },
+  { value: "meet-up", label: "Митап" },
   { value: "breakfast", label: "Бизнес-завтрак" },
   { value: "festival", label: "Фестиваль" },
   { value: "webinar", label: "Вебинар" },
@@ -66,19 +60,37 @@ export function EventForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Дата и время начала" required>
-          <TextInput name="startDate" type="datetime-local" defaultValue={toLocalInput(defaults?.startDate)} required />
+          <TextInput
+            name="startDate"
+            type="datetime-local"
+            defaultValue={toLocalInput(defaults?.startDate)}
+            required
+          />
         </Field>
         <Field label="Дата и время окончания" hint="Опционально для однодневного">
-          <TextInput name="endDate" type="datetime-local" defaultValue={toLocalInput(defaults?.endDate)} />
+          <TextInput
+            name="endDate"
+            type="datetime-local"
+            defaultValue={toLocalInput(defaults?.endDate)}
+          />
         </Field>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Field label="Город" hint="null для online">
-          <TextInput name="city" defaultValue={defaults?.city ?? ""} maxLength={80} placeholder="Москва" />
+          <TextInput
+            name="city"
+            defaultValue={defaults?.city ?? ""}
+            maxLength={80}
+            placeholder="Москва"
+          />
         </Field>
         <Field label="Timezone" hint="IANA tz">
-          <TextInput name="timezone" defaultValue={defaults?.timezone ?? "Europe/Moscow"} maxLength={40} />
+          <TextInput
+            name="timezone"
+            defaultValue={defaults?.timezone ?? "Europe/Moscow"}
+            maxLength={40}
+          />
         </Field>
         <Field label="Организатор" required>
           <TextInput name="organizer" defaultValue={defaults?.organizer} required maxLength={120} />
@@ -99,7 +111,11 @@ export function EventForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Цена от (₽)" hint="Пусто = бесплатно">
-          <TextInput name="ticketPriceFrom" type="number" defaultValue={defaults?.ticketPriceFrom ?? ""} />
+          <TextInput
+            name="ticketPriceFrom"
+            type="number"
+            defaultValue={defaults?.ticketPriceFrom ?? ""}
+          />
         </Field>
         <Field label="Capacity" hint="Пусто = без лимита">
           <TextInput name="capacity" type="number" defaultValue={defaults?.capacity ?? ""} />
@@ -128,7 +144,11 @@ export function EventForm({
       </Field>
 
       <div className="border-t border-fence pt-4">
-        <CheckboxInput name="isOnline" label="Online событие" defaultChecked={defaults?.isOnline ?? false} />
+        <CheckboxInput
+          name="isOnline"
+          label="Online событие"
+          defaultChecked={defaults?.isOnline ?? false}
+        />
       </div>
 
       <div className="flex justify-end border-t border-fence pt-4">

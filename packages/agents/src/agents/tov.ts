@@ -5,7 +5,7 @@ import { draftShapeSchema } from "./schemas";
 
 const inputSchema = z.object({
   draft: draftShapeSchema,
-  /** Имя автора если статья от спикера (Рыбаков). null = голос редакции. */
+  /** Имя автора если статья от спикера (например "founder" — основатель ProAgent AI). null = голос редакции. */
   authorName: z.string().nullable().optional(),
 });
 
@@ -24,7 +24,7 @@ const outputSchema = z.object({
 const BLACKLIST_STR = BLACKLIST.map((w) => `  - "${w}"`).join("\n");
 
 function buildSystem(): string {
-  return `Ты — ToVAgent редакции Х10 Daily. Получаешь черновик и приводишь его к голосу редакции.
+  return `Ты — ToVAgent редакции ProAgent AI. Получаешь черновик и приводишь его к голосу редакции.
 
 VOICE RULES:
 ${VOICE_RULES}
@@ -36,7 +36,7 @@ ${BLACKLIST_STR}
 1. Прочесть draft.body + tease/lede/whyItMatters
 2. Найти и заменить blacklist-термины
 3. Привести ритм к 14 слов/предложение, max 25
-4. Удалить эмоциональные усилители («революционный», «потрясающий» — см. voice.md §тон)
+4. Удалить эмоциональные усилители и ИИ-хайп («революционный», «потрясающий», «магия нейросетей» — см. voice.md §тон)
 5. Проверить что числа и даты сохранены 1:1 (НЕ переписывай цифры)
 6. Если authorName задан — учитывай авторский голос (он будет инжектирован отдельно)
 7. Заполнить changes: каждое изменение с before/after/reason

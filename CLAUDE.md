@@ -1,4 +1,4 @@
-# X10 Daily — Claude Code Context
+# ProAgent AI — Claude Code Context
 
 Это **первый файл**, который Claude Code читает в этом репозитории.
 Здесь — суть проекта, стек, архитектурные решения, рабочие правила.
@@ -7,39 +7,28 @@
 
 ## 1. Проект в одном абзаце
 
-**X10 Daily** — ежедневное деловое мини-апп-медиа для русскоязычной аудитории на базе сообщества Игоря Рыбакова (~30 885 кламперов, 6M подписчиков). Превращение ежемесячной PDF-газеты «Бизнес-Практика» в мобильно-первое медиа с AI-пайплайном, платной подпиской и ежеквартальной премиум-печатью как сувениром. Цель Base к Q4 2026: **24K DAU / 700 paid / ~12M ₽ ARR**. Стретч-цель: 80K DAU / 2K paid / 36M ₽ ARR.
+**ProAgent AI** («ИИ работает на вас») — ежедневное мини-апп-медиа об ИИ-агентах для ИП и малого/среднего бизнеса РФ: кейсы, методики и новости внедрения — без хайпа, с цифрами выгоды (часы, деньги, конверсия). Продукт живёт внутри Telegram: Mini App (лента + читалка) и канал «ИИ работает на вас!» с форматированными постами слотами 4/день. Авто-контент пишет AI-конвейер (Smart Brevity, HumanGate обязателен), кейсы и обучение редакция добавляет вручную. Медиа — витрина услуги: персональная разработка и внедрение ИИ-агентов под задачи компании (лид-CTA «Обсудить внедрение ИИ-агентов» → @Sekretar_Syrov_IP_bot).
 
-**Главная отстройка:** жёсткий уход от инфобиза после кейса Шабутдинова (Like Центр, 7 лет колонии, 31.10.2025). Любая публикация проходит тест «можно ли спутать с Like Центром / БМ / марафонами успеха». Если да — переписываем.
+**Главная отстройка:** практическая выгода вместо хайпа. Двойной фильтр: анти-инфобиз (никаких «марафонов успеха») + анти-ИИ-хайп (никаких «революционный ИИ», «магия нейросетей»). Каждая публикация отвечает на вопрос «что это даёт бизнесу в часах/деньгах/конверсии».
 
-Полные документы серии v1.0 (Strategy, ToV, Финмодель, Rewrites, Tech Roadmap, Competitive Analysis, Editorial Migration) — в `docs/`.
+**История:** движок построен для X10 Daily (законсервирован 19.07.2026: тег `x10-daily-final`, ветка `x10-legacy`, рунбок `docs/X10-RESTORE.md`). Ребрендинг зафиксирован в `docs/REBRAND-MAP.md` («✅ Решения Константина»).
 
 ---
 
-## 2. Стек 2026 (зафиксирован в Tech Roadmap v1.0)
+## 2. Стек (фактический, prod на Timeweb Cloud)
 
-| Слой | Технология | Почему |
+| Слой | Технология | Заметки |
 |---|---|---|
-| **Rendering** | Next.js 16 + Cache Components (`'use cache'`, `cacheLife`, `cacheTag`) + PPR | static shell + streamed dynamic holes в одном HTTP-ответе |
-| **API** | Hono v4 на Cloudflare Workers | V8 isolates, нет cold start, edge-латентность |
-| **Хостинг фолбэк** | Yandex Cloud Functions | для РФ, если CF недоступен из конкретной локации |
-| **БД** | Neon Postgres (Frankfurt) + Hyperdrive cache | branching, cold start 300-500 мс, кэш-хит <5 мс |
-| **Sync engine** | **Zero (Rocicorp)** | для клампских чатов, локальный кэш + дельты по WS |
-| **Vector** | pgvector в Neon | для RAG «Спроси Х10» |
-| **Editor** | Tiptap + Yjs | collaborative editing для админки контента |
-| **Клиенты** | Telegram Mini App SDK 7.x + MAX через VK Platform Bridge | 90% кода общий |
-| **Email** | Resend ($0→$20→$80 по мере роста) | newsletter daily 06:00 МСК |
-| **Платежи** | Telegram Stars (digital goods) + ЮKassa (standalone) | TG-требования + РФ-эквайринг |
-| **Auth** | Telegram initData + MAX OAuth + email magic link | бесшовно внутри мессенджера |
-| **AI ядро** | Claude Sonnet 4.6 ($3/$15) | DraftAgent, ToV-Agent, ScoreAgent |
-| **AI фильтр** | Claude Haiku 4.5 ($1/$5) | Numbers, HookGen, дешёвые проходы |
-| **AI critical** | Claude Opus 4.7 ($5/$25) | FactCheck в политических темах |
-| **Voice** | ElevenLabs через WS-proxy на Render | блокировка ElevenLabs в РФ обходится |
-| **PII** | KikuAI Masker (self-hosted) | 152-ФЗ compliance, mask перед LLM, unmask после |
-| **Search** | Meilisearch | full-text по русскому |
-| **Push** | Telegram Bot API + WebPush + OneSignal | утренний/вечерний дайджест |
-| **Analytics** | PostHog (EU region) | воронки, retention, A/B |
-| **Errors** | Sentry | sourcemaps + AI summarize |
-| **CI/CD** | GitHub Actions + Vercel (Fluid Compute) | preview-deploys на PR |
+| **Rendering** | Next.js 16 + Cache Components (`'use cache'`) + PPR | static shell + streamed dynamic holes; см. PPR-граблю в §8 |
+| **API** | Hono v4 на Node (Docker-контейнер) | REST; auth по Telegram initData (HMAC) + JWT в HttpOnly cookie |
+| **БД** | Managed PostgreSQL Timeweb (Москва) + Drizzle ORM | расширение `vector` включить ДО первого migrate; миграции ТОЛЬКО hand-written |
+| **Workflow** | Self-hosted Inngest (docker compose) | ingest-rss → process-source-item → draft-article → drain-post-slots и др. |
+| **Клиент** | Telegram Mini App (Web App menu button через Bot API `setChatMenuButton`) | НЕ BotFather; auth+постинг+алерты на одном `TELEGRAM_BOT_TOKEN` |
+| **LLM** | Timeweb AI Gateway (OpenAI-совместимый, `api.timeweb.ai/v1`) | воркеры на `deepseek-v4-flash`; модели переключаются env `MODEL_OPUS/SONNET/HAIKU`; Claude выключен |
+| **Постинг** | Telegram Bot API (HTML parse_mode, Слой-1 rich) | слоты 09:30·12:30·15:30·18:30 МСК; api.telegram.org только по IPv6 (§8) |
+| **Reverse-proxy** | Caddy (auto-TLS, `caddy/Caddyfile.prod`) | домены `app./api./admin.<X10_BASE_DOMAIN>`; прод-домен `pro-agent-ai.ru` |
+| **Analytics** | PostHog (EU region, `/ingest` reverse-proxy) | запушен, активация — отдельным решением |
+| **Деплой** | одна VM Timeweb + `docker-compose.prod.yml` | ЕДИНСТВЕННЫЙ способ: `./deploy.sh` (или `docker compose --env-file .env.production`) |
 
 **Метрологические бюджеты (обязательны для каждого PR):**
 - LCP ≤ 2.5 с (Mobile 4G), INP ≤ 200 мс, CLS ≤ 0.1
@@ -52,108 +41,100 @@
 ## 3. Структура монорепо
 
 ```
-x10-daily/
+x10-daily/                  ← техническое имя репо (историческое, не переименовывается)
 ├── apps/
-│   ├── miniapp/          ← Next.js 16, Telegram + MAX Mini App (Тип 3)
-│   ├── api/              ← Hono v4 на CF Workers (REST + tRPC v11)
-│   ├── admin/            ← Next.js 16, админка редколлегии (Тип 2 SaaS dashboard)
+│   ├── miniapp/          ← Next.js 16 (PPR), Telegram Mini App: лента, читалка, профиль
+│   ├── api/              ← Hono v4 на Node: REST + auth (initData HMAC → JWT cookie)
+│   ├── admin/            ← Next.js 16, админка: очередь HumanGate, выпуски, конвейер, постинг
 │   └── workers/
-│       ├── ingest/       ← парсинг источников 06:00 МСК
-│       ├── pipeline/     ← AI-агенты (Draft→Numbers→FactCheck→ToV→Brevity→Audio)
-│       └── newsletter/   ← NewsletterAssembleAgent + Resend send
+│       ├── ingest/       ← RSS-парсинг источников (дедуп через seen_items)
+│       ├── pipeline/     ← Inngest-функции: draft → numbers/factcheck → tov → brevity → постинг
+│       └── newsletter/   ← сборка выпусков (NewsletterAssembleAgent)
 ├── packages/
-│   ├── ui/               ← shadcn/ui + дизайн-токены (Manrope/Inter/JetBrains Mono, red/gold/steel)
-│   ├── db/               ← Drizzle ORM schemas + migrations для Neon
-│   ├── config/           ← env validation (Zod), shared constants
-│   ├── voice/            ← voice.md, about-me.md, about-author-{name}.md
-│   └── agents/           ← Claude Agent SDK обёртки для всех 13 агентов pipeline
-├── .claude/
-│   ├── skills/           ← user-skills (Х10-специфичные)
-│   └── commands/         ← кастомные slash-команды Claude Code
-├── docs/
-│   ├── strategy/         ← X10Strategy, ToV, Финмодель, Competitive Analysis
-│   ├── handoffs/         ← Handoff-документы сессий 1-7
-│   └── research/         ← Community research, benchmarks
-└── scripts/              ← миграции, сидинг, ops
+│   ├── ui/               ← дизайн-токены (theme.css — единственный источник палитры) + компоненты
+│   ├── db/               ← Drizzle ORM: схемы + hand-written миграции + журнал (`drizzle/meta/_journal.json`)
+│   ├── config/           ← env-валидация (Zod), shared-константы (шаблоны, лимиты)
+│   ├── voice/            ← голос редакции: voice.md, about-me.md, about-author-founder.md, BLACKLIST
+│   └── agents/           ← обёртки AI-агентов конвейера (define-agent + 12 агентов)
+├── caddy/                ← Caddyfile.prod
+├── scripts/              ← seed.ts, seed-sources.sql, ops-скрипты; scripts/infra — IPv6-watchdog
+├── .claude/              ← skills, commands, settings (graphify-хуки)
+└── docs/                 ← REBRAND-MAP.md, X10-RESTORE.md, handoffs/, strategy/ (архив X10)
 ```
 
-Все workspace-пакеты префикс `@x10/*`, импорт через TS paths.
+Все workspace-пакеты — префикс `@x10/*` (техимя, НЕ переименовывать), импорт через TS paths.
 
 ---
 
-## 4. AI-пайплайн контента (Amplification Layer v2.0)
+## 4. AI-конвейер контента
 
-**13 агентов** запускаются по триггерам через workflow engine (Inngest или Trigger.dev v3 — решение открыто):
+Агенты (`packages/agents`) вызываются Inngest-функциями (`apps/workers/pipeline/src/inngest/functions/`):
 
-| # | Агент | Модель | Триггер | Что делает |
-|---|---|---|---|---|
-| 01 | IngestAgent | Haiku 4.5 | 06:00 МСК cron | парсит ~200 источников (TASS, Interfax, RBC, Bloomberg) |
-| 02 | DraftAgent | Sonnet 4.6 | after ingest | пишет первый драфт в Smart Brevity (Tease/Lede/Why/Numbers/Yes-but/What's-next) |
-| 03 | NumbersAgent | Haiku 4.5 | parallel to Draft | извлекает цифры, проверяет источник, форматирует JetBrains Mono |
-| 04 | FactCheckAgent | **Opus 4.7** | political topics only | cross-source fact verification, halt-on-disagreement |
-| 05 | ToV-Agent | Sonnet 4.6 | after Draft+Numbers | применяет voice.md + about-author-{name}.md + чёрный список ~30 слов |
-| 06 | BrevityAgent | Sonnet 4.6 | after ToV | сжимает до ≤300 слов / 25-30 сек чтения |
-| 07 | AudioAgent | ElevenLabs (via proxy) | optional | 5-8 мин аудио-версия для подкаста |
-| 08 | HumanGate | — | после всех 1-7 | редактор финалит, кнопка Publish |
-| 09 | HookGenAgent | Haiku 4.5 | after Brevity | 6 паттернов хуков (number-led/contrarian/transformation/authority/admission/future-shock) |
-| 10 | SocialAmplifyAgent | Sonnet 4.6 | after HookGen | конвертирует в TG-Рыбакова / Дзен / VK / LinkedIn (свой voice на канал) |
-| 11 | VisualAgent | Gemini 2.5 Flash (proxy) | feature flag | инфографика для viral-friendly publications |
-| 12 | ScoreAgent | Sonnet 4.6 | weekly | парсит engagement → обновляет confidence-пороги pipeline_config |
-| 13 | NewsletterAssembleAgent | Sonnet 4.6 | 06:00 МСК daily | собирает выпуск из 7 секций, A/B subject через HookGen |
+| Агент | Триггер | Что делает |
+|---|---|---|
+| IngestAgent | cron ingest-rss | скоринг RSS-items: новости ИИ/автоматизации, применимые для МСБ РФ; reject академичного/гаджетов/хайпа |
+| DraftAgent | after ingest | первый драфт в Smart Brevity от нейтральной редакции ProAgent AI; шаблоны card-news / deep-dive / daily-take («Разбор от основателя») / guide |
+| NumbersAgent | parallel | извлекает цифры, проверяет источник |
+| FactCheckAgent | political topics | cross-source verification, halt-on-disagreement (проверено: работает) |
+| ToV-Agent | after Draft+Numbers | применяет voice.md + BLACKLIST (анти-инфобиз + анти-ИИ-хайп, 32 позиции) |
+| BrevityAgent | after ToV | сжимает до ≤300 слов / 25-30 сек чтения |
+| PreviewScoreAgent | before gate | скоринг для очереди |
+| **HumanGate** | после всех | редактор финалит в админке, кнопка Publish — **AI не публикует автономно** |
+| HookGenAgent → SocialAmplifyAgent | after publish | хуки + TG-пост (CTA «Читать в ProAgent AI →»), постинг слотами через drain-post-slots |
+| NewsletterAssembleAgent | daily | сборка выпуска (интро, топ, «Разбор от основателя» — поле `rybakovTake` легаси API-контракта) |
+| ScoreAgent | weekly | engagement → confidence-пороги pipeline_config |
 
-**Себестоимость pipeline:** ~$0.45 за статью (~42 ₽). 110 статей/мес = $50/мес.
-**Полный AI-бюджет:** $183/мес с amplification + visual. **Включая инфру: $383/мес.**
+**Жёсткие правила конвейера:**
+- **Только русский**: языковой гейт `russianRatio < 0.2` → halt после draft + правило в промпте DraftAgent.
+- **HumanGate обязателен** на каждой публикации.
+- Несовпавшая категория из модели → `.catch(null)` → `DEFAULT_CATEGORY='news'` (конвейер не падает).
+- Новый источник в `sources` → ОБЯЗАТЕЛЬНЫЙ прайминг `seen_items` (иначе первый тик выстрелит backlog'ом) — см. `scripts/seed-sources.sql`.
 
-Архитектурное правило: **HumanGate обязателен** на каждой публикации. AI не публикует автономно.
+**Рубрикатор (сквозной enum, дефолт `news`):** `news` Новости ИИ · `cases` Кейсы · `howto` Обучение · `tools` Инструменты · `business` Практика · `founder` От основателя. Старые X10-ключи (taxes/money/practice/power/tech/rybakov) остаются мёртвыми значениями в PG-enum (PG не умеет DROP VALUE) — в коде/UI их нет.
+
+**Разделы miniapp (bottom-nav):** Лента `/` · Кейсы `/cases` · Обучение `/learn` · Я `/profile`.
 
 ---
 
-## 5. Дизайн-канон (зафиксирован в трёх сессиях правок)
+## 5. Дизайн-канон
 
-- **Формат печати/PDF:** A4, padding 13mm × 16mm
 - **Шрифты:** Manrope 700/800 (заголовки), Inter 400/500/600 (текст), JetBrains Mono (числа)
-- **Цвета:** red `#E63946`, gold `#D4A24C`, steel `#1F2937`, surface `#FAFAF7`, border `#E5E2DA`, bg-dark `#0B0B0E`, text-primary `#F2F2F2`
-- **Карточки:** `border-radius: 6px` (печать), `16px` (web)
-- **Смысловые блоки-выноски:** ТОЛЬКО сплошной `var(--steel)` фон + белый текст + золотые акценты на `<b>`. **Градиенты в смысловых блоках запрещены** — отвергнуты пользователем за читаемость в правой части.
-- **Иконки:** lucide-react, stroke 1.5px (совпадает с Manrope)
-- **Анимации:** Framer Motion для слайдов дайджеста и переходов между табами
+- **Цвета:** red `#E63946`, gold `#D4A24C`, steel `#1F2937`, surface `#FAFAF7`, border `#E5E2DA`, bg-dark `#0B0B0E`, text-primary `#F2F2F2` — единственный источник: `packages/ui/src/styles/theme.css` (палитра оставлена с X10-эпохи, смена — отдельным этапом при появлении фирстиля; css-классы `x10-*` не переименовываются)
+- **Карточки:** `border-radius: 16px` (web)
+- **Обложки карточек:** самодостаточные брендовые, **text-only** (иконки рубрик убраны решением П3 s26 — не возвращать без явного решения владельца); рубрики различаются тинт-полосой (TINT в `branded-cover.tsx`)
+- **Смысловые блоки-выноски:** ТОЛЬКО сплошной `var(--steel)` фон + белый текст + золотые акценты. **Градиенты в смысловых блоках запрещены** (отвергнуты за читаемость).
+- **Иконки:** lucide-react, stroke 1.5px
+- **Анимации:** Framer Motion для переходов
 
 ---
 
 ## 6. Tone of Voice — главные правила
 
-**Чёрный список** (никогда не использовать, замены — в `docs/strategy/X10ToVGuidelines.pdf`):
-«соборное мышление», «архитектор возможностей», «преображать мир», «миллион сердец», «созидательная энергия», «проявленность», «истинный путь», «коллективная воля», и ещё ~22 термина.
+Два регистра (полный канон — `packages/voice/voice.md`, machine-readable, 10 absence-signals):
 
-**Smart Brevity на русском** (6 блоков, ≤ 300 слов, 25-30 сек чтения):
+1. **Авто-контент** — нейтральная редакция ProAgent AI: Smart Brevity, цифры с источниками, угол «выгода для бизнеса».
+2. **Ручные кейсы/разборы** — от первого лица основателя (`about-author-founder.md`, подключается через `loadAuthorVoice("founder")`).
+
+**Чёрный список** (`packages/voice/src/index.ts` BLACKLIST, 32 позиции): универсальный анти-инфобиз («беспрецедентный», «прорывной» и др.) + анти-ИИ-хайп («революционный ИИ», «магия нейросетей», «ИИ заменит всех», «уникальная нейросеть»…).
+
+**Smart Brevity на русском** (6 блоков, ≤300 слов, 25-30 сек чтения):
 1. **Tease** — заголовок-крючок
 2. **Lede** — одна вводящая фраза
 3. **Why it matters** — почему важно (всегда жирным)
-4. **By the numbers / Between the lines / What they're saying** — расшифровка
+4. **By the numbers / Between the lines** — расшифровка
 5. **The big picture / Yes, but** — контекст и контраргумент
 6. **What's next / Go deeper** — линки
 
-**Обязательно:**
-- Цифры с источниками
-- Цитаты с атрибуцией кто/где/когда
-- Глаголы сильные, без «является», «осуществляет»
-- Регалии — не больше двух в шапке
-- Без выдуманных цитат (см. кейс Романчук — Баффет, главный аргумент для редколлегии)
-
-`packages/voice/voice.md` — machine-readable формат с 10 absence-signals для AI-агентов.
+**Обязательно:** цифры с источниками; цитаты с атрибуцией кто/где/когда; сильные глаголы (без «является», «осуществляет»); без выдуманных цитат; регалии — не больше двух в шапке.
 
 ---
 
 ## 7. Compliance — 152-ФЗ
 
-**Критично до первого вызова LLM в продакшене:**
-
-1. **Anthropic ZDR-контракт** должен быть подписан до первого API-вызова с реальными ПДн — иначе input/output логируются 30 дней (нарушение 152-ФЗ, штраф ₽75K-700K).
-2. **KikuAI Masker** разворачивается на Render.com / self-hosted Docker, между приложением и Anthropic/ElevenLabs. Паттерн: mask → LLM call → unmask на ответе. Session caching для мультитурновых диалогов.
-3. **PostHog** — EU region (`https://eu.posthog.com`), не US.
-4. **Neon** — Frankfurt regiono для соответствия GDPR/152-ФЗ по локализации.
-5. **Double opt-in обязательный** для email-newsletter (Resend).
-6. **Privacy policy + согласия** — в `docs/strategy/` (нужно ещё подготовить, см. Roadmap B3).
+1. **Данные в РФ:** прод-БД — managed PostgreSQL Timeweb (Москва); LLM-вызовы — через Timeweb AI Gateway (РФ-инфраструктура, DeepSeek). Иностранные LLM-API с реальными ПДн — только после PII-маскировки (KikuAI Masker) и/или ZDR-контракта.
+2. **PostHog** — EU region, через `/ingest` reverse-proxy (не US).
+3. **Double opt-in обязателен** для email-рассылок (когда появятся).
+4. Юзеры идентифицируются Telegram-ID; в LLM-промпты ПДн пользователей не попадают (конвейер работает с публичным новостным контентом).
 
 ---
 
@@ -161,39 +142,43 @@ x10-daily/
 
 ### Когда я запрашиваю фичу
 
-1. **Сначала прочитай связанные документы** в `docs/strategy/` — там может быть зафиксированное решение.
-2. **Если что-то не зафиксировано** — спроси меня, не предполагай. Особенно для бизнес-логики, цен, тарифов.
-3. **Перед `pnpm install` любых новых пакетов** — спрашивай. Я хочу контроль над dependency-graph.
-4. **Никаких `useEffect + fetch` в новом коде** — RSC + Suspense / TanStack Query / Zero. Это в антипаттернах стека 2026.
-5. **Никаких `localStorage` для серверных данных** — IndexedDB/Dexie через Zero.
+1. **Сначала прочитай** `docs/REBRAND-MAP.md` (решения владельца) и связанные доки — там может быть зафиксированное решение.
+2. **Если что-то не зафиксировано** — спроси меня, не предполагай. Особенно бизнес-логика, цены, тарифы.
+3. **Перед `pnpm install` новых пакетов** — спрашивай. Контроль dependency-graph за мной.
+4. **Никаких `useEffect + fetch` в новом коде** — RSC + Suspense / TanStack Query.
+5. **Никаких `localStorage` для серверных данных.**
 6. **Server Actions — только для мутаций**, не для data-fetching.
-7. **Никогда не показывай спиннеры > 1 с** — skeleton / optimistic UI. См. правило бюджета на скелетоны в Tech Roadmap.
+7. **Никогда не показывай спиннеры > 1 с** — skeleton / optimistic UI.
+8. **Все тексты, комменты, коммиты, UI — только по-русски.**
+
+### Прод-грабли (нарушение = сломанный прод)
+
+- **PPR-грабля:** статичная страница запекает мок-fallback в `next build`. Фикс: `await connection()` ВНУТРИ Suspense-компонента (НЕ page-level) → PPR-дыры, мок не запекается. Паттерн уже в `/`, `/cases`, `/learn`, `/article/[slug]`.
+- **Миграции ТОЛЬКО hand-written:** `db:generate` НЕ запускать; новая миграция = SQL-файл в `packages/db/drizzle/` + запись в `meta/_journal.json` вручную. `ADD VALUE` в enum и `SET DEFAULT` новым значением — РАЗНЫМИ файлами (PG запрещает использовать новое enum-значение в транзакции его добавления).
+- **Деплой/рестарт ТОЛЬКО** `./deploy.sh` или `docker compose --env-file .env.production` — иначе crash-loop.
+- **Новый env-ключ воркера** → добавить в `readBindingsFromEnv` (`apps/workers/pipeline/src/bindings.ts`) + в compose.
+- **IPv6 на прод-VM:** api.telegram.org доступен только по IPv6; глобальный адрес — только по DHCPv6. Рестарт systemd-networkd смывает IPv6 → постинг ETIMEDOUT. Самолечение — watchdog `x10-ipv6-ensure.timer` (/2 мин). **`netplan apply` НЕЛЬЗЯ.**
+- **Новый id Inngest-функции** → re-sync PUT на pipeline:8787 из контейнера api (НЕ localhost).
+- **Смена бота** атомарна: новый `TELEGRAM_BOT_TOKEN` + бот админом канала + `setChatMenuButton` заново + redeploy (auth и постинг на одном токене; юзеры в БД валидны только при том же боте).
 
 ### Когда я прошу написать контент
 
-1. **Проверяй voice.md и about-me.md в `packages/voice/`.**
-2. **Применяй чёрный список (см. секцию 6).**
-3. **Smart Brevity 6 блоков**, не больше 300 слов на статью.
-4. **Цифры — с источниками**, цитаты — с атрибуцией.
-5. **Если упоминается реальный человек или цифра — проверь через web_search** перед записью.
+1. **Проверяй voice.md, about-me.md, about-author-founder.md** в `packages/voice/`.
+2. **Применяй чёрный список** (анти-инфобиз + анти-ИИ-хайп).
+3. **Smart Brevity 6 блоков**, ≤300 слов.
+4. **Цифры — с источниками**, цитаты — с атрибуцией; выдуманных цитат не бывает.
+5. **Если упоминается реальный человек или цифра — проверь через web_search.**
 
 ### Когда правлю PR
 
-1. **Метрологические бюджеты** (секция 2) — обязательная проверка через `pnpm build` + Lighthouse в CI.
+1. **Метрологические бюджеты** (§2) — проверка через `pnpm build` + Lighthouse в CI.
 2. **Bundle size budget:** initial JS ≤ 200KB gzipped per route.
 3. **TypeScript strict + noUncheckedIndexedAccess** — без `any`, без `as Type` без обоснования в комменте.
-4. **Тесты:** Vitest для unit, Playwright для e2e критических путей (auth, paywall, publish).
+4. **Тесты:** Vitest для unit (`pnpm -r test`), Playwright для e2e критических путей.
 
 ### Skills и команды
 
-В `.claude/skills/` лежат user-skills для этого проекта. В `.claude/commands/` — кастомные slash-команды.
-
-Установить дополнительные скиллы из проекта Claude.ai (если уже есть собранные):
-
-```bash
-# В Claude Code
-/skill install ~/Downloads/x10-skills.zip
-```
+В `.claude/skills/` — user-skills проекта, в `.claude/commands/` — slash-команды.
 
 ---
 
@@ -201,35 +186,20 @@ x10-daily/
 
 | Хочешь | Открой |
 |---|---|
-| Полная стратегия и unit-economics | `docs/strategy/X10Strategy.pdf` |
-| Чёрный/белый список ToV | `docs/strategy/X10ToVGuidelines.pdf` |
-| 12-месячная финмодель | `docs/strategy/X10-Finmodel-12mo.xlsx` |
-| Tech Roadmap M0→M12 | `docs/strategy/X10TechRoadmap.pdf` |
-| Конкурентная матрица 6×7 | `docs/strategy/X10CompetitiveAnalysis.pdf` |
-| План миграции редколлегии | `docs/strategy/X10EditorialMigration.pdf` |
-| Архитектурная схема v2.0 | `docs/strategy/X10ArchitectureSpec.pdf` |
-| AI-пайплайн (13 агентов) | `docs/strategy/X10AmplificationLayer.pdf` |
-| Newsletter foundation | `docs/strategy/X10NewsletterFoundation.pdf` |
-| Editorial toolkit для авторов | `docs/strategy/X10EditorialToolkit.pdf` |
-| Все исторические handoffs | `docs/handoffs/` |
-| React-прототип 5 экранов | `docs/research/X10-Prototype.tsx` |
-| Community research | `docs/research/X10-Research.md` |
+| Решения владельца по ребрендингу | `docs/REBRAND-MAP.md` (шапка «✅ Решения Константина») |
+| Восстановление X10 (архив) | `docs/X10-RESTORE.md` |
+| Голос редакции + чёрный список | `packages/voice/voice.md`, `packages/voice/src/index.ts` |
+| Источники RSS + прайминг | `scripts/seed-sources.sql` |
+| Dev-фикстуры | `scripts/seed.ts` (id совпадают с `apps/admin/src/lib/mocks.ts`) |
+| Деплой prod | `./deploy.sh`, `docker-compose.prod.yml`, `caddy/Caddyfile.prod` |
+| Исторические handoffs сессий | `docs/handoffs/` |
+| Архив стратегии X10-эпохи | `docs/strategy/` (НЕ канон нового бренда) |
+| Старый CF/Neon deploy-гайд | `docs/DEPLOY.md` (архив, не применять) |
 
 ---
 
-## 10. Первая задача после bootstrap
-
-Когда ты только что прочитал этот файл, твоя первая команда от меня скорее всего будет:
-
-> «Инициализируй apps/miniapp как Next.js 16 с PPR, apps/api как Hono v4 на Cloudflare Workers, packages/db с Drizzle под Neon, packages/ui с shadcn/ui base. Используй стек из CLAUDE.md. Покажи план перед выполнением.»
-
-Реагируй: покажи план (структура файлов, зависимости которые поставишь, какие команды запустишь), дождись моего «ок», потом действуй.
-
----
-
-**Версия CLAUDE.md:** 1.0 · 26 мая 2026
-**Серия документов v1.0:** закрыта (10 артефактов, ~110 стр PDF + Excel + TSX)
-**Следующая фаза:** пилот M0 — июнь 2026
+**Версия CLAUDE.md:** 2.0 · 20 июля 2026 (ребрендинг X10 Daily → ProAgent AI)
+**Канон бренда:** ProAgent AI · «ИИ работает на вас» · рубрикатор news/cases/howto/tools/business/founder
 
 ## graphify
 

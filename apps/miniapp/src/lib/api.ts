@@ -10,7 +10,8 @@
 
 const TIMEOUT_MS = 4000;
 
-export type ApiCategory = "taxes" | "money" | "practice" | "power" | "tech" | "rybakov";
+/** Рубрикатор ProAgent AI (Р4): news — дефолт «Новости ИИ». */
+export type ApiCategory = "news" | "cases" | "howto" | "tools" | "business" | "founder";
 export type ApiTemplate = "card-news" | "deep-dive" | "daily-take" | "guide" | "digest";
 
 export type ApiFeedItem = {
@@ -162,98 +163,6 @@ export async function fetchDigest(): Promise<ApiDigest | null> {
     const res = await fetchWithTimeout(`${base}/v1/digests/hero`);
     if (!res.ok) return null;
     return (await res.json()) as ApiDigest;
-  } catch {
-    return null;
-  }
-}
-
-/* ----------------------------------------------------------------
- * Видео — лента YouTube-канала Рыбакова (GET /v1/videos, RSS на бэкенде).
- * ---------------------------------------------------------------- */
-
-export type ApiVideo = {
-  youtubeId: string;
-  title: string;
-  url: string;
-  thumbnailUrl: string;
-  publishedAt: string;
-  isShort: boolean;
-};
-
-export async function fetchVideos(): Promise<ApiVideo[] | null> {
-  const base = getBaseUrl();
-  if (!base) return null;
-  try {
-    const res = await fetchWithTimeout(`${base}/v1/videos`);
-    if (!res.ok) return null;
-    const body = (await res.json()) as { items: ApiVideo[] };
-    return body.items;
-  } catch {
-    return null;
-  }
-}
-
-/* ----------------------------------------------------------------
- * Community (Этап 3c — brief §2.1)
- * ---------------------------------------------------------------- */
-
-export type ApiCommunityStats = {
-  totalKlamps: number;
-  totalMembers: number;
-  openKlamps: number;
-  cities: number;
-  countries: number;
-};
-
-export type ApiEventType = "kod-x10" | "meet-up" | "breakfast" | "festival" | "webinar";
-
-export type ApiEvent = {
-  id: string;
-  slug: string;
-  title: string;
-  type: ApiEventType;
-  startDate: string;
-  endDate: string | null;
-  timezone: string;
-  city: string | null;
-  venue: { name: string; address: string; lat?: number; lng?: number } | null;
-  isOnline: boolean;
-  organizer: string;
-  ticketPriceFrom: number | null;
-  ticketUrl: string | null;
-  coverImageUrl: string | null;
-  registeredCount: number;
-  capacity: number | null;
-  seatsLeft: number | null;
-};
-
-export type ApiEventsResponse = { items: ApiEvent[]; count: number };
-
-export async function fetchCommunityStats(): Promise<ApiCommunityStats | null> {
-  const base = getBaseUrl();
-  if (!base) return null;
-  try {
-    const res = await fetchWithTimeout(`${base}/v1/community/stats`);
-    if (!res.ok) return null;
-    return (await res.json()) as ApiCommunityStats;
-  } catch {
-    return null;
-  }
-}
-
-export async function fetchEvents(
-  limit: number,
-  filter?: { city?: string; type?: ApiEventType },
-): Promise<ApiEventsResponse | null> {
-  const base = getBaseUrl();
-  if (!base) return null;
-  const params = new URLSearchParams({ limit: String(limit), scope: "upcoming" });
-  if (filter?.city) params.set("city", filter.city);
-  if (filter?.type) params.set("type", filter.type);
-  try {
-    const res = await fetchWithTimeout(`${base}/v1/events?${params}`);
-    if (!res.ok) return null;
-    return (await res.json()) as ApiEventsResponse;
   } catch {
     return null;
   }
@@ -423,9 +332,7 @@ export const ANONYMOUS_USER_STATE: ApiArticleUserState = {
   readPercent: 0,
 };
 
-export async function fetchArticleUserState(
-  articleId: string,
-): Promise<ApiArticleUserState> {
+export async function fetchArticleUserState(articleId: string): Promise<ApiArticleUserState> {
   const res = await fetchAuthed(`/v1/articles/${encodeURIComponent(articleId)}/me`);
   if (!res || !res.ok) return ANONYMOUS_USER_STATE;
   return (await res.json()) as ApiArticleUserState;
@@ -466,9 +373,7 @@ export async function postReaction(
   return (await res.json()) as ApiReactionResponse;
 }
 
-export async function postBookmark(
-  articleId: string,
-): Promise<ApiBookmarkResponse | null> {
+export async function postBookmark(articleId: string): Promise<ApiBookmarkResponse | null> {
   const res = await postAuthed(`/v1/articles/${encodeURIComponent(articleId)}/bookmark`, {});
   if (!res || !res.ok) return null;
   return (await res.json()) as ApiBookmarkResponse;

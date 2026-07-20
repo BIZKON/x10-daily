@@ -48,7 +48,7 @@ export function DailyTakeCard({ item }: { item: FeedItem }) {
         <div className="flex-1">
           <div className="font-display text-[13px] font-extrabold text-paper">{authorName}</div>
           <div className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-gold">
-            {item.category} · реакция дня
+            {item.category} · разбор
           </div>
         </div>
       </div>

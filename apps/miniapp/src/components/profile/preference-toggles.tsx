@@ -1,24 +1,25 @@
 "use client";
 
+import type { ApiPreferences } from "@/lib/api";
+import { updatePreferencesAction } from "@/lib/preferences-actions";
 import { cn } from "@x10/ui";
 import { Bell } from "lucide-react";
 import { useState, useTransition } from "react";
-import type { ApiPreferences } from "@/lib/api";
-import { updatePreferencesAction } from "@/lib/preferences-actions";
 
+/** Рубрикатор ProAgent AI (Р4) — синхронно с HOME_CATEGORIES (lib/feed.ts). */
 const CATEGORIES: { key: string; label: string }[] = [
-  { key: "taxes", label: "Налоги" },
-  { key: "money", label: "Деньги" },
-  { key: "practice", label: "Практика" },
-  { key: "power", label: "Власть" },
-  { key: "tech", label: "Технологии" },
-  { key: "rybakov", label: "Рыбаков говорит" },
+  { key: "news", label: "Новости ИИ" },
+  { key: "cases", label: "Кейсы" },
+  { key: "howto", label: "Обучение" },
+  { key: "tools", label: "Инструменты" },
+  { key: "business", label: "Практика" },
+  { key: "founder", label: "От основателя" },
 ];
 
 const SLOTS: { key: keyof ApiPreferences["digestSchedule"]; time: string; name: string }[] = [
   { key: "morning", time: "07:00", name: "Утренний разбор" },
   { key: "lunch", time: "13:00", name: "Smart-карусель за обедом" },
-  { key: "evening", time: "19:00", name: "Что обсуждают в Х10" },
+  { key: "evening", time: "19:00", name: "Вечерний разбор ИИ" },
 ];
 
 function Toggle({ on, disabled }: { on: boolean; disabled?: boolean }) {

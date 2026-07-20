@@ -1,4 +1,4 @@
-# X10 Daily — Security Audit
+# Security Audit (движок; проведён в X10-эпоху, до ребрендинга в ProAgent AI)
 
 **Дата аудита:** 27 мая 2026
 **Метод:** 4 параллельных AI-аудита по измерениям (auth/IDOR, input validation, secrets/supply-chain, DoS/CORS/LLM).

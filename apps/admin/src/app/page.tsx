@@ -1,30 +1,25 @@
+import { type AdminCategory, type AdminTemplate, type QueueItem, fetchQueue } from "@/lib/api";
 import { X } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import {
-  fetchQueue,
-  type AdminCategory,
-  type AdminTemplate,
-  type QueueItem,
-} from "@/lib/api";
 
-/** brief §5 — user-facing категории. */
+/** Рубрикатор ProAgent AI — user-facing категории. */
 const CATEGORY_LABELS: Record<AdminCategory, string> = {
-  taxes: "Налоги",
-  money: "Деньги",
-  practice: "Практика",
-  power: "Власть",
-  tech: "Технологии",
-  rybakov: "Рыбаков",
+  news: "Новости ИИ",
+  cases: "Кейсы",
+  howto: "Обучение",
+  tools: "Инструменты",
+  business: "Практика",
+  founder: "От основателя",
 };
 
 const CATEGORY_KEYS: ReadonlySet<AdminCategory> = new Set([
-  "taxes",
-  "money",
-  "practice",
-  "power",
-  "tech",
-  "rybakov",
+  "news",
+  "cases",
+  "howto",
+  "tools",
+  "business",
+  "founder",
 ]);
 
 /** brief §3 — шаблоны. */
@@ -99,12 +94,7 @@ async function QueueContent({
         )}
       </header>
 
-      {filtered && (
-        <ActiveFilter
-          category={category}
-          subcategory={subcategory}
-        />
-      )}
+      {filtered && <ActiveFilter category={category} subcategory={subcategory} />}
 
       {!queue ? (
         <ApiUnreachable />
@@ -237,7 +227,10 @@ function QueueList({ items }: { items: QueueItem[] }) {
               <FactCheckBadge status={item.factcheckStatus} />
               {item.tags.length > 0 && (
                 <span className="font-mono text-[10px] text-haze" title={item.tags.join(" ")}>
-                  {item.tags.slice(0, 3).map((t) => `#${t}`).join(" ")}
+                  {item.tags
+                    .slice(0, 3)
+                    .map((t) => `#${t}`)
+                    .join(" ")}
                   {item.tags.length > 3 ? ` +${item.tags.length - 3}` : ""}
                 </span>
               )}
@@ -265,7 +258,10 @@ function ScoreBadge({ total, verdict }: { total: number | null; verdict: string 
         ? "border-gold/40 bg-gold/10 text-gold"
         : "border-red/40 bg-red/10 text-red";
   return (
-    <span className={`rounded-pill border px-2.5 py-1 font-mono text-[11px] ${cls}`} title={verdict ?? undefined}>
+    <span
+      className={`rounded-pill border px-2.5 py-1 font-mono text-[11px] ${cls}`}
+      title={verdict ?? undefined}
+    >
       score {total}/50
     </span>
   );
@@ -283,8 +279,7 @@ function FactCheckBadge({
       : status === "review-needed"
         ? "border-gold/40 bg-gold/10 text-gold"
         : "border-red/40 bg-red/10 text-red";
-  const label =
-    status === "passed" ? "fact ✓" : status === "review-needed" ? "fact ?" : "fact ✕";
+  const label = status === "passed" ? "fact ✓" : status === "review-needed" ? "fact ?" : "fact ✕";
   return (
     <span className={`rounded-pill border px-2.5 py-1 font-mono text-[11px] ${cls}`}>{label}</span>
   );

@@ -12,7 +12,7 @@ import type { ArticleBlock } from "@x10/db";
  * буллеты — символом «• ». Воздух между блоками — пустая строка (Telegram уважает \n).
  *
  * Формат как в миниапп (session 27): крупная (жирная) подача + подзаголовок +
- * выноска «Почему важно» + ключевые блоки + ссылка «Читать в Х10». Тизер, не весь
+ * выноска «Почему важно» + ключевые блоки + ссылка «Читать в ProAgent AI». Тизер, не весь
  * body — сохраняем click-through в миниапп.
  */
 
@@ -88,7 +88,7 @@ export function articleToTelegramHtml(article: TelegramArticle, baseUrl: string)
   }
 
   const url = `${baseUrl.replace(/\/+$/, "")}/article/${article.slug}`;
-  parts.push(`<a href="${escapeTelegramHtml(url)}">Читать в Х10 →</a>`);
+  parts.push(`<a href="${escapeTelegramHtml(url)}">Читать в ProAgent AI →</a>`);
 
   return parts.join("\n\n");
 }

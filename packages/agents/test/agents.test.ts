@@ -305,7 +305,9 @@ describe("BrevityAgent", () => {
       toolName: "x10_emit_brevity",
       toolInput: {
         compressed: {
-          tease: "t", lede: "l", whyItMatters: "w",
+          tease: "t",
+          lede: "l",
+          whyItMatters: "w",
           body: [{ type: "paragraph", text: "x" }],
         },
         beforeWords: 2400,
@@ -316,7 +318,9 @@ describe("BrevityAgent", () => {
     await BrevityAgent.run(
       {
         revised: {
-          tease: "t", lede: "l", whyItMatters: "w",
+          tease: "t",
+          lede: "l",
+          whyItMatters: "w",
           body: [{ type: "paragraph", text: "x" }],
         },
         template: "deep-dive",
@@ -333,7 +337,9 @@ describe("BrevityAgent", () => {
       toolName: "x10_emit_brevity",
       toolInput: {
         compressed: {
-          tease: "t", lede: "l", whyItMatters: "w",
+          tease: "t",
+          lede: "l",
+          whyItMatters: "w",
           body: [{ type: "paragraph", text: "x" }],
         },
         beforeWords: 350,
@@ -344,7 +350,9 @@ describe("BrevityAgent", () => {
     await BrevityAgent.run(
       {
         revised: {
-          tease: "t", lede: "l", whyItMatters: "w",
+          tease: "t",
+          lede: "l",
+          whyItMatters: "w",
           body: [{ type: "paragraph", text: "x" }],
         },
         template: "daily-take",
@@ -419,7 +427,9 @@ describe("HookGenAgent", () => {
     await HookGenAgent.run(
       {
         draft: {
-          tease: "t", lede: "l", whyItMatters: "w",
+          tease: "t",
+          lede: "l",
+          whyItMatters: "w",
           body: [{ type: "paragraph", text: "x" }],
         },
         channel: "linkedin",
@@ -441,7 +451,7 @@ describe("SocialAmplifyAgent", () => {
       toolInput: {
         channel: "tg-x10",
         framework: "BAB",
-        post: "ЦБ держит ставку 17%.\n\nКредитное окно для МСП закрыто.\n\nЧитать полностью на x10daily.",
+        post: "ЦБ держит ставку 17%.\n\nКредитное окно для МСП закрыто.\n\nЧитать полностью в ProAgent AI.",
         hookLine: "ЦБ держит ставку 17%",
         twistLine: "Четвёртый раз подряд",
         segments: [
@@ -461,7 +471,10 @@ describe("SocialAmplifyAgent", () => {
           lede: "Совет сохранил ставку.",
           whyItMatters: "Кредитное окно для МСП закрыто.",
           body: [
-            { type: "numbers", items: [{ label: "Ставка", value: "17%", source: "https://cbr.ru" }] },
+            {
+              type: "numbers",
+              items: [{ label: "Ставка", value: "17%", source: "https://cbr.ru" }],
+            },
           ],
         },
         channel: "tg-x10",
@@ -479,7 +492,8 @@ describe("SocialAmplifyAgent", () => {
     expect(getSystemText(call)).toContain("FRAMEWORKS");
 
     // user-message содержит правила для tg-x10 и выбранный framework
-    const userMsg = call.messages.find((m: { role: string }) => m.role === "user")!.content as string;
+    const userMsg = call.messages.find((m: { role: string }) => m.role === "user")!
+      .content as string;
     expect(userMsg).toContain("Channel: tg-x10");
     expect(userMsg).toContain("Деловой, сухой");
     expect(userMsg).toContain("Framework (выбрано): BAB");
@@ -511,7 +525,9 @@ describe("SocialAmplifyAgent", () => {
     await SocialAmplifyAgent.run(
       {
         draft: {
-          tease: "t", lede: "l", whyItMatters: "w",
+          tease: "t",
+          lede: "l",
+          whyItMatters: "w",
           body: [{ type: "paragraph", text: "x" }],
         },
         channel: "linkedin",
@@ -519,7 +535,8 @@ describe("SocialAmplifyAgent", () => {
       { apiKey: "test", client },
     );
 
-    const userMsg = spy.mock.calls[0]![0].messages.find((m: { role: string }) => m.role === "user")!.content as string;
+    const userMsg = spy.mock.calls[0]![0].messages.find((m: { role: string }) => m.role === "user")!
+      .content as string;
     expect(userMsg).toContain("Channel: linkedin");
     expect(userMsg).toContain("Framework (выбрано): PAS");
     expect(userMsg).toMatch(/Hook ≤ 50|≤ 20 строк/);
@@ -539,7 +556,7 @@ describe("PreviewScoreAgent", () => {
         total: 39,
         verdict: "Готово к publish с лёгкими правками открывалки.",
         topPerformerComparison:
-          "Топ-статьи Х10 открываются цифрой + контр-аргумент в первых 60 знаках. Эта попадает в паттерн.",
+          "Топ-статьи ProAgent AI открываются цифрой + контр-аргумент в первых 60 знаках. Эта попадает в паттерн.",
         fixes: [
           {
             criterion: "hookStrength",
@@ -589,7 +606,9 @@ describe("PreviewScoreAgent", () => {
       PreviewScoreAgent.run(
         {
           draft: {
-            tease: "t", lede: "l", whyItMatters: "w",
+            tease: "t",
+            lede: "l",
+            whyItMatters: "w",
             body: [{ type: "paragraph", text: "x" }],
           },
         },
@@ -628,9 +647,7 @@ describe("FactCheckAgent", () => {
           whyItMatters: "Кредитное окно закрыто.",
           body: [{ type: "paragraph", text: "Совет директоров." }],
         },
-        sources: [
-          { url: "https://www.cbr.ru/press/keypr/", title: "Решение", publisher: "ЦБ РФ" },
-        ],
+        sources: [{ url: "https://www.cbr.ru/press/keypr/", title: "Решение", publisher: "ЦБ РФ" }],
       },
       { apiKey: "test", client },
     );
@@ -649,7 +666,9 @@ describe("FactCheckAgent", () => {
     await FactCheckAgent.run(
       {
         draft: {
-          tease: "t", lede: "l", whyItMatters: "w",
+          tease: "t",
+          lede: "l",
+          whyItMatters: "w",
           body: [{ type: "paragraph", text: "x" }],
         },
         sources: [{ url: "https://x.test/", title: "t", publisher: "p" }],
@@ -668,8 +687,8 @@ describe("IngestAgent", () => {
       toolName: "x10_emit_ingest",
       toolInput: {
         decision: "accept",
-        category: "money",
-        subcategory: "money.cbr",
+        category: "business",
+        subcategory: "business.finance",
         template: "card-news",
         tags: ["ЦБ", "ставка", "малый-бизнес"],
         topic: "ЦБ держит ставку 17%",
@@ -692,8 +711,8 @@ describe("IngestAgent", () => {
 
     expect(spy.mock.calls[0]![0].model).toBe("anthropic/claude-haiku-4-5");
     expect(result.output.decision).toBe("accept");
-    expect(result.output.category).toBe("money");
-    expect(result.output.subcategory).toBe("money.cbr");
+    expect(result.output.category).toBe("business");
+    expect(result.output.subcategory).toBe("business.finance");
     expect(result.output.template).toBe("card-news");
     expect(result.output.tags).toEqual(["ЦБ", "ставка", "малый-бизнес"]);
     expect(result.output.political).toBe(true);
@@ -739,8 +758,8 @@ describe("IngestAgent", () => {
       toolName: "x10_emit_ingest",
       toolInput: {
         decision: "accept",
-        category: "taxes",
-        subcategory: "taxes.news",
+        category: "news",
+        subcategory: "news.regulation",
         template: "card-news",
         tags: ["УСН"],
         topic: "УСН 350",
@@ -760,10 +779,12 @@ describe("IngestAgent", () => {
       { apiKey: "test", client },
     );
     const systemText = getSystemText(spy.mock.calls[0]![0]);
-    expect(systemText).toMatch(/taxes\s+—/);
-    expect(systemText).toMatch(/money\s+—/);
-    expect(systemText).toMatch(/practice\s+—/);
-    expect(systemText).toMatch(/rybakov\s+—/);
+    expect(systemText).toMatch(/news\s+—/);
+    expect(systemText).toMatch(/cases\s+—/);
+    expect(systemText).toMatch(/howto\s+—/);
+    expect(systemText).toMatch(/tools\s+—/);
+    expect(systemText).toMatch(/business\s+—/);
+    expect(systemText).toMatch(/founder\s+—/);
     expect(systemText).toMatch(/card-news/);
     expect(systemText).toMatch(/deep-dive/);
     expect(systemText).toMatch(/daily-take/);
@@ -853,7 +874,7 @@ describe("NewsletterAssembleAgent", () => {
           { sectionLabel: "Длинное чтение", articleIds: [], htmlBody: "", plainBody: "" },
           { sectionLabel: "Слово редактора", articleIds: [], htmlBody: "", plainBody: "" },
         ],
-        closing: "Подпишитесь на ежедневный X10 Daily",
+        closing: "Подпишитесь на ежедневный выпуск ProAgent AI",
         meta: { totalArticles: 1, sectionsUsed: 1, issueDate: "2026-05-26" },
       },
     });
@@ -889,9 +910,7 @@ describe("masker × agent integration", () => {
       masked: text.replace("Иванов", "[NAME_1]"),
       session: { sessionId: "s1" },
     }));
-    const unmaskFn = vi.fn(async (text: string) =>
-      text.replaceAll("[NAME_1]", "Иванов"),
-    );
+    const unmaskFn = vi.fn(async (text: string) => text.replaceAll("[NAME_1]", "Иванов"));
 
     const { client } = mockOpenAI({
       toolName: "x10_emit_numbers",
@@ -913,9 +932,7 @@ describe("masker × agent integration", () => {
       { apiKey: "test", client, masker: { mask: maskFn, unmask: unmaskFn } },
     );
 
-    expect(maskFn).toHaveBeenCalledWith(
-      expect.stringContaining("Иванов"),
-    );
+    expect(maskFn).toHaveBeenCalledWith(expect.stringContaining("Иванов"));
     expect(unmaskFn).toHaveBeenCalledOnce();
     expect(result.output.items[0]?.label).toBe("Зарплата Иванов");
     expect(result.output.items[0]?.contextQuote).toContain("Иванов");

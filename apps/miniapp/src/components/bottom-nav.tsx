@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@x10/ui";
-import { Globe, Newspaper, TrendingUp, Tv, User } from "lucide-react";
+import { Briefcase, GraduationCap, Newspaper, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -13,9 +13,8 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { href: "/", label: "Лента", Icon: Newspaper },
-  { href: "/taxes", label: "Налоги", Icon: TrendingUp },
-  { href: "/video", label: "Видео", Icon: Tv },
-  { href: "/community", label: "Х10", Icon: Globe },
+  { href: "/cases", label: "Кейсы", Icon: Briefcase },
+  { href: "/learn", label: "Обучение", Icon: GraduationCap },
   { href: "/profile", label: "Я", Icon: User },
 ];
 
@@ -34,11 +33,7 @@ export function BottomNav() {
               active ? "text-paper" : "text-haze",
             )}
           >
-            <Icon
-              size={22}
-              strokeWidth={active ? 2 : 1.6}
-              className={active ? "text-red" : ""}
-            />
+            <Icon size={22} strokeWidth={active ? 2 : 1.6} className={active ? "text-red" : ""} />
             <span className="text-[10px] font-semibold">{label}</span>
           </Link>
         );

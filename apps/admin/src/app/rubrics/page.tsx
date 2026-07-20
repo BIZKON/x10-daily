@@ -1,14 +1,14 @@
+import type { AdminCategory } from "@/lib/api";
 import { Filter } from "lucide-react";
 import Link from "next/link";
-import type { AdminCategory } from "@/lib/api";
 
-export const metadata = { title: "Рубрики — X10 Admin" };
+export const metadata = { title: "Рубрики — ProAgent AI Admin" };
 
 /**
- * Brief §1 — фиксированная таксономия первого уровня.
- * Эта страница — обзор для редколлегии: что в каждой рубрике, частота, бенчмарки.
+ * Рубрикатор ProAgent AI — фиксированная таксономия первого уровня.
+ * Эта страница — обзор для редакции: что в каждой рубрике, частота, бенчмарки.
  *
- * Подкатегории (taxes.news, taxes.guides и т.д.) — это второй уровень из brief §1.
+ * Подкатегории (news.models, cases.sales и т.д.) — второй уровень.
  * Они не хранятся в БД как отдельная таблица — это open string в articles.subcategory.
  * IngestAgent классифицирует автоматически (см. packages/agents/src/agents/ingest.ts).
  *
@@ -29,96 +29,91 @@ type Rubric = {
 
 const RUBRICS: Rubric[] = [
   {
-    id: "taxes",
-    label: "Налоги и право",
-    short: "Главная боль ЦА в 2026",
-    why: "УСН 350 млн, НДС 22%, новые требования ФНС, ПСН, реформы. У РБК и Тинькофф-Журнала это работает лучше всего — у нас будет конкретнее и быстрее.",
-    cadence: "5-10 материалов в неделю · 1 разбор в неделю · ежемесячный календарь",
-    benchmarks: ["Sifted Funding tracker", "Тинькофф-Журнал Бизнес", "Axios Pro"],
+    id: "news",
+    label: "Новости ИИ",
+    short: "Дефолтная рубрика авто-конвейера",
+    why: "Новости ИИ и автоматизации, отобранные под один угол: практическая выгода для малого и среднего бизнеса. Без хайпа, с цифрами.",
+    cadence: "4 материала в день · авто-конвейер + HumanGate",
+    benchmarks: ["Ben's Bites", "The Rundown AI", "vc.ru (ИИ)"],
     subcategories: [
-      { slug: "taxes.news", label: "Новости законодательства" },
-      { slug: "taxes.guides", label: "Пошаговые разборы" },
-      { slug: "taxes.calendar", label: "Налоговый календарь" },
-      { slug: "taxes.cases", label: "Судебная практика" },
-      { slug: "taxes.qa", label: "Q&A" },
+      { slug: "news.models", label: "Модели, релизы, цены API" },
+      { slug: "news.adoption", label: "Внедрения и рынок ИИ в МСБ" },
+      { slug: "news.regulation", label: "Регулирование ИИ, ПДн" },
+      { slug: "news.tools-updates", label: "Обновления инструментов" },
     ],
     toneClass: "border-red/40 bg-red/[0.04]",
   },
   {
-    id: "money",
-    label: "Деньги и финансы",
-    short: "Ставка 17%, банки МСП, ВЭД",
-    why: "Банки закрылись для МСП, валютный контроль ужесточили. Предприниматели ищут способы оборачивать капитал.",
-    cadence: "4-7 материалов в неделю",
-    benchmarks: ["Frank Media", "The Bell", "Stratechery"],
+    id: "cases",
+    label: "Кейсы",
+    short: "Внедрения с цифрами до/после",
+    why: "Разборы реальных внедрений ИИ-агентов: часы, деньги, конверсия. Формат deep-dive — что сделали, что получили, где споткнулись.",
+    cadence: "1-2 материала в неделю · вручную через админку",
+    benchmarks: ["Lenny's Newsletter", "The Generalist"],
     subcategories: [
-      { slug: "money.cbr", label: "Решения ЦБ, ставка" },
-      { slug: "money.banks", label: "Банки МСП-сегмента" },
-      { slug: "money.currency", label: "Валютный контроль, ОАЭ/KZ" },
-      { slug: "money.invest", label: "Оборотка малого бизнеса" },
-      { slug: "money.credit", label: "Кредиты, лизинг, факторинг" },
+      { slug: "cases.sales", label: "Продажи и обработка заявок" },
+      { slug: "cases.support", label: "Поддержка и клиентский сервис" },
+      { slug: "cases.docs", label: "Документооборот и бэк-офис" },
+      { slug: "cases.failures", label: "Разборы неудачных внедрений" },
     ],
     toneClass: "border-gold/40 bg-gold/[0.04]",
   },
   {
-    id: "practice",
-    label: "Бизнес-практика",
-    short: "Истории основателей, разборы кейсов",
-    why: "Ядро контента — наследие газеты, герои Х10 (Васляев, Воронов, Дахужев, Романчук) в формате Smart Brevity и Lenny's deep-dive.",
-    cadence: "2-4 материала в неделю · 1 лонгрид",
-    benchmarks: ["Lenny's Newsletter", "The Generalist", "Stratechery"],
+    id: "howto",
+    label: "Обучение",
+    short: "Пошаговые методики внедрения",
+    why: "Как внедрить ИИ-агента своими силами: с чего начать, как подготовить процесс и данные, как посчитать результат.",
+    cadence: "1-2 материала в неделю",
+    benchmarks: ["Тинькофф-Журнал Бизнес", "Habr (ИИ-хабы)"],
     subcategories: [
-      { slug: "practice.stories", label: "Истории основателей" },
-      { slug: "practice.teardowns", label: "Разборы компаний и кейсов" },
-      { slug: "practice.lessons", label: "Практические уроки" },
-      { slug: "practice.failures", label: "Разборы провалов" },
-      { slug: "practice.playbooks", label: "Пошаговые методички" },
+      { slug: "howto.start", label: "С чего начать: аудит процессов" },
+      { slug: "howto.prompting", label: "Промпты и настройка агентов" },
+      { slug: "howto.integration", label: "Интеграции: CRM, мессенджеры, 1С" },
+      { slug: "howto.checklists", label: "Чек-листы и шаблоны" },
     ],
     toneClass: "border-steel/60 bg-steel/[0.06]",
   },
   {
-    id: "power",
-    label: "Власть и регуляторика",
-    short: "Законы для бизнеса, без идеологии",
-    why: "Регулирование меняется ежемесячно. Маркировка, ОФД, санкции, AI-регулирование. Предпринимателю нужен дайджест без идеологии.",
-    cadence: "3-5 материалов в неделю",
-    benchmarks: ["Axios политическая аналитика", "Politico Pro", "The Bell"],
+    id: "tools",
+    label: "Инструменты",
+    short: "Обзоры и сравнения решений",
+    why: "Что выбрать под задачу и бюджет МСБ: агентные платформы, no-code, российские аналоги. Честные сравнения с ценами.",
+    cadence: "1-2 материала в неделю",
+    benchmarks: ["Ben's Bites", "The Pragmatic Engineer"],
     subcategories: [
-      { slug: "power.laws", label: "Новые законы для бизнеса" },
-      { slug: "power.sanctions", label: "Санкции, обход (только public)" },
-      { slug: "power.regions", label: "Региональные программы" },
-      { slug: "power.foreign", label: "ОАЭ, Казахстан, Турция, Сербия" },
+      { slug: "tools.agents", label: "Агентные платформы и боты" },
+      { slug: "tools.nocode", label: "No-code и конструкторы" },
+      { slug: "tools.local", label: "Российские и self-hosted решения" },
+      { slug: "tools.compare", label: "Сравнения и цены" },
     ],
     toneClass: "border-fence bg-card",
   },
   {
-    id: "tech",
-    label: "Технологии и AI",
-    short: "AI-агенты, no-code, импортозамещение",
-    why: "Горизонт ближайших 3 лет. Большинство ЦА не понимает что с этим делать.",
-    cadence: "3-5 материалов в неделю",
-    benchmarks: ["Stratechery", "The Pragmatic Engineer", "Ben's Bites"],
+    id: "business",
+    label: "Практика",
+    short: "Бизнес-сторона внедрений",
+    why: "Деньги, право и процессы вокруг ИИ: расчёт окупаемости, 152-ФЗ и ПДн, договоры с подрядчиками, изменения в команде.",
+    cadence: "1-2 материала в неделю",
+    benchmarks: ["The Bell", "Frank Media"],
     subcategories: [
-      { slug: "tech.ai", label: "AI-новости + применение в МСП" },
-      { slug: "tech.tools", label: "CRM, no-code, аналитика" },
-      { slug: "tech.import", label: "Российские аналоги западного софта" },
-      { slug: "tech.security", label: "Киберугрозы, утечки" },
-      { slug: "tech.future", label: "Что меняется на горизонте 1-3 лет" },
+      { slug: "business.roi", label: "Расчёт выгоды и окупаемости" },
+      { slug: "business.law", label: "152-ФЗ, ПДн, договоры" },
+      { slug: "business.processes", label: "Процессы и данные до ИИ" },
+      { slug: "business.team", label: "Команда и роли" },
     ],
     toneClass: "border-success/40 bg-success/[0.04]",
   },
   {
-    id: "rybakov",
-    label: "Рыбаков говорит",
+    id: "founder",
+    label: "От основателя",
     short: "Главный авторский голос",
-    why: "Флагман-рубрика: ежедневная реакция + авторские эссе + расшифровки YouTube. Stratechery Daily Update в русском контексте.",
-    cadence: "5+ в неделю · ежедневно",
-    benchmarks: ["Stratechery Daily Update", "Pivot (Кара Свишер)", "Lex Fridman"],
+    why: "Флагман-рубрика: «Разбор от основателя» — ежедневная реакция на новости внедрения ИИ от первого лица + ручные кейсы из практики.",
+    cadence: "3-5 в неделю · вручную",
+    benchmarks: ["Stratechery Daily Update"],
     subcategories: [
-      { slug: "rybakov.daily", label: "Короткая реакция (daily-take)" },
-      { slug: "rybakov.essay", label: "Авторские эссе" },
-      { slug: "rybakov.podcast", label: "Выжимки из YouTube" },
-      { slug: "rybakov.qa", label: "Ответы на вопросы подписчиков" },
+      { slug: "founder.take", label: "Разбор от основателя (daily-take)" },
+      { slug: "founder.cases", label: "Кейсы из собственной практики" },
+      { slug: "founder.qa", label: "Ответы на вопросы подписчиков" },
     ],
     toneClass:
       "border-gold/50 [background:linear-gradient(135deg,rgba(212,162,76,0.06),rgba(230,57,70,0.04))]",
@@ -131,18 +126,15 @@ export default function RubricsPage() {
       <header className="mb-6 border-b border-fence pb-5">
         <h1 className="m-0 font-display text-2xl font-extrabold">Рубрики</h1>
         <p className="mt-1.5 text-[13px] text-mist">
-          Brief §1 — таксономия первого уровня. 6 рубрик, фиксированный набор.
-          Подкатегории второго уровня — открытые, IngestAgent классифицирует автоматически.
-          CRUD над рубриками — только через миграцию Postgres enum, не через UI.
+          Рубрикатор ProAgent AI — таксономия первого уровня. 6 рубрик, фиксированный набор.
+          Подкатегории второго уровня — открытые, IngestAgent классифицирует автоматически. CRUD над
+          рубриками — только через миграцию Postgres enum, не через UI.
         </p>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2">
         {RUBRICS.map((r) => (
-          <article
-            key={r.id}
-            className={`rounded-2xl border p-5 ${r.toneClass}`}
-          >
+          <article key={r.id} className={`rounded-2xl border p-5 ${r.toneClass}`}>
             <div className="mb-1 flex items-center gap-2">
               <h2 className="m-0 font-display text-lg font-extrabold">{r.label}</h2>
               <code className="rounded-pill border border-fence bg-night px-2 py-0.5 font-mono text-[10px] text-haze">
@@ -188,20 +180,11 @@ export default function RubricsPage() {
                 <span className="font-bold text-mist">Частота:</span> {r.cadence}
               </div>
               <div>
-                <span className="font-bold text-mist">Бенчмарки:</span>{" "}
-                {r.benchmarks.join(", ")}
+                <span className="font-bold text-mist">Бенчмарки:</span> {r.benchmarks.join(", ")}
               </div>
             </div>
           </article>
         ))}
-      </div>
-
-      <div className="mt-6 rounded-xl border border-fence bg-card p-4 text-[12.5px] text-mist">
-        <p className="m-0">
-          Полный документ:{" "}
-          <code className="font-mono text-paper">docs/strategy/X10ContentArchitectureBrief.md</code>{" "}
-          §1, §5.
-        </p>
       </div>
     </>
   );

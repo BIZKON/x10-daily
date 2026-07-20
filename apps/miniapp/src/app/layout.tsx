@@ -6,10 +6,10 @@ import { TelegramProvider } from "@/components/telegram-provider";
 import { fontDisplay, fontMono, fontSans } from "@/lib/fonts";
 
 export const metadata: Metadata = {
-  title: "X10 Daily — Деловое утро за 7 минут",
+  title: "ProAgent AI — ИИ работает на вас",
   description:
-    "Ежедневное деловое медиа сообщества Рыбакова. Smart Brevity, цифры с источниками, без инфобиза.",
-  metadataBase: new URL("https://daily.x10.media"),
+    "Кейсы, методики и новости внедрения ИИ-агентов для малого и среднего бизнеса. Без хайпа, с цифрами выгоды.",
+  metadataBase: new URL("https://app.pro-agent-ai.ru"),
 };
 
 export const viewport: Viewport = {

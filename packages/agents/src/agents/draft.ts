@@ -16,9 +16,7 @@ const inputSchema = z.object({
   context: z.string(),
   sources: z.array(sourceRefSchema).min(1),
   /** Pipeline-internal section — оставлено для обратной совместимости pipeline_runs. */
-  section: z
-    .enum(["main", "numbers", "people", "playbook", "weekend", "longread"])
-    .default("main"),
+  section: z.enum(["main", "numbers", "people", "playbook", "weekend", "longread"]).default("main"),
   /** brief §3 — шаблон материала. Определяет структуру и длину. По умолчанию card-news. */
   template: z.enum(DRAFT_TEMPLATES).optional(),
   /** brief §1 — "taxes.news", "practice.stories" и т.д. Используется DraftAgent для уточнения тона. */
@@ -56,16 +54,16 @@ const TEMPLATE_GUIDANCE: Record<DraftTemplate, string> = {
 
 ВАЖНО: deep-dive — это РАЗБОР с уроками, а не пересказ новости. Каждый урок начинается с конкретного примера, затем обобщение.`,
 
-  "daily-take": `ШАБЛОН: daily-take (короткая реакция автора в стиле Stratechery Daily Update).
+  "daily-take": `ШАБЛОН: daily-take («Разбор от основателя» — короткая авторская колонка в стиле Stratechery Daily Update).
 Структура body (3 блока, очень кратко):
 1. tease — что произошло, ≤ 50 знаков
 2. lede — Cite: ссылка на новость одной фразой
 3. whyItMatters — Opinion: что автор думает (прямой авторский голос)
-4. body[0] — paragraph с Implication: что это значит для делового читателя
+4. body[0] — paragraph с Implication: что это значит для бизнеса читателя
 
 ЛИМИТЫ: ${TEMPLATE_LIMITS["daily-take"].MIN_WORDS}-${TEMPLATE_LIMITS["daily-take"].MAX_WORDS} слов, ${TEMPLATE_LIMITS["daily-take"].READ_SECONDS_MIN}-${TEMPLATE_LIMITS["daily-take"].READ_SECONDS_MAX} сек чтения.
 
-ВАЖНО: daily-take — это МНЕНИЕ от первого лица. Авторский голос (Рыбаков обычно). Никаких callouts why/yes-but/what-next.`,
+ВАЖНО: daily-take — это МНЕНИЕ от первого лица. Авторский голос основателя ProAgent AI: практик, который сам внедряет ИИ-агентов. Никаких callouts why/yes-but/what-next.`,
 
   guide: `ШАБЛОН: guide (пошаговая методичка как у Тинькофф-Журнала).
 Структура body:
@@ -83,7 +81,7 @@ const TEMPLATE_GUIDANCE: Record<DraftTemplate, string> = {
 };
 
 function buildSystem(template: DraftTemplate): string {
-  return `Ты — DraftAgent редакции Х10 Daily. Пишешь первичный драфт статьи под заданный шаблон.
+  return `Ты — DraftAgent редакции ProAgent AI. Пишешь первичный драфт статьи под заданный шаблон.
 
 КТО МЫ:
 ${ABOUT_ME}
@@ -91,6 +89,7 @@ ${ABOUT_ME}
 ${TEMPLATE_GUIDANCE[template]}
 
 ОБЩИЕ ПРАВИЛА:
+- УГОЛ ПОДАЧИ: каждый материал отвечает на вопрос «какую выгоду это даёт бизнесу» — в часах (меньше рутины), деньгах (экономия/выручка) или конверсии (лиды/продажи). whyItMatters строится вокруг этой выгоды
 - ⚠️ ЯЗЫК — ТОЛЬКО РУССКИЙ. Иностранные (англоязычные и пр.) источники ОБЯЗАТЕЛЬНО переводи на русский: tease, lede, whyItMatters и ВСЁ тело — русскими предложениями. Латиницей оставляй ТОЛЬКО имена собственные/бренды/термины (OpenAI, Windows Server, DoH, M1) — но не предложения и не заголовки целиком. НИКОГДА не возвращай драфт на английском, даже если источник английский.
 - Все цифры — со ссылкой на source.url из inputs.sources
 - Никаких выдуманных цитат — только из источников
@@ -134,7 +133,10 @@ function makeAgent(template: DraftTemplate) {
 export const DraftAgent = {
   name: "draft" as const,
   tier: "SONNET" as const,
-  run(input: z.infer<typeof inputSchema>, ctx: Parameters<typeof agentByTemplate["card-news"]["run"]>[1]) {
+  run(
+    input: z.infer<typeof inputSchema>,
+    ctx: Parameters<(typeof agentByTemplate)["card-news"]["run"]>[1],
+  ) {
     // Zod default может не сработать если input уже распарсен — нормализуем.
     const template = (input.template ?? "card-news") as DraftTemplate;
     return agentByTemplate[template].run(input, ctx);

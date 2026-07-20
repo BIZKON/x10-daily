@@ -6,7 +6,7 @@
 
 const TIMEOUT_MS = 5000;
 
-export type AdminCategory = "taxes" | "money" | "practice" | "power" | "tech" | "rybakov";
+export type AdminCategory = "news" | "cases" | "howto" | "tools" | "business" | "founder";
 export type AdminTemplate = "card-news" | "deep-dive" | "daily-take" | "guide" | "digest";
 
 export type QueueItem = {
@@ -227,20 +227,6 @@ export type AdminAuthor = {
   subscriberCount: number;
 };
 
-export type AdminKlamp = {
-  id: string;
-  slug: string;
-  name: string;
-  city: string;
-  country: string;
-  leadName: string;
-  memberCount: number;
-  isOpen: boolean;
-  meetingSchedule: string;
-  description: string;
-  goal: string | null;
-};
-
 export type AdminEvent = {
   id: string;
   slug: string;
@@ -327,14 +313,6 @@ export async function fetchAdminAuthors(): Promise<{ items: AdminAuthor[] } | nu
   if (!isDemoMode()) return null;
   const { MOCK_AUTHORS } = await import("./mocks");
   return { items: MOCK_AUTHORS };
-}
-
-export async function fetchAdminKlamps(): Promise<{ items: AdminKlamp[] } | null> {
-  const real = await getJson<{ items: AdminKlamp[] }>("/v1/community/klamps?limit=200");
-  if (real) return real;
-  if (!isDemoMode()) return null;
-  const { MOCK_KLAMPS } = await import("./mocks");
-  return { items: MOCK_KLAMPS };
 }
 
 export async function fetchAdminEvents(
@@ -424,15 +402,6 @@ export async function fetchAdminAuthorBySlug(
   const { findMockAuthor } = await import("./mocks");
   const author = findMockAuthor(slug);
   return author ? { author } : null;
-}
-
-/** Fetch single klamp by slug — для edit-form. */
-export async function fetchAdminKlampBySlug(slug: string): Promise<AdminKlamp | null> {
-  const real = await getJson<AdminKlamp>(`/v1/community/klamps/${encodeURIComponent(slug)}`);
-  if (real) return real;
-  if (!isDemoMode()) return null;
-  const { findMockKlamp } = await import("./mocks");
-  return findMockKlamp(slug) ?? null;
 }
 
 /** Fetch single event by slug — для edit-form. */

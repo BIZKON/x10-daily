@@ -9,13 +9,13 @@
  * (loadPreferences). Fallback на дефолты при отсутствии auth (гость).
  */
 import {
+  type ApiCategory,
+  type ApiPreferences,
+  type ApiProfileStats,
   fetchAuthMe,
   fetchBookmarks,
   fetchPreferences,
   fetchProfileStats,
-  type ApiCategory,
-  type ApiPreferences,
-  type ApiProfileStats,
 } from "./api";
 import { formatPublishedAt } from "./format";
 
@@ -110,21 +110,21 @@ export type ProfileIdentity = {
 export async function loadProfileIdentity(): Promise<ProfileIdentity> {
   const me = await fetchAuthMe();
   if (!me) {
-    return { name: "Гость", handle: null, avatarUrl: null, initial: "Х", authed: false };
+    return { name: "Гость", handle: null, avatarUrl: null, initial: "Г", authed: false };
   }
-  const name = me.displayName?.trim() || me.username?.trim() || "Читатель Х10";
+  const name = me.displayName?.trim() || me.username?.trim() || "Читатель ProAgent AI";
   return {
     name,
     handle: me.username ? `@${me.username}` : null,
     avatarUrl: me.avatarUrl,
-    initial: name.charAt(0).toUpperCase() || "Х",
+    initial: name.charAt(0).toUpperCase() || "P",
     authed: true,
   };
 }
 
 /** Дефолт настроек (нет авторизации / нет строки): все рубрики, утро+обед вкл. */
 export const DEFAULT_PREFERENCES: ApiPreferences = {
-  subscribedCategories: ["taxes", "money", "practice", "power", "tech", "rybakov"],
+  subscribedCategories: ["news", "cases", "howto", "tools", "business", "founder"],
   digestSchedule: { morning: true, lunch: true, evening: false },
 };
 
@@ -138,12 +138,12 @@ export async function loadPreferences(): Promise<ApiPreferences> {
  * ---------------------------------------------------------------- */
 
 const CATEGORY_LABELS: Record<ApiCategory, string> = {
-  taxes: "НАЛОГИ",
-  money: "ДЕНЬГИ",
-  practice: "ПРАКТИКА",
-  power: "ВЛАСТЬ",
-  tech: "ТЕХНОЛОГИИ",
-  rybakov: "РЫБАКОВ ГОВОРИТ",
+  news: "НОВОСТИ ИИ",
+  cases: "КЕЙСЫ",
+  howto: "ОБУЧЕНИЕ",
+  tools: "ИНСТРУМЕНТЫ",
+  business: "ПРАКТИКА",
+  founder: "ОТ ОСНОВАТЕЛЯ",
 };
 
 export type SavedArticle = {
@@ -170,7 +170,8 @@ export async function loadBookmarks(): Promise<BookmarksResult> {
     authed: true,
     items: items.map((b) => ({
       slug: b.slug,
-      category: CATEGORY_LABELS[b.category],
+      // Фолбэк на легаси-категории из прод-БД (см. feed.ts mapApiItem).
+      category: (CATEGORY_LABELS as Record<string, string>)[b.category] ?? "НОВОСТИ ИИ",
       title: b.tease,
       excerpt: b.lede,
       readMinutes: Math.max(1, Math.round(b.readSeconds / 60)),

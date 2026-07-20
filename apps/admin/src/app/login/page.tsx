@@ -9,14 +9,14 @@
  *    Создаёт сессию через /v1/auth/dev-login.
  *
  * Bot username должен быть прописан в NEXT_PUBLIC_TELEGRAM_BOT_USERNAME env
- * (например "x10daily_bot"). Без него Widget не рендерится — показываем подсказку.
+ * (например "proagent_ai_bot"). Без него Widget не рендерится — показываем подсказку.
  */
 
-import { redirect } from "next/navigation";
-import { Suspense } from "react";
+import { TgLoginWidget } from "@/components/tg-login-widget";
 import { devLoginAction } from "@/lib/auth-actions";
 import { getSessionToken } from "@/lib/session";
-import { TgLoginWidget } from "@/components/tg-login-widget";
+import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 // Cache Components (Next 16): async (searchParams + cookie read) ДОЛЖНО быть
 // внутри <Suspense>, иначе prerender падает «Uncached data outside Suspense».
@@ -60,10 +60,8 @@ async function LoginContent({
     <div className="flex min-h-dvh items-center justify-center bg-background px-6">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-8 shadow-sm">
         <div className="mb-6 text-center">
-          <h1 className="font-display text-2xl font-bold tracking-tight">X10 Admin</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            HumanGate · вход для редколлегии
-          </p>
+          <h1 className="font-display text-2xl font-bold tracking-tight">ProAgent AI Admin</h1>
+          <p className="mt-2 text-sm text-muted-foreground">HumanGate · вход для редколлегии</p>
         </div>
 
         {botUsername ? (
@@ -72,8 +70,9 @@ async function LoginContent({
           <div className="rounded-md border border-border bg-muted/40 p-4 text-sm">
             <p className="font-medium">Telegram Login Widget не настроен</p>
             <p className="mt-2 text-xs text-muted-foreground">
-              Задайте <code className="rounded bg-background px-1">NEXT_PUBLIC_TELEGRAM_BOT_USERNAME</code>
-              {" "}и зарегистрируйте домен в @BotFather (см. DEPLOY.md §6.4).
+              Задайте{" "}
+              <code className="rounded bg-background px-1">NEXT_PUBLIC_TELEGRAM_BOT_USERNAME</code>{" "}
+              и зарегистрируйте домен в @BotFather (см. DEPLOY.md §6.4).
             </p>
           </div>
         )}

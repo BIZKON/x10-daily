@@ -1,19 +1,19 @@
+import { PreferenceToggles } from "@/components/profile/preference-toggles";
+import { TopBar } from "@/components/top-bar";
+import { PROFILE_MENU } from "@/lib/feed";
+import {
+  type ProfileStatIcon,
+  type ProfileStatTone,
+  loadPreferences,
+  loadProfileIdentity,
+  loadProfileSnapshot,
+} from "@/lib/profile";
 import { cn } from "@x10/ui";
 import { Book, Bookmark, ChevronRight, Crown, Flame, Headphones, Settings } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { PreferenceToggles } from "@/components/profile/preference-toggles";
-import { TopBar } from "@/components/top-bar";
-import { PROFILE_MENU } from "@/lib/feed";
-import {
-  loadPreferences,
-  loadProfileIdentity,
-  loadProfileSnapshot,
-  type ProfileStatIcon,
-  type ProfileStatTone,
-} from "@/lib/profile";
 
 const statIconMap: Record<ProfileStatIcon, typeof Flame> = {
   flame: Flame,
@@ -67,7 +67,21 @@ export default function ProfilePage() {
               <ChevronRight size={16} strokeWidth={1.75} className="text-haze" />
             </>
           );
-          // Пункт с href ведёт на готовый экран; остальные — пока заглушки.
+          // Пункт с href ведёт на готовый экран (внешний https:// — обычный <a>,
+          // в TG webview откроется наружу); остальные — пока заглушки.
+          if (m.href?.startsWith("https://")) {
+            return (
+              <a
+                key={m.title}
+                href={m.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cls}
+              >
+                {inner}
+              </a>
+            );
+          }
           return m.href ? (
             <Link key={m.title} href={m.href} className={cls}>
               {inner}
@@ -113,16 +127,19 @@ async function ProfileHeader() {
         <div className="min-w-0">
           <h2 className="m-0 truncate font-display text-xl font-extrabold">{id.name}</h2>
           <p className="m-0 mt-0.5 truncate text-[12.5px] text-mist">
-            {id.handle ?? (id.authed ? "Участник Х10" : "Войдите через Telegram")}
+            {id.handle ?? (id.authed ? "Клиент ProAgent AI" : "Войдите через Telegram")}
           </p>
         </div>
       </div>
-      <button
-        type="button"
+      {/* Лид-CTA (Р9): вместо paywall — прямой диалог о внедрении ИИ-агентов. */}
+      <a
+        href="https://t.me/Sekretar_Syrov_IP_bot"
+        target="_blank"
+        rel="noopener noreferrer"
         className="relative mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-gold/50 bg-gold/[0.08] py-3 font-display text-[13.5px] font-semibold text-gold"
       >
-        <Crown size={16} strokeWidth={1.75} /> Активировать Х10 Premium · 1 500 ₽/мес
-      </button>
+        <Crown size={16} strokeWidth={1.75} /> Обсудить внедрение
+      </a>
     </section>
   );
 }

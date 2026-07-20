@@ -13,16 +13,15 @@
  * - imageUrl, reactions, comments, hot — заглушки (в БД пока нет колонок)
  */
 import {
-  fetchArticle,
-  fetchDigest,
-  fetchFeed,
-  fetchVideos,
-  isApiConfigured,
   type ApiArticle,
   type ApiArticleBlock,
   type ApiCategory,
   type ApiFeedItem,
   type ApiTemplate,
+  fetchArticle,
+  fetchDigest,
+  fetchFeed,
+  isApiConfigured,
 } from "./api";
 
 export type { ApiArticleBlock };
@@ -66,24 +65,24 @@ export type FeedItem = {
   publishedAt: string | null;
 };
 
-/** brief §1 — порядок отражает приоритет, taxes первый (главная боль ЦА в 2026). */
+/** Рубрикатор ProAgent AI (Р4) — порядок чипов = приоритет, news (дефолт) первый. */
 export const HOME_CATEGORIES: { id: FeedSection; label: string }[] = [
-  { id: "taxes", label: "Налоги" },
-  { id: "money", label: "Деньги" },
-  { id: "practice", label: "Практика" },
-  { id: "power", label: "Власть" },
-  { id: "tech", label: "Технологии" },
-  { id: "rybakov", label: "Рыбаков говорит" },
+  { id: "news", label: "Новости ИИ" },
+  { id: "cases", label: "Кейсы" },
+  { id: "howto", label: "Обучение" },
+  { id: "tools", label: "Инструменты" },
+  { id: "business", label: "Практика" },
+  { id: "founder", label: "От основателя" },
 ];
 
 /** Category → русский label для category-chip в карточке. */
 const CATEGORY_LABELS: Record<ApiCategory, string> = {
-  taxes: "НАЛОГИ",
-  money: "ДЕНЬГИ",
-  practice: "ПРАКТИКА",
-  power: "ВЛАСТЬ",
-  tech: "ТЕХНОЛОГИИ",
-  rybakov: "РЫБАКОВ ГОВОРИТ",
+  news: "НОВОСТИ ИИ",
+  cases: "КЕЙСЫ",
+  howto: "ОБУЧЕНИЕ",
+  tools: "ИНСТРУМЕНТЫ",
+  business: "ПРАКТИКА",
+  founder: "ОТ ОСНОВАТЕЛЯ",
 };
 
 function mapApiItem(row: ApiFeedItem): FeedItem {
@@ -99,7 +98,10 @@ function mapApiItem(row: ApiFeedItem): FeedItem {
   return {
     id: row.id,
     slug: row.slug,
-    category: CATEGORY_LABELS[row.category],
+    // Легаси-категории X10 (taxes/rybakov…) enum ещё хранит → прод-БД может их
+    // вернуть; as Record<string,string> (ключ шире ApiCategory) + фолбэк, чтобы
+    // не рендерить undefined-лейбл рубрики. Такие статьи архивируются на проде.
+    category: (CATEGORY_LABELS as Record<string, string>)[row.category] ?? "НОВОСТИ ИИ",
     categoryKey: row.category,
     template: row.template,
     title: row.tease,
@@ -151,15 +153,15 @@ const DIGEST_BULLET_COUNT = 3;
 const FEED: FeedItem[] = [
   {
     id: "00000000-0000-0000-0000-0000000000a1",
-    slug: "usn-350mln-three-steps",
-    category: "НАЛОГИ",
-    categoryKey: "taxes",
+    slug: "llm-api-price-drop-smb",
+    category: "НОВОСТИ ИИ",
+    categoryKey: "news",
     template: "card-news",
-    title: "Новый порог УСН 350 млн: кому грозит, кому выгодно",
+    title: "Цены на LLM-API упали в 4 раза за год: что это меняет для малого бизнеса",
     excerpt:
-      "Разобрали с налоговым адвокатом, что меняется и какие три шага сделать сейчас.",
+      "Порог входа во внедрение ИИ-агента опустился до тысяч рублей в месяц. Считаем на примере отдела продаж из трёх человек.",
     imageUrl: null,
-    readMinutes: 12,
+    readMinutes: 3,
     reactions: 142,
     reactionBreakdown: { fire: 88, insight: 39, question: 15 },
     bookmarkCount: 47,
@@ -171,33 +173,33 @@ const FEED: FeedItem[] = [
   },
   {
     id: "00000000-0000-0000-0000-0000000000a2",
-    slug: "rybakov-no-startup-2026",
-    category: "РЫБАКОВ ГОВОРИТ",
-    categoryKey: "rybakov",
+    slug: "founder-agent-vs-second-manager",
+    category: "ОТ ОСНОВАТЕЛЯ",
+    categoryKey: "founder",
     template: "daily-take",
-    title: "Почему я не верю в стартап-инвестиции в 2026",
+    title: "ИИ-агент вместо второго менеджера: где это уже работает, а где рано",
     excerpt:
-      "«Хайп-экономика заканчивается. Что покупать вместо стартапов».",
+      "«Не нанимайте второго менеджера, пока не посчитали, сколько заявок теряет первый. Чаще всего дыра закрывается агентом за неделю».",
     imageUrl: null,
     readMinutes: 1,
     reactions: 891,
     reactionBreakdown: { fire: 612, insight: 187, question: 92 },
     bookmarkCount: 124,
     comments: 214,
-    badge: "PREMIUM",
+    badge: null,
     hot: false,
-    authorName: "Игорь Рыбаков",
+    authorName: "Основатель",
     publishedAt: "2026-06-13T06:40:00Z",
   },
   {
     id: "00000000-0000-0000-0000-0000000000a3",
-    slug: "ruble-100-three-scenarios",
-    category: "ДЕНЬГИ",
-    categoryKey: "money",
+    slug: "howto-ai-agent-spec-checklist",
+    category: "ОБУЧЕНИЕ",
+    categoryKey: "howto",
     template: "card-news",
-    title: "Рубль по 100: три сценария на лето",
+    title: "Как составить ТЗ на ИИ-агента: чек-лист из 7 пунктов",
     excerpt:
-      "Что говорят валютные стратеги Сбера, Тинькоффа и независимые аналитики.",
+      "От «хочу бота» до рабочего ТЗ за один вечер: задача, данные, метрика выгоды и границы автономии.",
     imageUrl: null,
     readMinutes: 4,
     reactions: 67,
@@ -211,13 +213,13 @@ const FEED: FeedItem[] = [
   },
   {
     id: "00000000-0000-0000-0000-0000000000a4",
-    slug: "wildberries-buys-taxi",
-    category: "ПРАКТИКА",
-    categoryKey: "practice",
+    slug: "case-service-center-ai-dispatcher",
+    category: "КЕЙСЫ",
+    categoryKey: "cases",
     template: "deep-dive",
-    title: "Wildberries собирает логистическую империю. Разбор сделки на три такси-сервиса",
+    title: "Кейс: ИИ-диспетчер в сервисном центре — ответ клиенту за 40 секунд вместо 3 часов",
     excerpt:
-      "Маркетплейс купил три такси за квартал. Что это даёт WB, что теряют продавцы, и какие 5 уроков для российского ритейла.",
+      "Сервис из 12 человек подключил агента к заявкам из мессенджеров: конверсия в запись выросла с 31% до 52%, менеджер освободил 4 часа в день.",
     imageUrl: null,
     readMinutes: 9,
     reactions: 234,
@@ -244,14 +246,11 @@ export async function loadDailyFeed(limit = 20): Promise<FeedItem[]> {
 }
 
 /**
- * Лента одной рубрики (category-страница, напр. /taxes). Как loadDailyFeed, но
+ * Лента одной рубрики (category-страница, напр. /cases). Как loadDailyFeed, но
  * с фильтром по category. Кэш per-category. Dev/demo-fallback — мок-FEED той же
  * рубрики; prod-down — честный empty (НЕ мок со слагами-404).
  */
-export async function loadCategoryFeed(
-  category: ApiCategory,
-  limit = 20,
-): Promise<FeedItem[]> {
+export async function loadCategoryFeed(category: ApiCategory, limit = 20): Promise<FeedItem[]> {
   "use cache";
   const api = await fetchFeed(limit, { category });
   if (api && api.items.length > 0) return api.items.map(mapApiItem);
@@ -268,7 +267,7 @@ export async function loadCategoryFeed(
 function fallbackDigest(): Digest {
   return {
     issueDate: "",
-    intro: "Свежие деловые материалы — в ленте ниже.",
+    intro: "Свежие материалы об ИИ для бизнеса — в ленте ниже.",
     bullets: [],
     ctaSlug: null,
   };
@@ -343,63 +342,8 @@ export async function loadArticle(slug: string): Promise<ArticleDetail | null> {
   };
 }
 
-// ---------- Taxes (rubric) — теперь живая лента через loadCategoryFeed("taxes") ----------
-// (мок TAXES_ITEMS/METRICS/FILTERS удалён в s25 — /taxes рендерит реальные статьи)
-
-// ---------- Video (живая лента YouTube-канала Рыбакова) ----------
-// Мок VIDEOS/VIDEO_TABS/PODCAST_OF_WEEK удалён в s25. Подкасты — post-M0 (AudioAgent).
-
-export type Video = {
-  id: string;
-  title: string;
-  /** Реальный YouTube URL (watch/shorts) — карточка ведёт туда. */
-  url: string;
-  thumbnailUrl: string;
-  /** Локализованная дата «7 июня». */
-  dateLabel: string;
-};
-
-function formatVideoDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "numeric",
-    month: "long",
-    timeZone: "Europe/Moscow",
-  }).format(d);
-}
-
-/**
- * Видео канала — реальные данные из API (YouTube RSS на бэкенде). `"use cache"`
- * (per-15м) — YouTube дёргается редко. Возвращает ПОЛНЫЕ видео (Shorts-тизеры
- * отфильтрованы). API down / dev без бэкенда → [] (честный empty, не фейк).
- */
-export async function loadVideos(): Promise<Video[]> {
-  "use cache";
-  const api = await fetchVideos();
-  if (!api) return [];
-  return api
-    .filter((v) => !v.isShort)
-    .map((v) => ({
-      id: v.youtubeId,
-      title: v.title,
-      url: v.url,
-      thumbnailUrl: v.thumbnailUrl,
-      dateLabel: formatVideoDate(v.publishedAt),
-    }));
-}
-
-// ---------- Community (Х10) ----------
-// COMMUNITY_STATS и EVENTS — в @/lib/community (Этап 3c, API). MY_CLUMP-мок удалён
-// (s25): «Твой кламп» → честный join-state (нет membership/данных клампов).
-// COMMUNITY_PATHS — статичный onboarding, не data-driven.
-
-export const COMMUNITY_PATHS = [
-  { icon: "🚀", title: "Создать свой кламп", description: "Собрать команду 6-10 человек" },
-  { icon: "🔍", title: "Найти кламп рядом", description: "По теме или городу" },
-  { icon: "⚡", title: "Стать кламперам", description: "Лидер малой группы" },
-  { icon: "🌐", title: "Региональный лидер", description: "Развивать Х10 в городе" },
-];
+// ---------- Рубричные страницы — живая лента через loadCategoryFeed(<категория>) ----------
+// (/cases и /learn рендерят реальные статьи рубрик cases/howto)
 
 // ---------- Profile ----------
 // PROFILE/PROFILE_STATS/WEEK_STREAK → реальные (loadProfileIdentity/Snapshot).
@@ -410,12 +354,19 @@ export const COMMUNITY_PATHS = [
 export const PROFILE_MENU: Array<{
   title: string;
   icon: "bookmark" | "book" | "headphones" | "crown" | "settings";
-  /** Если задан — пункт ведёт на готовый экран (Link). Иначе пока заглушка. */
+  /**
+   * Если задан — пункт ведёт на готовый экран (Link) или внешнюю ссылку
+   * (https:// → обычный <a target="_blank">). Иначе пока заглушка.
+   */
   href?: string;
 }> = [
   { title: "Сохранённое", icon: "bookmark", href: "/profile/saved" },
   { title: "История чтения", icon: "book" },
   { title: "Скачанные подкасты", icon: "headphones" },
-  { title: "Х10 Premium", icon: "crown" },
+  {
+    title: "Обсудить внедрение ИИ-агентов",
+    icon: "crown",
+    href: "https://t.me/Sekretar_Syrov_IP_bot",
+  },
   { title: "Настройки", icon: "settings" },
 ];

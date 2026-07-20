@@ -148,7 +148,7 @@ export const AGENTS: AgentMeta[] = [
     trigger: "after Brevity",
     status: "shipped",
     description:
-      "Конвертирует в TG-Рыбакова / TG-X10 / VK / Дзен / LinkedIn. Frameworks: PAS/AIDA/BAB/STAR/SLAY.",
+      "Конвертирует статью в посты для TG-каналов / VK / Дзен / LinkedIn. Frameworks: PAS/AIDA/BAB/STAR/SLAY.",
   },
   {
     num: "11",

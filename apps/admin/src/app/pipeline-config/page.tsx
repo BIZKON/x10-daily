@@ -1,20 +1,10 @@
+import { type AdminPipelineConfig, type PipelineAgent, fetchAdminPipelineConfigs } from "@/lib/api";
 import { Cpu, Pencil, Power } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import {
-  fetchAdminPipelineConfigs,
-  type AdminPipelineConfig,
-  type PipelineAgent,
-} from "@/lib/api";
-import {
-  AGENTS,
-  isPipelineAgent,
-  STATUS_COLOR,
-  STATUS_LABEL,
-  TIER_COLOR,
-} from "./agent-meta";
+import { AGENTS, STATUS_COLOR, STATUS_LABEL, TIER_COLOR, isPipelineAgent } from "./agent-meta";
 
-export const metadata = { title: "Pipeline config — X10 Admin" };
+export const metadata = { title: "Pipeline config — ProAgent AI Admin" };
 
 /**
  * Pipeline config — обзор 13 пунктов (12 агентов из CLAUDE.md §4 + HumanGate как
@@ -53,15 +43,14 @@ async function PipelineConfigContent() {
           <Cpu size={22} strokeWidth={1.75} /> Pipeline config
         </h1>
         <p className="mt-1.5 text-[13px] text-mist">
-          13 пунктов из CLAUDE.md §4. {shipped} работают · {scaffolded} scaffold ·{" "}
-          {planned} запланированы.
+          13 пунктов из CLAUDE.md §4. {shipped} работают · {scaffolded} scaffold · {planned}{" "}
+          запланированы.
         </p>
         <p className="mt-1 text-[12px] text-haze">
-          Click «Изменить» — переопределить{" "}
-          <code className="font-mono text-mist">enabled</code> /{" "}
+          Click «Изменить» — переопределить <code className="font-mono text-mist">enabled</code> /{" "}
           <code className="font-mono text-mist">model_override</code> /{" "}
-          <code className="font-mono text-mist">confidence_threshold</code>. HumanGate — manual-step,
-          не редактируется.
+          <code className="font-mono text-mist">confidence_threshold</code>. HumanGate —
+          manual-step, не редактируется.
         </p>
       </header>
 
@@ -124,8 +113,8 @@ async function PipelineConfigContent() {
 
       <div className="mt-6 rounded-xl border border-fence bg-card p-4 text-[12.5px] text-mist">
         <p className="m-0">
-          Источник правды:{" "}
-          <code className="font-mono text-paper">packages/agents/src/agents/</code> ·{" "}
+          Источник правды: <code className="font-mono text-paper">packages/agents/src/agents/</code>{" "}
+          ·{" "}
           <code className="font-mono text-paper">apps/workers/pipeline/src/inngest/functions/</code>{" "}
           · CLAUDE.md §4.
         </p>
@@ -160,7 +149,7 @@ function ConfigChip({ config }: { config: AdminPipelineConfig | undefined }) {
         </span>
       )}
       <span className="rounded-pill border border-fence bg-night px-2 py-0.5 font-mono text-haze">
-        threshold {parseFloat(threshold).toFixed(2)}
+        threshold {Number.parseFloat(threshold).toFixed(2)}
       </span>
     </div>
   );

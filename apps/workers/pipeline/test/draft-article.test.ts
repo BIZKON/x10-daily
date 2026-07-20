@@ -115,7 +115,7 @@ vi.mock("@x10/agents", async () => {
         output: {
           channel: "tg-x10",
           framework: "BAB",
-          post: "ЦБ держит ставку 17%.\n\nКредитное окно для МСП закрыто.\n\nЧитать на x10daily.",
+          post: "ЦБ держит ставку 17%.\n\nКредитное окно для МСП закрыто.\n\nЧитать в ProAgent AI.",
           hookLine: "ЦБ держит ставку 17%",
           twistLine: "Четвёртый раз подряд",
           segments: [

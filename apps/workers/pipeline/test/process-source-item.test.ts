@@ -52,8 +52,8 @@ describe("process-source-item", () => {
     vi.mocked(IngestAgent.run).mockResolvedValue({
       output: {
         decision: "accept",
-        category: "money",
-        subcategory: "money.cbr",
+        category: "business",
+        subcategory: "business.finance",
         template: "card-news",
         tags: ["ЦБ", "ставка", "малый-бизнес"],
         topic: "ЦБ ставка 17%",
@@ -100,12 +100,12 @@ describe("process-source-item", () => {
     expect(sentEvent.name).toBe("article/topic.ingested");
     expect(sentEvent.data.political).toBe(true);
     expect(sentEvent.data.topic).toBe("ЦБ ставка 17%");
-    expect(sentEvent.data.category).toBe("money");
-    expect(sentEvent.data.subcategory).toBe("money.cbr");
+    expect(sentEvent.data.category).toBe("business");
+    expect(sentEvent.data.subcategory).toBe("business.finance");
     expect(sentEvent.data.template).toBe("card-news");
     expect(sentEvent.data.tags).toEqual(["ЦБ", "ставка", "малый-бизнес"]);
     expect(result.dispatched).toBe(true);
-    expect(result.category).toBe("money");
+    expect(result.category).toBe("business");
     expect(result.template).toBe("card-news");
     // accept → $-ledger строка гейта со status='succeeded'.
     expect(recordRun).toHaveBeenCalledOnce();

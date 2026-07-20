@@ -6,11 +6,9 @@ import { logger } from "hono/logger";
 import type { AppBindings } from "./bindings";
 import { adminRoute } from "./routes/admin";
 import { adminContentRoute } from "./routes/admin-content";
-import { uploadRoute } from "./routes/upload";
 import { articlesRoute } from "./routes/articles";
 import { authRoute } from "./routes/auth";
 import { authorsRoute } from "./routes/authors";
-import { communityRoute } from "./routes/community";
 import { digestsRoute } from "./routes/digests";
 import { engagementRoute } from "./routes/engagement";
 import { eventsRoute } from "./routes/events";
@@ -18,7 +16,7 @@ import { feedRoute } from "./routes/feed";
 import { healthRoute } from "./routes/health";
 import { pipelineRoute } from "./routes/pipeline";
 import { profileRoute } from "./routes/profile";
-import { videosRoute } from "./routes/videos";
+import { uploadRoute } from "./routes/upload";
 
 export type AppEnv = {
   Bindings: AppBindings;
@@ -79,9 +77,7 @@ export function createApp() {
   // имеет свой 6 MB лимит через Content-Length check + 5 MB через file.size.
   // Hono bodyLimit считает по Content-Length header (быстрая reject до буферизации).
   app.use("*", async (c, next) => {
-    const limit = c.req.path.startsWith("/v1/admin/upload")
-      ? 6 * 1024 * 1024
-      : 1 * 1024 * 1024;
+    const limit = c.req.path.startsWith("/v1/admin/upload") ? 6 * 1024 * 1024 : 1 * 1024 * 1024;
     const handler = bodyLimit({
       maxSize: limit,
       onError: (c) =>
@@ -119,9 +115,7 @@ export function createApp() {
   app.route("/v1/admin", adminRoute);
   app.route("/v1/admin", adminContentRoute);
   app.route("/v1/admin/upload", uploadRoute);
-  app.route("/v1/community", communityRoute);
   app.route("/v1/events", eventsRoute);
-  app.route("/v1/videos", videosRoute);
   app.route("/v1/authors", authorsRoute);
   app.route("/v1/digests", digestsRoute);
   // Engagement POST'ы — mounted прямо в /v1 (paths типа /v1/articles/:id/reactions).

@@ -69,7 +69,7 @@ const outputSchema = z.object({
 
 const BLACKLIST_STR = BLACKLIST.map((w) => `  - "${w}"`).join("\n");
 
-const SYSTEM = `Ты — NewsletterAssembleAgent редакции Х10 Daily. Собираешь ежедневный выпуск newsletter из готовых статей.
+const SYSTEM = `Ты — NewsletterAssembleAgent редакции ProAgent AI. Собираешь ежедневный выпуск newsletter из готовых статей.
 
 VOICE RULES:
 ${VOICE_RULES}
@@ -102,7 +102,7 @@ PREHEADER:
 - Дополняет subject, не повторяет его
 
 CLOSING:
-- 1-2 фразы, CTA подписаться или пригласить в сообщество кламперов
+- 1-2 фразы, CTA подписаться на ежедневный выпуск ProAgent AI
 - Без манипуляций, без «срочно»
 
 ОБЯЗАТЕЛЬНО:

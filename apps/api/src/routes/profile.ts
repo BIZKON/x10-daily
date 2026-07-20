@@ -31,14 +31,30 @@ const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
-/** Рубрики первого уровня (brief §5). */
-const CATEGORIES = ["taxes", "money", "practice", "power", "tech", "rybakov"] as const;
+/** Рубрики первого уровня — рубрикатор ProAgent AI (решение Р4). */
+const CATEGORIES = ["news", "cases", "howto", "tools", "business", "founder"] as const;
+const KNOWN_CATEGORIES: ReadonlySet<string> = new Set(CATEGORIES);
 const DEFAULT_CATEGORIES: string[] = [...CATEGORIES];
 const DEFAULT_SCHEDULE = { morning: true, lunch: true, evening: false };
 
+/**
+ * Санитизация ключей рубрик. subscribed_categories — text[] без enum-механики:
+ * в строках юзеров (и в кэшах старых клиентов) могут жить ключи X10-рубрикатора
+ * (taxes/money/practice/power/tech/rybakov). Неизвестные ключи молча фильтруем —
+ * НЕ 400, иначе PATCH от старого клиента ломает сохранение настроек целиком.
+ * Если после фильтра не осталось ничего, хотя ключи были (целиком легаси-набор) —
+ * возвращаем дефолт (все рубрики). Осознанно пустой список ([]) сохраняем.
+ */
+function sanitizeCategories(raw: readonly string[]): string[] {
+  const known = [...new Set(raw.filter((c) => KNOWN_CATEGORIES.has(c)))];
+  if (known.length === 0 && raw.length > 0) return [...DEFAULT_CATEGORIES];
+  return known;
+}
+
 const prefsPatchSchema = z
   .object({
-    subscribedCategories: z.array(z.enum(CATEGORIES)).max(6).optional(),
+    /** Открытые строки + пост-фильтр sanitizeCategories — см. коммент выше. */
+    subscribedCategories: z.array(z.string().max(64)).max(24).optional(),
     digestSchedule: z
       .object({ morning: z.boolean(), lunch: z.boolean(), evening: z.boolean() })
       .optional(),
@@ -152,7 +168,9 @@ export const profileRoute = new Hono<AppEnv>()
             gte(userReadingHistory.lastReadAt, sql`now() - interval '7 days'`),
           ),
         )
-        .groupBy(sql`to_char(${userReadingHistory.lastReadAt} at time zone 'Europe/Moscow', 'YYYY-MM-DD')`),
+        .groupBy(
+          sql`to_char(${userReadingHistory.lastReadAt} at time zone 'Europe/Moscow', 'YYYY-MM-DD')`,
+        ),
     ]);
 
     const bookmarksTotal = bookmarksAgg[0]?.count ?? 0;
@@ -219,7 +237,8 @@ export const profileRoute = new Hono<AppEnv>()
       });
     }
     return c.json({
-      subscribedCategories: row.subscribedCategories,
+      // Легаси-строки могут содержать старые X10-ключи — отдаём только известные.
+      subscribedCategories: sanitizeCategories(row.subscribedCategories),
       digestSchedule: row.digestSchedule,
     });
   })
@@ -244,11 +263,12 @@ export const profileRoute = new Hono<AppEnv>()
       .where(eq(userPreferences.userId, userId))
       .limit(1);
 
-    // Дедуп рубрик (контракт допускает дубли; клиент их не шлёт, но защищаемся
-    // от засорения данных для будущего потребителя — персонального дайджеста).
-    const subscribedCategories = [
-      ...new Set(patch.subscribedCategories ?? existing?.subscribedCategories ?? DEFAULT_CATEGORIES),
-    ];
+    // Дедуп + фильтр неизвестных ключей (sanitizeCategories): контракт допускает
+    // дубли и старые X10-ключи — защищаемся от засорения данных для будущего
+    // потребителя (персонального дайджеста), не отвечая 400 старым клиентам.
+    const subscribedCategories = sanitizeCategories(
+      patch.subscribedCategories ?? existing?.subscribedCategories ?? DEFAULT_CATEGORIES,
+    );
     const digestSchedule = patch.digestSchedule ?? existing?.digestSchedule ?? DEFAULT_SCHEDULE;
 
     const [row] = await db

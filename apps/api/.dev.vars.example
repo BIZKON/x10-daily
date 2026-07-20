@@ -18,6 +18,6 @@ MASKER_API_KEY=""
 INNGEST_EVENT_KEY=""
 
 # R2 images (Этап 3g) — публичная база для отдачи изображений.
-# С custom domain (рекомендуется):    https://images.x10daily.com
+# С custom domain (рекомендуется):    https://images.pro-agent-ai.ru
 # Без — R2 .dev URL (только для тестов): https://pub-XXXX.r2.dev
 X10_IMAGES_PUBLIC_BASE=""

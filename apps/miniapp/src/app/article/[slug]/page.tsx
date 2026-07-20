@@ -144,23 +144,25 @@ export default async function ArticlePage({
           </div>
         )}
 
-        {/* Х10 Сообщество CTA — canon §5: steel, без градиента */}
+        {/* Лид-CTA ProAgent AI (Р9) — canon §5: steel, без градиента */}
         <div className="mt-7 rounded-2xl bg-steel p-5">
           <span className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-gold">
-            ✦ Х10 Сообщество
+            ✦ ProAgent AI
           </span>
           <h3 className="mb-1.5 mt-2 font-display text-lg font-extrabold text-white">
-            Обсудить в своём клампе
+            Обсудить внедрение ИИ-агентов в вашем бизнесе
           </h3>
           <p className="m-0 text-[13px] text-white/70">
-            Клампы уже обсуждают деловую повестку. Присоединяйся к разговору.
+            Расскажите о задаче — посчитаем, сколько часов и денег сэкономит агент.
           </p>
-          <button
-            type="button"
-            className="mt-4 rounded-xl bg-red px-5 py-2.5 font-display text-[13px] font-semibold text-white"
+          <a
+            href="https://t.me/Sekretar_Syrov_IP_bot"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 inline-block rounded-xl bg-red px-5 py-2.5 font-display text-[13px] font-semibold text-white"
           >
-            Открыть в Х10 →
-          </button>
+            Обсудить внедрение →
+          </a>
         </div>
       </article>
 
@@ -224,7 +226,7 @@ function DailyTakeHero({ article }: { article: ArticleDetail }) {
         <div className="flex-1">
           <div className="font-display text-[15px] font-extrabold text-paper">{authorName}</div>
           <div className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-gold">
-            {article.category} · реакция дня · {article.readMinutes} мин
+            {article.category} · разбор · {article.readMinutes} мин
             {dateLabel ? ` · ${dateLabel}` : ""}
           </div>
         </div>

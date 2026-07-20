@@ -2,7 +2,7 @@ import { type PipelineRunStats, fetchPipelineRunStats } from "@/lib/api";
 import { AlertTriangle, Ban, CircleCheck, Wallet } from "lucide-react";
 import { Suspense } from "react";
 
-export const metadata = { title: "Расходы — X10 Admin" };
+export const metadata = { title: "Расходы — ProAgent AI Admin" };
 
 /**
  * $-дашборд автономного конвейера (session 20). Читает агрегаты pipeline_runs

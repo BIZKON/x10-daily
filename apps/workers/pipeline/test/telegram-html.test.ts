@@ -20,7 +20,7 @@ describe("articleToTelegramHtml", () => {
     slug: "tsb-stavka-17",
   };
 
-  it("жирный заголовок + подзаг + выноска + цифры-буллеты + ссылка «Читать в Х10»", () => {
+  it("жирный заголовок + подзаг + выноска + цифры-буллеты + ссылка «Читать в ProAgent AI»", () => {
     const html = articleToTelegramHtml(article, base);
     expect(html).toContain("<b>ЦБ сохранил ставку 17%</b>");
     expect(html).toContain("Совет директоров не изменил ставку четвёртый раз.");
@@ -29,7 +29,7 @@ describe("articleToTelegramHtml", () => {
     );
     expect(html).toContain("• Ставка: <b>17%</b>");
     expect(html).toContain(
-      '<a href="https://app.pro-agent-ai.ru/article/tsb-stavka-17">Читать в Х10 →</a>',
+      '<a href="https://app.pro-agent-ai.ru/article/tsb-stavka-17">Читать в ProAgent AI →</a>',
     );
   });
 

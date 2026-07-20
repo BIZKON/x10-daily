@@ -39,9 +39,9 @@ describe("serializeDraftForNumbers", () => {
       tease: "T",
       lede: "L",
       whyItMatters: "W",
-      body: [{ type: "quote", text: "Quoted text", attribution: "Игорь Рыбаков" }],
+      body: [{ type: "quote", text: "Quoted text", attribution: "Иван Петров" }],
     });
-    expect(out).toContain('"Quoted text" — Игорь Рыбаков');
+    expect(out).toContain('"Quoted text" — Иван Петров');
   });
 
   it("разворачивает numbers как label: value", () => {

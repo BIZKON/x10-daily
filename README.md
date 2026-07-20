@@ -1,81 +1,71 @@
-# X10 Daily
+# ProAgent AI
 
-Ежедневное деловое мини-апп-медиа на базе сообщества Игоря Рыбакова. Превращение ежемесячной PDF-газеты «Бизнес-Практика» в мобильно-первое медиа с AI-пайплайном на 13 агентов, платной подпиской и ежеквартальной премиум-печатью.
+**ИИ работает на вас.** Ежедневное мини-апп-медиа об ИИ-агентах для малого и среднего бизнеса: кейсы, методики и новости внедрения — без хайпа, с цифрами выгоды (часы, деньги, конверсия).
 
-**Главный отстройка:** жёсткий уход от инфобиза. Smart Brevity. Цифры с источниками. Без выдуманных цитат.
+Продукт живёт внутри Telegram: Mini App с лентой и читалкой + канал с форматированными постами. AI-конвейер парсит русскоязычные RSS-источники про ИИ и автоматизацию, пишет заметки в формате Smart Brevity (6 блоков, ≤300 слов), прогоняет их через фактчек и Tone-of-Voice-фильтры и после человеческой финализации (HumanGate — редактор в админке) публикует в ленту и канал слотами 4 раза в день. Кейсы и обучающие материалы редакция добавляет вручную.
+
+Репозиторий — монорепо собственного движка: Next.js-миниапп, Hono-API, админка редколлегии и воркеры конвейера. Всё деплоится на одну VM (Timeweb Cloud, РФ) через docker compose с Caddy (auto-TLS) в роли reverse-proxy; LLM-вызовы идут через OpenAI-совместимый AI-шлюз (модели переключаются env-ключами `MODEL_*`).
 
 > Контекст для Claude Code — в [CLAUDE.md](./CLAUDE.md). Этот файл прочитай первым.
-
----
-
-## Стек 2026
-
-- **Frontend:** Next.js 16 (PPR + Cache Components) + React 19 + Tailwind 4 + shadcn/ui
-- **API:** Hono v4 на Cloudflare Workers + tRPC v11
-- **БД:** Neon Postgres (Frankfurt) + Hyperdrive + pgvector + Drizzle ORM
-- **Sync:** Zero (Rocicorp) для клампских чатов
-- **AI:** Claude Opus 4.7 / Sonnet 4.6 / Haiku 4.5 — Anthropic ZDR-контракт обязателен
-- **PII:** KikuAI Masker (152-ФЗ compliance)
-- **Editor:** Tiptap + Yjs (collaborative)
-- **Клиенты:** Telegram Mini App + MAX (VK Platform Bridge) — 90% общего кода
-- **Email:** Resend (newsletter daily 06:00 МСК)
-- **Voice:** ElevenLabs через свой WS-proxy на Render (обход блокировки в РФ)
-- **Hosting:** Vercel (Fluid Compute) + Cloudflare Pages, Yandex Cloud Functions фолбэк
-
-Полная архитектура — в `docs/strategy/X10TechRoadmap.pdf` и `docs/strategy/X10ArchitectureSpec.pdf`.
 
 ---
 
 ## Структура
 
 ```
-x10-daily/
+x10-daily/                  ← техническое имя репо (историческое)
 ├── apps/
-│   ├── miniapp/          ← Next.js 16, Telegram + MAX Mini App
-│   ├── api/              ← Hono v4 на CF Workers
-│   ├── admin/            ← Next.js 16, админка редколлегии
-│   └── workers/          ← AI-пайплайн (ingest / pipeline / newsletter)
+│   ├── miniapp/          ← Next.js (PPR), Telegram Mini App: лента, читалка, профиль
+│   ├── api/              ← Hono на Node: REST + auth по Telegram initData
+│   ├── admin/            ← Next.js, админка: очередь HumanGate, выпуски, конвейер
+│   └── workers/
+│       ├── ingest/       ← RSS-парсинг источников (дедуп, seen_items)
+│       └── pipeline/     ← Inngest-функции: draft → фактчек → ToV → постинг слотами
 ├── packages/
-│   ├── ui/               ← shadcn/ui + дизайн-токены X10
-│   ├── db/               ← Drizzle schemas + migrations
-│   ├── config/           ← env validation
-│   ├── voice/            ← voice.md, about-me.md, about-author-*.md
-│   └── agents/           ← Claude Agent SDK обёртки
-├── .claude/              ← Claude Code skills + commands
-└── docs/                 ← полная серия v1.0 (strategy, ToV, financials, ...)
+│   ├── ui/               ← дизайн-токены + общие компоненты
+│   ├── db/               ← Drizzle ORM: схемы + hand-written миграции (PostgreSQL)
+│   ├── config/           ← env-валидация (Zod), общие константы
+│   ├── voice/            ← голос редакции: voice.md, about-me.md, чёрный список
+│   └── agents/           ← обёртки AI-агентов конвейера
+├── caddy/                ← Caddyfile.prod (reverse-proxy + TLS)
+├── scripts/              ← сиды, ops-скрипты, инфра (IPv6-watchdog)
+└── docs/                 ← рабочие документы и handoffs
 ```
+
+Workspace-пакеты — с префиксом `@x10/*` (техимена, не переименовываются).
 
 ---
 
-## Quick start
+## Quick start (dev)
 
 ```bash
-# Зависимости (с pnpm)
+# Зависимости
 pnpm install
 
 # Env
 cp .env.example .env.local
-# Заполнить: ANTHROPIC_API_KEY, DATABASE_URL, TELEGRAM_BOT_TOKEN, ...
+# Заполнить: DATABASE_URL, TELEGRAM_BOT_TOKEN, AI_GATEWAY_API_KEY, ...
 
-# Dev (все приложения сразу через turbo)
+# Dev (все приложения через turbo)
 pnpm dev
 
-# Билд + чек бюджетов
+# Проверки
 pnpm build && pnpm typecheck && pnpm test
 ```
 
-Подробные инструкции по запуску каждого app — в его собственном README (`apps/*/README.md`).
-
 ---
 
-## Команда
+## Деплой (prod)
 
-- **Owner / Founder:** [имя]
-- **Editor-in-chief:** [TBD]
-- **AI / Tech lead:** [TBD]
-- **Sales / Community:** [TBD]
+Прод — одна VM с `docker-compose.prod.yml` (redis, self-host Inngest, api, pipeline, admin, miniapp, caddy). Единственный поддерживаемый способ деплоя:
 
-Подробнее — в `docs/strategy/X10EditorialMigration.pdf`.
+```bash
+./deploy.sh
+```
+
+Скрипт собирает и перезапускает контейнеры с `--env-file .env.production`. Запуск `docker compose` без `--env-file .env.production` приводит к crash-loop из-за отсутствующих env-ключей. Домены `app./api./admin.<домен>` берутся из `X10_BASE_DOMAIN`; TLS выпускает Caddy автоматически.
+
+⚠️ После добавления нового RSS-источника обязателен прайминг `seen_items` (анти-флуд) — см. комментарий в `scripts/seed-sources.sql`.
 
 ---
 

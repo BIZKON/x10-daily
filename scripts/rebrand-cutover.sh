@@ -27,20 +27,26 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [[ ! -f .env.production ]]; then echo "✗ .env.production не найден"; exit 1; fi
-set -a; . ./.env.production; set +a
+# Берём ТОЛЬКО DATABASE_URL (без source всего файла — надёжнее под set -e).
+DATABASE_URL=$(grep -m1 '^DATABASE_URL=' .env.production | cut -d= -f2- | sed 's/^["'"'"']//; s/["'"'"']$//')
+if [[ -z "$DATABASE_URL" ]]; then echo "✗ DATABASE_URL не найден в .env.production"; exit 1; fi
 
-# psql через одноразовый postgres:17 (локальный psql на VM = v16). --network host,
-# чтобы достучаться до managed PG по адресу из DATABASE_URL. ON_ERROR_STOP — фейлим рано.
+# psql через одноразовый postgres:17 (локальный psql на VM = v16). --network host —
+# достучаться до managed PG по адресу из DATABASE_URL. URL передаём АРГУМЕНТОМ psql
+# (через -e U=... он бы раскрывался хост-шеллом снаружи контейнера → пусто → local socket).
 PSQL() {
   docker run --rm -i --network host \
     -v "$PWD/scripts/seed-sources.sql:/seed.sql:ro" \
-    -e U="$DATABASE_URL" postgres:17-alpine \
-    psql "$U" -v ON_ERROR_STOP=1 "$@"
+    postgres:17-alpine \
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 "$@"
 }
 
 echo "▸ Катовер X10 → ProAgent AI. Будет: пауза → архив ВСЕХ published статей → deploy → смена источников → снятие паузы."
-read -r -p "  Продолжить? Напиши YES: " CONF
-[[ "$CONF" == "YES" ]] || { echo "отменено"; exit 1; }
+if [[ "${1:-}" != "--yes" ]]; then
+  # /dev/tty — читаем именно с терминала (иначе вставленный перевод строки съедается как пустой ответ).
+  read -r -p "  Продолжить? Напиши YES (или запусти с флагом --yes): " CONF </dev/tty || CONF=""
+  [[ "$CONF" == "YES" ]] || { echo "отменено (для запуска без вопроса: bash scripts/rebrand-cutover.sh --yes)"; exit 1; }
+fi
 
 echo "▸ 1/6 пауза постинга"
 PSQL -c "UPDATE posting_control SET paused=true WHERE id='global';" \

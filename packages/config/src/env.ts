@@ -171,6 +171,18 @@ const baseSchema = z
 
     SENTRY_DSN: urlOrEmpty.optional(),
 
+    /**
+     * Reddit OAuth (application-only, client_credentials) — reddit-адаптер ingest.
+     * Анонимный .rss 429-ит datacenter-IP, поэтому reddit-источники фетчатся через
+     * oauth.reddit.com с app-токеном. Креды — «script»/«web» app на
+     * reddit.com/prefs/apps. Пусты → reddit-источники не фетчатся (адаптер скипает).
+     * Публичный контент, ПДн не собираем. REDDIT_USER_AGENT — Reddit требует
+     * уникальный описательный UA (иначе 429); пуст → дефолт в адаптере.
+     */
+    REDDIT_CLIENT_ID: z.string().optional(),
+    REDDIT_CLIENT_SECRET: z.string().optional(),
+    REDDIT_USER_AGENT: z.string().optional(),
+
     INNGEST_EVENT_KEY: z.string().optional(),
     INNGEST_SIGNING_KEY: z.string().optional(),
   })

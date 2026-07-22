@@ -142,6 +142,10 @@ services:
       MODEL_OPUS: "${MODEL_OPUS:-}"
       MODEL_SONNET: "${MODEL_SONNET:-}"
       MODEL_HAIKU: "${MODEL_HAIKU:-}"
+      # Reddit OAuth (reddit-адаптер ingest). Пусты → reddit-источники не фетчатся.
+      REDDIT_CLIENT_ID: "${REDDIT_CLIENT_ID:-}"
+      REDDIT_CLIENT_SECRET: "${REDDIT_CLIENT_SECRET:-}"
+      REDDIT_USER_AGENT: "${REDDIT_USER_AGENT:-}"
       # loadEnv (общий для api+pipeline) требует X10_JWT_SECRET в productionRequired.
       # Pipeline сессии не выпускает, но env-валидатор общий → ключ обязателен.
       X10_JWT_SECRET: "${X10_JWT_SECRET}"

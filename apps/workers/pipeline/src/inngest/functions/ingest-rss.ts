@@ -1,6 +1,8 @@
 import { createDb, getPostingControl, isPostingPaused } from "@x10/db";
 import {
   type NormalizedItem,
+  type RedditCreds,
+  fetchReddit,
   fetchRss,
   isSourceDue,
   listEnabledRssSources,
@@ -59,6 +61,18 @@ export function createIngestRssFunction(
       const env = loadPipelineEnv(bindings);
       const db = createDb(env.DATABASE_URL);
 
+      // Reddit-креды (адаптер OAuth). Пусты → reddit-источники бросят
+      // RedditNotConfigured и будут пропущены per-source (изоляция ниже).
+      const redditCreds: RedditCreds | null =
+        env.REDDIT_CLIENT_ID && env.REDDIT_CLIENT_SECRET
+          ? {
+              clientId: env.REDDIT_CLIENT_ID,
+              clientSecret: env.REDDIT_CLIENT_SECRET,
+              userAgent:
+                env.REDDIT_USER_AGENT || "ProAgentAI-ingest/0.1 (+https://pro-agent-ai.ru)",
+            }
+          : null;
+
       // Один timestamp на тик (мемоизирован) — детерминизм gating при ретрае.
       const nowMs = await step.run("now", async () => Date.now());
       const now = new Date(nowMs);
@@ -108,7 +122,12 @@ export function createIngestRssFunction(
           const fresh: NormalizedItem[] = [];
           let fetched = 0;
           try {
-            const items = await fetchRss(src.url, { fetchImpl: opts.fetchImpl });
+            // Диспетч по adapter_type: reddit → OAuth (анон .rss 429-ит IP),
+            // остальное (rss/youtube/github/blog) → generic fetchRss (rss-parser).
+            const items =
+              src.adapterType === "reddit"
+                ? await fetchReddit(src.url, redditCreds, { fetchImpl: opts.fetchImpl })
+                : await fetchRss(src.url, { fetchImpl: opts.fetchImpl });
             fetched = items.length;
             for (const item of items) {
               if (fresh.length >= MAX_EMIT_PER_SOURCE) break;

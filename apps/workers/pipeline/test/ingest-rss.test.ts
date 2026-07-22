@@ -215,6 +215,7 @@ describe("isSourceDue", () => {
     id: "s",
     name: "S",
     url: "u",
+    adapterType: "rss",
     pollIntervalSec,
     lastPolledAt,
   });

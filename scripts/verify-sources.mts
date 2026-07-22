@@ -6,18 +6,38 @@
  * дедуп. markIfNew заодно ПРАЙМИТ seen_items (анти-флуд: первый тик ingest не
  * выстрелит бэклогом). DRY=1 — только fetch+simhash без записи (для сухого прогона).
  *
- * Запуск на VM (образ pipeline содержит @x10/worker-ingest + @x10/db + @x10/agents):
- *   docker compose -f docker-compose.prod.yml run --rm --no-deps \
+ * Запуск на VM (образ pipeline содержит @x10/worker-ingest + @x10/db + @x10/agents).
+ * ⚠️ --env-file .env.production ОБЯЗАТЕЛЕН — иначе в контейнер не приедут ни
+ * DATABASE_URL, ни REDDIT_* (compose-мэппинг тянет их из .env.production), и
+ * reddit-источники молча упадут в FAIL (RedditNotConfigured) без прайминга:
+ *   docker compose -f docker-compose.prod.yml --env-file .env.production \
+ *     run --rm --no-deps \
  *     -v "$PWD/scripts/verify-sources.mts:/app/apps/workers/pipeline/_verify.mts" \
- *     -e DATABASE_URL="$DATABASE_URL" --entrypoint sh pipeline \
+ *     --entrypoint sh pipeline \
  *     -c 'cd /app/apps/workers/pipeline && pnpm exec tsx _verify.mts'
  */
 import { createMasker } from "@x10/agents";
 import { createDb } from "@x10/db";
-import { fetchRss, listEnabledRssSources, markIfNew, simhash64 } from "@x10/worker-ingest";
+import {
+  type RedditCreds,
+  fetchReddit,
+  fetchRss,
+  listEnabledRssSources,
+  markIfNew,
+  simhash64,
+} from "@x10/worker-ingest";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const DRY = process.env.DRY === "1";
+const redditCreds: RedditCreds | null =
+  process.env.REDDIT_CLIENT_ID && process.env.REDDIT_CLIENT_SECRET
+    ? {
+        clientId: process.env.REDDIT_CLIENT_ID,
+        clientSecret: process.env.REDDIT_CLIENT_SECRET,
+        userAgent:
+          process.env.REDDIT_USER_AGENT || "ProAgentAI-ingest/0.1 (+https://pro-agent-ai.ru)",
+      }
+    : null;
 if (!DATABASE_URL) {
   console.error("✗ DATABASE_URL не задан");
   process.exit(1);
@@ -47,7 +67,10 @@ async function main(): Promise<void> {
   let failCount = 0;
   for (const src of sources) {
     try {
-      const items = await fetchRss(src.url);
+      const items =
+        src.adapterType === "reddit"
+          ? await fetchReddit(src.url, redditCreds)
+          : await fetchRss(src.url);
       let fresh = 0;
       let dup = 0;
       let simhashOk = true;

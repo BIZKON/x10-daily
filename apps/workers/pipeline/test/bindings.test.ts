@@ -34,6 +34,17 @@ describe("readBindingsFromEnv", () => {
     expect(b.TELEGRAM_PROXY_URL).toBe("socks5://127.0.0.1:1080");
   });
 
+  it("читает REDDIT_* — reddit-адаптер OAuth реально доходит до воркера", () => {
+    vi.stubEnv("DATABASE_URL", "postgresql://localhost/test");
+    vi.stubEnv("REDDIT_CLIENT_ID", "cid");
+    vi.stubEnv("REDDIT_CLIENT_SECRET", "secret");
+    vi.stubEnv("REDDIT_USER_AGENT", "proagentai:ingest:0.1 (by /u/test)");
+    const b = readBindingsFromEnv();
+    expect(b.REDDIT_CLIENT_ID).toBe("cid");
+    expect(b.REDDIT_CLIENT_SECRET).toBe("secret");
+    expect(b.REDDIT_USER_AGENT).toBe("proagentai:ingest:0.1 (by /u/test)");
+  });
+
   it("бросает без DATABASE_URL", () => {
     vi.stubEnv("DATABASE_URL", "");
     expect(() => readBindingsFromEnv()).toThrow(/DATABASE_URL/);

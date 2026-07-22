@@ -63,6 +63,13 @@ export interface PipelineBindings {
   MODEL_OPUS?: string;
   MODEL_SONNET?: string;
   MODEL_HAIKU?: string;
+
+  // ---- Reddit OAuth (reddit-адаптер ingest — обход IP-429 через app-токен) ----
+  /** Пусты → reddit-источники не фетчатся (адаптер бросает RedditNotConfigured, ingest скипает). */
+  REDDIT_CLIENT_ID?: string;
+  REDDIT_CLIENT_SECRET?: string;
+  /** Уникальный описательный UA (Reddit требует). Пуст → дефолт в адаптере. */
+  REDDIT_USER_AGENT?: string;
 }
 
 /**
@@ -115,5 +122,9 @@ export function readBindingsFromEnv(): PipelineBindings {
     MODEL_OPUS: process.env.MODEL_OPUS,
     MODEL_SONNET: process.env.MODEL_SONNET,
     MODEL_HAIKU: process.env.MODEL_HAIKU,
+
+    REDDIT_CLIENT_ID: process.env.REDDIT_CLIENT_ID,
+    REDDIT_CLIENT_SECRET: process.env.REDDIT_CLIENT_SECRET,
+    REDDIT_USER_AGENT: process.env.REDDIT_USER_AGENT,
   };
 }

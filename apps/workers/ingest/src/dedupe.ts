@@ -5,6 +5,9 @@ export interface RssSource {
   id: string;
   name: string;
   url: string;
+  /** Тип адаптера (миграция 0013): rss(default)/youtube/github/reddit/x. Диспетч
+   *  в ingest-rss: reddit → OAuth-fetch, остальное → generic fetchRss (rss-parser). */
+  adapterType: string;
   /** Минимальный интервал между поллами источника, сек (session 20 gating). */
   pollIntervalSec: number;
   /** ISO-время последнего успешного полла; null → ещё ни разу. */
@@ -24,6 +27,7 @@ export async function listEnabledRssSources(db: Database): Promise<RssSource[]> 
       id: sources.id,
       name: sources.name,
       url: sources.url,
+      adapterType: sources.adapterType,
       pollIntervalSec: sources.pollIntervalSec,
       lastPolledAt: sources.lastPolledAt,
     })

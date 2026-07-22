@@ -92,6 +92,13 @@
       "when": 1780838172448,
       "tag": "0012_proagent_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1780924572448,
+      "tag": "0013_source_adapter_status",
+      "breakpoints": true
     }
   ]
 }

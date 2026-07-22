@@ -189,7 +189,7 @@ x10-daily/                  ← техническое имя репо (исто
 | Решения владельца по ребрендингу | `docs/REBRAND-MAP.md` (шапка «✅ Решения Константина») |
 | Восстановление X10 (архив) | `docs/X10-RESTORE.md` |
 | Голос редакции + чёрный список | `packages/voice/voice.md`, `packages/voice/src/index.ts` |
-| Источники RSS + прайминг | `scripts/seed-sources.sql` |
+| Источники парсинга (список, adapter_type, правила, pending) | `docs/parsing-sources.md` (канон) + `scripts/seed-sources.sql` |
 | Dev-фикстуры | `scripts/seed.ts` (id совпадают с `apps/admin/src/lib/mocks.ts`) |
 | Деплой prod | `./deploy.sh`, `docker-compose.prod.yml`, `caddy/Caddyfile.prod` |
 | Исторические handoffs сессий | `docs/handoffs/` |

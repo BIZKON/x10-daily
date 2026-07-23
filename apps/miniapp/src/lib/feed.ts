@@ -330,6 +330,13 @@ export async function loadArticle(slug: string): Promise<ArticleDetail | null> {
   "use cache";
   const api = await fetchArticle(slug);
   if (api) return mapApiArticle(api);
+  // Бэкенд сконфигурирован, но статьи нет (404/упал) → честный null → notFound().
+  // Симметрично loadDailyFeed/loadCategoryFeed. Без этого слаги, живущие ТОЛЬКО
+  // в мок-FEED, отдавались в проде как настоящие статьи (проверено вживую: API
+  // 404, а мини-апп 200 с выдуманными цифрами) — нарушение канона §6 «выдуманных
+  // цифр не бывает». С generateMetadata это утекало бы ещё и в og-теги, которые
+  // краулеры Telegram/VK кэшируют надолго. Мок — только dev/demo без бэкенда.
+  if (isApiConfigured()) return null;
   const mock = FEED.find((i) => i.slug === slug);
   if (!mock) return null;
   return {

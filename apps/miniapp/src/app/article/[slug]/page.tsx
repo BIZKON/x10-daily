@@ -8,10 +8,57 @@ import { ANONYMOUS_USER_STATE, fetchArticleUserState } from "@/lib/api";
 import { type ArticleDetail, loadArticle } from "@/lib/feed";
 import { formatPublishedAt } from "@/lib/format";
 import { BookOpen, ChevronLeft, ExternalLink, Headphones, Quote } from "lucide-react";
+import { OG_IMAGE, SITE_LOCALE, SITE_NAME } from "@/lib/site-meta";
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+
+/**
+ * Превью ссылки на статью в Telegram/соцсетях. Канал постит 4 ссылки в день —
+ * без этого все они разворачивались в одинаковый generic-заголовок сайта.
+ * `loadArticle` помечена `"use cache"`, поэтому вызов здесь не ломает PPR.
+ * Sentinel-slug из generateStaticParams и любой 404 → `{}`: наследуется
+ * корневая метадата (заголовок сайта + брендовая og-картинка), без выдумки.
+ *
+ * ⚠️ Свой `openGraph` ЗАМЕЩАЕТ родительский ЦЕЛИКОМ — не мержится по полям.
+ * Поэтому бренд-поля (siteName/locale/картинка) продублированы здесь ЯВНО из
+ * общего site-meta. Проверено вживую: без этого у статьи пропадали og:image,
+ * og:site_name, og:locale и размеры картинки, а twitter:card падал до
+ * "summary" — то есть ровно на той единственной странице, ссылки на которую и
+ * расходятся. Ни tsc, ни тесты, ни `next build` этого не видят.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const article = await loadArticle(slug);
+  if (!article) return {};
+
+  return {
+    title: article.title,
+    description: article.excerpt,
+    openGraph: {
+      type: "article",
+      siteName: SITE_NAME,
+      locale: SITE_LOCALE,
+      title: article.title,
+      description: article.excerpt,
+      url: `/article/${article.slug}`,
+      images: [OG_IMAGE],
+      ...(article.publishedAt ? { publishedTime: article.publishedAt } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: article.title,
+      description: article.excerpt,
+      images: [OG_IMAGE],
+    },
+  };
+}
 
 export async function generateStaticParams() {
   // Cache Components (Next 16) требует ≥1 результат. Реальных статей на билде нет

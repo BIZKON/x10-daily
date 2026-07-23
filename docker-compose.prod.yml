@@ -197,6 +197,8 @@ services:
       args:
         NEXT_PUBLIC_POSTHOG_KEY: "${NEXT_PUBLIC_POSTHOG_KEY:-}"
         NEXT_PUBLIC_POSTHOG_HOST: "${NEXT_PUBLIC_POSTHOG_HOST:-}"
+        # Домен для абсолютных og-URL: статические маршруты запекают их на билде.
+        X10_BASE_DOMAIN: "${X10_BASE_DOMAIN:-pro-agent-ai.ru}"
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -207,6 +209,10 @@ services:
       # сети miniapp→api идёт по имени сервиса напрямую, без TLS-хопа через Caddy.
       # NEXT_PUBLIC_API_URL в коде не читается нигде (legacy с Vercel).
       X10_API_BASE_URL: "http://api:8080"
+      # Домен для абсолютных og-URL превью на ДИНАМИЧЕСКИХ маршрутах (страница
+      # статьи рендерится в рантайме). Статические запекли его на билде — см.
+      # build.args выше и apps/miniapp/src/lib/site-meta.ts.
+      X10_BASE_DOMAIN: "${X10_BASE_DOMAIN:-pro-agent-ai.ru}"
       NEXT_PUBLIC_API_URL: "https://api.${X10_BASE_DOMAIN:-pro-agent-ai.ru}"
       NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: "${NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:-}"
       # NEXT_PUBLIC_POSTHOG_* НЕ в рантайме — инлайнятся на билде (см. build.args выше).

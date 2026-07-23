@@ -40,6 +40,12 @@ ARG NEXT_PUBLIC_POSTHOG_KEY=""
 ARG NEXT_PUBLIC_POSTHOG_HOST=""
 ENV NEXT_PUBLIC_POSTHOG_KEY=${NEXT_PUBLIC_POSTHOG_KEY}
 ENV NEXT_PUBLIC_POSTHOG_HOST=${NEXT_PUBLIC_POSTHOG_HOST}
+# Домен для абсолютных og-URL превью (lib/site-meta.ts). Нужен ИМЕННО на билде:
+# статически пререндеренные маршруты (/, /cases, /learn) запекают og:url/og:image
+# в HTML. В рантайме тот же ключ приходит через environment сервиса miniapp —
+# для динамических маршрутов (страница статьи). Дефолт совпадает с compose/Caddy.
+ARG X10_BASE_DOMAIN="pro-agent-ai.ru"
+ENV X10_BASE_DOMAIN=${X10_BASE_DOMAIN}
 ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app/apps/miniapp
 RUN pnpm exec next build

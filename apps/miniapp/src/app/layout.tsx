@@ -4,12 +4,46 @@ import "./globals.css";
 import { PostHogProvider } from "@/components/posthog-provider";
 import { TelegramProvider } from "@/components/telegram-provider";
 import { fontDisplay, fontMono, fontSans } from "@/lib/fonts";
+import {
+  OG_IMAGE,
+  SITE_DESCRIPTION,
+  SITE_LOCALE,
+  SITE_NAME,
+  SITE_ORIGIN,
+  SITE_TITLE,
+} from "@/lib/site-meta";
 
+/**
+ * Метадата + превью ссылок. Главный канал дистрибуции — Telegram: канал постит
+ * 4 ссылки в день («Читать в ProAgent AI →»), и каждая разворачивается в превью
+ * по og-тегам. Раньше og-тегов не было вовсе → превью без картинки и с общим
+ * заголовком на всех статьях. Иконки даёт file-convention Next (`icon.png`,
+ * `apple-icon.png` рядом с этим файлом). Картинку превью задаём ЯВНО из
+ * site-meta — тем же объектом, что и статья, иначе наборы тегов разъезжаются
+ * (см. комментарий в site-meta.ts). `title.template` подставляет бренд к
+ * заголовку статьи (см. generateMetadata в article/[slug]).
+ */
 export const metadata: Metadata = {
-  title: "ProAgent AI — ИИ работает на вас",
-  description:
-    "Кейсы, методики и новости внедрения ИИ-агентов для малого и среднего бизнеса. Без хайпа, с цифрами выгоды.",
-  metadataBase: new URL("https://app.pro-agent-ai.ru"),
+  title: { default: SITE_TITLE, template: `%s · ${SITE_NAME}` },
+  description: SITE_DESCRIPTION,
+  metadataBase: new URL(SITE_ORIGIN),
+  applicationName: SITE_NAME,
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: SITE_LOCALE,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [OG_IMAGE],
+    // `url` намеренно НЕ задаём: иначе все разделы унаследовали бы og:url корня
+    // и объявили бы себя главной. Статья ставит свой url в generateMetadata.
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [OG_IMAGE],
+  },
 };
 
 export const viewport: Viewport = {

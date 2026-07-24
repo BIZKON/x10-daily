@@ -31,6 +31,8 @@ export interface PipelineBindings {
   // ---- Telegram posting (ТЗ #1, N5 — реальный sendMessage в тестовый канал) ----
   TELEGRAM_BOT_TOKEN?: string;
   TG_TEST_CHANNEL_ID?: string;
+  /** @username бота — deep-link кнопка `t.me/<bot>?startapp=<slug>` в постах канала. */
+  TELEGRAM_BOT_USERNAME?: string;
   /** Базовый домен (напр. `pro-agent-ai.ru`) — ссылка «Читать в ProAgent AI» в rich-постах (session 27). */
   X10_BASE_DOMAIN?: string;
   /**
@@ -109,6 +111,7 @@ export function readBindingsFromEnv(): PipelineBindings {
 
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
     TG_TEST_CHANNEL_ID: process.env.TG_TEST_CHANNEL_ID,
+    TELEGRAM_BOT_USERNAME: process.env.TELEGRAM_BOT_USERNAME,
     X10_BASE_DOMAIN: process.env.X10_BASE_DOMAIN,
     TELEGRAM_PROXY_URL: process.env.TELEGRAM_PROXY_URL,
 

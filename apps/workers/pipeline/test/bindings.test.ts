@@ -45,6 +45,13 @@ describe("readBindingsFromEnv", () => {
     expect(b.REDDIT_USER_AGENT).toBe("proagentai:ingest:0.1 (by /u/test)");
   });
 
+  it("читает TELEGRAM_BOT_USERNAME — deep-link кнопка реально доходит до воркера", () => {
+    vi.stubEnv("DATABASE_URL", "postgresql://localhost/test");
+    vi.stubEnv("TELEGRAM_BOT_USERNAME", "Sekretar_Syrov_IP_bot");
+    const b = readBindingsFromEnv();
+    expect(b.TELEGRAM_BOT_USERNAME).toBe("Sekretar_Syrov_IP_bot");
+  });
+
   it("бросает без DATABASE_URL", () => {
     vi.stubEnv("DATABASE_URL", "");
     expect(() => readBindingsFromEnv()).toThrow(/DATABASE_URL/);

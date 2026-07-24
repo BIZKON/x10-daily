@@ -121,6 +121,9 @@ services:
       AI_GATEWAY_API_KEY: "${AI_GATEWAY_API_KEY}"
       TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"
       TG_TEST_CHANNEL_ID: "${TG_TEST_CHANNEL_ID:-}"
+      # @username бота — deep-link кнопка «Открыть в ProAgent AI» в постах канала
+      # (t.me/<bot>?startapp=<slug>, открывает Mini App на статье). Пуст → кнопки нет.
+      TELEGRAM_BOT_USERNAME: "${TELEGRAM_BOT_USERNAME:-Sekretar_Syrov_IP_bot}"
       # session 27: базовый домен для ссылки «Читать в ProAgent AI» в форматированных
       # TG-постах (drain-post-slots → telegram-html). Без него html=null → плоский.
       X10_BASE_DOMAIN: "${X10_BASE_DOMAIN:-pro-agent-ai.ru}"

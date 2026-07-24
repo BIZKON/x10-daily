@@ -19,6 +19,7 @@ import {
   recordChannelFailure,
   sendToChannel,
 } from "../../lib/post-channel";
+import { buildMiniAppDeepLink } from "../../lib/miniapp-link";
 import { articleToTelegramHtml } from "../../lib/telegram-html";
 import type { PipelineInngest } from "../client";
 
@@ -144,8 +145,18 @@ export function createDrainPostSlotsFunction(
           // подзаг/выноска/ключ-блоки + ссылка «Читать в ProAgent AI»). baseUrl из
           // X10_BASE_DOMAIN; нет домена/статьи/visualRef → html=null → плоский
           // sendMessage (+ фолбэк на 400 в sendToChannel).
+          // Спека 1: для TG всегда тянем slug — из него deep-link кнопка «Открыть в
+          // ProAgent AI» (t.me/<bot>?startapp=<slug>), ставится и на фото-, и на
+          // текст-пост. Deep-link также подставляется в текст-ссылку «Читать».
           let html: string | null = null;
-          if (channel === "tg" && env.X10_BASE_DOMAIN && !r.visualRef) {
+          let deepLinkUrl: string | null = null;
+          // Тянем статью для TG только если она реально нужна: под deep-link кнопку
+          // (есть username) или под rich-html (есть домен и нет картинки). Иначе
+          // селект бесполезен.
+          const needArticle =
+            channel === "tg" &&
+            Boolean(env.TELEGRAM_BOT_USERNAME || (env.X10_BASE_DOMAIN && !r.visualRef));
+          if (needArticle) {
             const [a] = await db
               .select({
                 tease: articles.tease,
@@ -157,9 +168,20 @@ export function createDrainPostSlotsFunction(
               .from(articles)
               .where(eq(articles.id, articleId))
               .limit(1);
-            if (a) html = articleToTelegramHtml(a, `https://app.${env.X10_BASE_DOMAIN}`);
+            if (a) {
+              deepLinkUrl = env.TELEGRAM_BOT_USERNAME
+                ? buildMiniAppDeepLink(env.TELEGRAM_BOT_USERNAME, a.slug)
+                : null;
+              if (env.X10_BASE_DOMAIN && !r.visualRef) {
+                html = articleToTelegramHtml(
+                  a,
+                  `https://app.${env.X10_BASE_DOMAIN}`,
+                  deepLinkUrl ?? undefined,
+                );
+              }
+            }
           }
-          return { text: r.text, visualRef: r.visualRef, html };
+          return { text: r.text, visualRef: r.visualRef, html, deepLinkUrl };
         });
 
         // Send — отдельный step. Бросок (сеть/5xx) → Inngest ретраит функцию,
@@ -173,6 +195,7 @@ export function createDrainPostSlotsFunction(
               text: row.text,
               visualRef: row.visualRef,
               html: row.html,
+              deepLinkUrl: row.deepLinkUrl,
             },
             { fetchImpl: opts.fetchImpl },
           ),

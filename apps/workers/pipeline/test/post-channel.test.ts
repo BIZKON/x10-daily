@@ -68,6 +68,78 @@ describe("sendToChannel — tg", () => {
       sendToChannel(env, { channel: "tg", articleId: "a1", text: "t", visualRef: null }, {}),
     ).rejects.toThrow(/TELEGRAM_BOT_TOKEN/);
   });
+
+  const DEEPLINK = "https://t.me/Sekretar_Syrov_IP_bot?startapp=my-slug";
+  const EXPECTED_BUTTON = { text: "Открыть в ProAgent AI", url: DEEPLINK };
+
+  function captureBody() {
+    let body: Record<string, unknown> = {};
+    const fetchImpl = vi.fn(async (_u: unknown, init: unknown) => {
+      body = JSON.parse((init as { body: string }).body);
+      return { ok: true, status: 200, json: async () => ({ ok: true, result: { message_id: 1 } }) };
+    }) as unknown as typeof fetch;
+    return { get: () => body, fetchImpl };
+  }
+
+  function firstButton(body: Record<string, unknown>) {
+    const rm = body.reply_markup as { inline_keyboard: Array<Array<unknown>> } | undefined;
+    return rm?.inline_keyboard[0]?.[0];
+  }
+
+  it("sendMessage + deepLinkUrl → reply_markup с url-кнопкой", async () => {
+    const cap = captureBody();
+    await sendToChannel(
+      TG_ENV,
+      { channel: "tg", articleId: "a1", text: "T", visualRef: null, deepLinkUrl: DEEPLINK },
+      { fetchImpl: cap.fetchImpl },
+    );
+    expect(firstButton(cap.get())).toEqual(EXPECTED_BUTTON);
+  });
+
+  it("sendPhoto + deepLinkUrl → reply_markup с url-кнопкой (рядом с фото)", async () => {
+    const cap = captureBody();
+    await sendToChannel(
+      TG_ENV,
+      {
+        channel: "tg",
+        articleId: "a1",
+        text: "Подпись",
+        visualRef: "https://img/x.jpg",
+        deepLinkUrl: DEEPLINK,
+      },
+      { fetchImpl: cap.fetchImpl },
+    );
+    expect(cap.get().photo).toBe("https://img/x.jpg");
+    expect(firstButton(cap.get())).toEqual(EXPECTED_BUTTON);
+  });
+
+  it("html-пост + deepLinkUrl → reply_markup с url-кнопкой", async () => {
+    const cap = captureBody();
+    await sendToChannel(
+      TG_ENV,
+      {
+        channel: "tg",
+        articleId: "a1",
+        text: "T",
+        visualRef: null,
+        html: "<b>Заголовок</b>",
+        deepLinkUrl: DEEPLINK,
+      },
+      { fetchImpl: cap.fetchImpl },
+    );
+    expect(cap.get().parse_mode).toBe("HTML");
+    expect(firstButton(cap.get())).toEqual(EXPECTED_BUTTON);
+  });
+
+  it("без deepLinkUrl → нет reply_markup (обратная совместимость)", async () => {
+    const cap = captureBody();
+    await sendToChannel(
+      TG_ENV,
+      { channel: "tg", articleId: "a1", text: "T", visualRef: null },
+      { fetchImpl: cap.fetchImpl },
+    );
+    expect(cap.get().reply_markup).toBeUndefined();
+  });
 });
 
 describe("sendToChannel — vk", () => {

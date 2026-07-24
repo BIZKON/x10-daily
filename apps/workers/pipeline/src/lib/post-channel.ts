@@ -43,6 +43,12 @@ export type SendInput = {
    * См. lib/telegram-html.ts.
    */
   html?: string | null;
+  /**
+   * Deep-link на Mini App (`t.me/<bot>?startapp=<slug>`). Задан → под постом
+   * inline url-кнопка «Открыть в ProAgent AI» (открывает Mini App на статье
+   * ВНУТРИ Telegram). Только tg. Пусто → кнопки нет (обратная совместимость).
+   */
+  deepLinkUrl?: string | null;
 };
 
 /**
@@ -72,6 +78,14 @@ export async function sendToChannel(
       fetchImpl: opts.fetchImpl,
     };
 
+    // Deep-link кнопка «Открыть в ProAgent AI» (Спека 1) — одна url-кнопка,
+    // открывает Mini App на статье. Ставится во ВСЕ tg-пути (html/photo/text).
+    const replyMarkup = input.deepLinkUrl
+      ? { inline_keyboard: [[{ text: "Открыть в ProAgent AI", url: input.deepLinkUrl }]] }
+      : undefined;
+    const withMarkup = <T extends Record<string, unknown>>(body: T) =>
+      replyMarkup ? { ...body, reply_markup: replyMarkup } : body;
+
     // Форматированный пост (session 27): html без картинки → sendMessage с
     // parse_mode=HTML (Слой 1 — рендерится у ВСЕХ клиентов). Золотое правило (skill
     // telegram-rich-text): бот НЕ молчит — при 400 (битый HTML / лимит) фолбэк на
@@ -80,7 +94,7 @@ export async function sendToChannel(
       try {
         const res = await callTelegram(
           "sendMessage",
-          { chat_id: chatId, text: input.html, parse_mode: "HTML" },
+          withMarkup({ chat_id: chatId, text: input.html, parse_mode: "HTML" }),
           tgOpts,
         );
         return { ok: true, postRef: res.messageId != null ? String(res.messageId) : null };
@@ -95,7 +109,7 @@ export async function sendToChannel(
     const body = input.visualRef
       ? { chat_id: chatId, photo: input.visualRef, caption: text }
       : { chat_id: chatId, text };
-    const res = await callTelegram(method, body, tgOpts);
+    const res = await callTelegram(method, withMarkup(body), tgOpts);
     return { ok: true, postRef: res.messageId != null ? String(res.messageId) : null };
   }
 

@@ -63,8 +63,16 @@ export type TelegramArticle = {
 /**
  * Структура статьи + базовый URL миниапп → форматированный Telegram-HTML.
  * baseUrl — напр. `https://app.pro-agent-ai.ru` (из X10_BASE_DOMAIN).
+ *
+ * `deepLinkUrl` (Спека 1) — если задан, ссылка «Читать» ведёт на Mini App
+ * deep-link (`t.me/<bot>?startapp=<slug>`, открывает приложение ВНУТРИ Telegram),
+ * а не на веб-страницу. Пусто → прежний web-URL (обратная совместимость).
  */
-export function articleToTelegramHtml(article: TelegramArticle, baseUrl: string): string {
+export function articleToTelegramHtml(
+  article: TelegramArticle,
+  baseUrl: string,
+  deepLinkUrl?: string,
+): string {
   const parts: string[] = [
     `<b>${escapeTelegramHtml(article.tease)}</b>`,
     escapeTelegramHtml(article.lede),
@@ -87,7 +95,7 @@ export function articleToTelegramHtml(article: TelegramArticle, baseUrl: string)
     }
   }
 
-  const url = `${baseUrl.replace(/\/+$/, "")}/article/${article.slug}`;
+  const url = deepLinkUrl ?? `${baseUrl.replace(/\/+$/, "")}/article/${article.slug}`;
   parts.push(`<a href="${escapeTelegramHtml(url)}">Читать в ProAgent AI →</a>`);
 
   return parts.join("\n\n");

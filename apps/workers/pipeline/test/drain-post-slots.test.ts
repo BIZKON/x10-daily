@@ -148,6 +148,28 @@ describe("drain-post-slots", () => {
     expect(published?.set.status).toBe("published");
   });
 
+  it("с TELEGRAM_BOT_USERNAME: под постом deep-link кнопка на статью (Спека 1)", async () => {
+    // select articleId → load-tg channels row → load-tg article (slug для deep-link).
+    dbState.selectResults = [
+      [{ articleId: "a1" }],
+      [{ text: "Новость", visualRef: null }],
+      [{ tease: "T", lede: "L", whyItMatters: null, body: [], slug: "my-slug" }],
+    ];
+    let body: Record<string, unknown> = {};
+    const fetchImpl = vi.fn(async (_u: unknown, init: unknown) => {
+      body = JSON.parse((init as { body: string }).body);
+      return { ok: true, status: 200, json: async () => ({ ok: true, result: { message_id: 5 } }) };
+    }) as unknown as typeof fetch;
+    await makeHandler({ ...TG_BINDINGS, TELEGRAM_BOT_USERNAME: "Sekretar_Syrov_IP_bot" }, fetchImpl)({
+      step: makeStep(),
+    });
+    const rm = body.reply_markup as { inline_keyboard: Array<Array<{ text: string; url: string }>> };
+    expect(rm.inline_keyboard[0]![0]).toEqual({
+      text: "Открыть в ProAgent AI",
+      url: "https://t.me/Sekretar_Syrov_IP_bot?startapp=my-slug",
+    });
+  });
+
   it("VK сконфигурирован: постит tg + vk одной статьёй", async () => {
     // select articleId → vk-target check → load-tg → load-vk.
     dbState.selectResults = [

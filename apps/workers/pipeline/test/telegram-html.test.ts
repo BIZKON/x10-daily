@@ -33,6 +33,13 @@ describe("articleToTelegramHtml", () => {
     );
   });
 
+  it("с deepLinkUrl — ссылка «Читать» ведёт на Mini App deep-link (Спека 1)", () => {
+    const deepLink = "https://t.me/Sekretar_Syrov_IP_bot?startapp=tsb-stavka-17";
+    const html = articleToTelegramHtml(article, base, deepLink);
+    expect(html).toContain(`<a href="${deepLink}">Читать в ProAgent AI →</a>`);
+    expect(html).not.toContain("app.pro-agent-ai.ru/article/");
+  });
+
   it("НЕ использует rich-теги (<h*>/<ul>/<li>) — только parse_mode=HTML рендерится у всех", () => {
     const html = articleToTelegramHtml(article, base);
     expect(html).not.toMatch(/<h[1-6]>/);

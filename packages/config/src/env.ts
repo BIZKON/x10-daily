@@ -69,11 +69,18 @@ const baseSchema = z
      * @username бота (без `@`) — для deep-link кнопки в постах канала
      * (`t.me/<bot>?startapp=<slug>`, открывает Mini App на статье). Читается в
      * drain-post-slots через readBindingsFromEnv → PipelineBindings.
+     *
+     * Некритичный (косметическая кнопка), поэтому НЕ фейлит loadEnv: `.trim()`
+     * гасит частую .env-опечатку (хвостовой пробел/перевод строки), а
+     * `.catch(undefined)` при малформед-значении даёт undefined (кнопки нет)
+     * вместо краха всего pipeline-cron — в отличие от критичного TOKEN.
      */
     TELEGRAM_BOT_USERNAME: z
       .string()
+      .trim()
       .regex(/^@?[A-Za-z0-9_]{5,32}$/, "TELEGRAM_BOT_USERNAME — @username бота (5-32 симв.)")
-      .optional(),
+      .optional()
+      .catch(undefined),
     /**
      * HTTP/HTTPS-прокси для api.telegram.org из workers/pipeline. На Timeweb
      * ru-1 (РФ-ЦОД) прямой fetch к api.telegram.org молча умирает по таймауту

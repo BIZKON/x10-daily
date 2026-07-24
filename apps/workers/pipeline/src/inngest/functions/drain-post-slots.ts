@@ -13,13 +13,13 @@ import {
 } from "@x10/db";
 import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
+import { buildMiniAppDeepLink } from "../../lib/miniapp-link";
 import {
   type PostableChannel,
   markChannelPosted,
   recordChannelFailure,
   sendToChannel,
 } from "../../lib/post-channel";
-import { buildMiniAppDeepLink } from "../../lib/miniapp-link";
 import { articleToTelegramHtml } from "../../lib/telegram-html";
 import type { PipelineInngest } from "../client";
 
@@ -142,12 +142,12 @@ export function createDrainPostSlotsFunction(
             );
           }
           // session 27: для TG строим rich-HTML из структуры статьи (заголовок/
-          // подзаг/выноска/ключ-блоки + ссылка «Читать в ProAgent AI»). baseUrl из
-          // X10_BASE_DOMAIN; нет домена/статьи/visualRef → html=null → плоский
+          // подзаг/выноска/ключ-блоки + web-ссылка «Читать в ProAgent AI»). baseUrl
+          // из X10_BASE_DOMAIN; нет домена/статьи/visualRef → html=null → плоский
           // sendMessage (+ фолбэк на 400 в sendToChannel).
-          // Спека 1: для TG всегда тянем slug — из него deep-link кнопка «Открыть в
+          // Спека 1: для TG тянем slug — из него deep-link inline-КНОПКА «Открыть в
           // ProAgent AI» (t.me/<bot>?startapp=<slug>), ставится и на фото-, и на
-          // текст-пост. Deep-link также подставляется в текст-ссылку «Читать».
+          // текст-пост (отдельно от web-ссылки «Читать»).
           let html: string | null = null;
           let deepLinkUrl: string | null = null;
           // Тянем статью для TG только если она реально нужна: под deep-link кнопку
@@ -173,11 +173,9 @@ export function createDrainPostSlotsFunction(
                 ? buildMiniAppDeepLink(env.TELEGRAM_BOT_USERNAME, a.slug)
                 : null;
               if (env.X10_BASE_DOMAIN && !r.visualRef) {
-                html = articleToTelegramHtml(
-                  a,
-                  `https://app.${env.X10_BASE_DOMAIN}`,
-                  deepLinkUrl ?? undefined,
-                );
+                // Текст-ссылка «Читать» — web-URL (универсальна). Deep-link идёт
+                // отдельной inline-кнопкой (deepLinkUrl ниже в SendInput).
+                html = articleToTelegramHtml(a, `https://app.${env.X10_BASE_DOMAIN}`);
               }
             }
           }

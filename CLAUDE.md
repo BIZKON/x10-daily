@@ -159,7 +159,7 @@ x10-daily/                  ← техническое имя репо (исто
 - **Новый env-ключ воркера** → добавить в `readBindingsFromEnv` (`apps/workers/pipeline/src/bindings.ts`) + в compose.
 - **IPv6 на прод-VM:** api.telegram.org доступен только по IPv6; глобальный адрес — только по DHCPv6. Рестарт systemd-networkd смывает IPv6 → постинг ETIMEDOUT. Самолечение — watchdog `x10-ipv6-ensure.timer` (/2 мин). **`netplan apply` НЕЛЬЗЯ.**
 - **Новый id Inngest-функции** → re-sync PUT на pipeline:8787 из контейнера api (НЕ localhost).
-- **Смена бота** атомарна: новый `TELEGRAM_BOT_TOKEN` + бот админом канала + `setChatMenuButton` заново + redeploy (auth и постинг на одном токене; юзеры в БД валидны только при том же боте).
+- **Смена бота** атомарна: новый `TELEGRAM_BOT_TOKEN` + **обновить `TELEGRAM_BOT_USERNAME`** (иначе deep-link кнопка постов канала молча ведёт на старого бота) + бот админом канала + `setChatMenuButton` заново + **настроить Main Mini App в @BotFather у нового бота** (иначе deep-link откроет чат, а не приложение) + redeploy (auth и постинг на одном токене; юзеры в БД валидны только при том же боте).
 
 ### Когда я прошу написать контент
 

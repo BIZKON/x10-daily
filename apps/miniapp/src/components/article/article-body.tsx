@@ -49,17 +49,22 @@ function BlockView({ block }: { block: ApiArticleBlock }) {
         <div className="rounded-2xl bg-steel p-4">
           <div className="space-y-2.5">
             {block.items.map((it, j) => (
-              // `flex-wrap`: значение не всегда короткое число — модель пишет и
-              // «в 2 раза по сравнению с Claude». Раньше на нём стоял `shrink-0`
-              // → длинная строка не сжималась и не переносилась, вылезая за
-              // границу карточки. Теперь при нехватке места значение уходит на
-              // свою строку, а `overflow-wrap` рвёт слишком длинное слово/URL.
+              // Значение не всегда короткое число — модель пишет и «в 2 раза по
+              // сравнению с Claude Opus 4». Раньше на нём стоял `shrink-0` → оно
+              // не сжималось и вылезало за границу карточки.
+              // ⚠️ `flex-wrap` тут НЕ подходит (проверено на 94 живых строках):
+              // перенос во flex считается по max-content, поэтому длинная ПОДПИСЬ
+              // занимала всю строку и выталкивала вниз даже короткое «36%», а
+              // `justify-between` при одном элементе в строке прижимал его влево —
+              // ритм блока рвался на 36 строках, которые были в порядке.
+              // Решение: строка остаётся одной, перенос живёт ВНУТРИ колонки
+              // значения (`min-w-0` + потолок ширины + `overflow-wrap`).
               <div
                 key={j}
-                className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-white/10 pb-2.5 last:border-0 last:pb-0"
+                className="flex items-baseline justify-between gap-3 border-b border-white/10 pb-2.5 last:border-0 last:pb-0"
               >
                 <span className="min-w-0 text-[13px] leading-snug text-white/70">{it.label}</span>
-                <span className="x10-num max-w-full text-[16px] font-bold text-gold [overflow-wrap:anywhere]">
+                <span className="x10-num min-w-0 max-w-[60%] text-right text-[16px] font-bold text-gold [overflow-wrap:anywhere]">
                   {it.value}
                 </span>
               </div>

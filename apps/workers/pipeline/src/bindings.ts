@@ -66,6 +66,18 @@ export interface PipelineBindings {
   MODEL_SONNET?: string;
   MODEL_HAIKU?: string;
 
+  // ---- ИИ-обложки статей (Спека 2) ----
+  /**
+   * Каталог на диске для сгенерированных обложек (том Docker `covers`, раздаёт
+   * Caddy). Пусто ЛИБО пустой COVERS_PUBLIC_BASE_URL → генерация выключена
+   * (generate-cover скипается, посты остаются текстовыми).
+   */
+  COVERS_DIR?: string;
+  /** Публичный базовый URL раздачи обложек, напр. `https://app.<домен>/covers`. */
+  COVERS_PUBLIC_BASE_URL?: string;
+  /** Модель генерации через Timeweb AI Gateway (спайк: gemini/gemini-3.1-flash-image-preview). */
+  IMAGE_MODEL?: string;
+
   // ---- Reddit OAuth (reddit-адаптер ingest — обход IP-429 через app-токен) ----
   /** Пусты → reddit-источники не фетчатся (адаптер бросает RedditNotConfigured, ingest скипает). */
   REDDIT_CLIENT_ID?: string;
@@ -125,6 +137,10 @@ export function readBindingsFromEnv(): PipelineBindings {
     MODEL_OPUS: process.env.MODEL_OPUS,
     MODEL_SONNET: process.env.MODEL_SONNET,
     MODEL_HAIKU: process.env.MODEL_HAIKU,
+
+    COVERS_DIR: process.env.COVERS_DIR,
+    COVERS_PUBLIC_BASE_URL: process.env.COVERS_PUBLIC_BASE_URL,
+    IMAGE_MODEL: process.env.IMAGE_MODEL,
 
     REDDIT_CLIENT_ID: process.env.REDDIT_CLIENT_ID,
     REDDIT_CLIENT_SECRET: process.env.REDDIT_CLIENT_SECRET,

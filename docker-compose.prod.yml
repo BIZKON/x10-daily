@@ -147,6 +147,12 @@ services:
       MODEL_OPUS: "${MODEL_OPUS:-}"
       MODEL_SONNET: "${MODEL_SONNET:-}"
       MODEL_HAIKU: "${MODEL_HAIKU:-}"
+      # ИИ-обложки (Спека 2): каталог тома + публичный URL раздачи (Caddy).
+      # ЛЮБОЙ пуст → генерация выключена, посты остаются текстовыми.
+      # Модель доступна через тот же Timeweb AI Gateway, что и текстовые агенты.
+      COVERS_DIR: "${COVERS_DIR:-/data/covers}"
+      COVERS_PUBLIC_BASE_URL: "${COVERS_PUBLIC_BASE_URL:-}"
+      IMAGE_MODEL: "${IMAGE_MODEL:-gemini/gemini-3.1-flash-image-preview}"
       # Reddit OAuth (reddit-адаптер ingest). Пусты → reddit-источники не фетчатся.
       REDDIT_CLIENT_ID: "${REDDIT_CLIENT_ID:-}"
       REDDIT_CLIENT_SECRET: "${REDDIT_CLIENT_SECRET:-}"
@@ -155,6 +161,9 @@ services:
       # Pipeline сессии не выпускает, но env-валидатор общий → ключ обязателен.
       X10_JWT_SECRET: "${X10_JWT_SECRET}"
       SENTRY_DSN: "${SENTRY_DSN:-}"
+    volumes:
+      # Сгенерированные обложки: pipeline пишет, caddy раздаёт (тот же том, ro).
+      - covers:/data/covers
     expose:
       - "8787"
     healthcheck:
@@ -240,6 +249,8 @@ services:
       - ./caddy/Caddyfile.prod:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
+      # Обложки статей — только чтение: пишет их pipeline.
+      - covers:/srv/covers:ro
     environment:
       X10_BASE_DOMAIN: "${X10_BASE_DOMAIN:-pro-agent-ai.ru}"
       CADDY_ACME_EMAIL: "${CADDY_ACME_EMAIL:-admin@pro-agent-ai.ru}"
@@ -255,6 +266,8 @@ volumes:
   redis-data:
   caddy-data:
   caddy-config:
+  # ИИ-обложки статей: пишет pipeline (/data/covers), раздаёт caddy (/srv/covers).
+  covers:
 
 networks:
   # IPv6 включён намеренно: api.telegram.org из этой РФ-сети доступен ТОЛЬКО по

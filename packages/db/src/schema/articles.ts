@@ -95,9 +95,20 @@ export const articles = pgTable(
     /** Открытый набор тегов — brief §5. */
     tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
 
-    /** Обложка для DeepDive/Event-карточек (brief §6). */
+    /** Обложка для DeepDive/Event-карточек (brief §6). Сюда же пишет адрес
+     *  сгенерированной ИИ-обложки конвейер generate-cover (Спека 2). */
     coverImageUrl: text("cover_image_url"),
     coverImageAlt: text("cover_image_alt"),
+
+    /**
+     * Состояние ИИ-обложки (Спека 2, миграция 0014): none → generating →
+     * pending_review → approved | rejected. В канал фото уходит ТОЛЬКО при
+     * `approved` (HumanGate на картинку); иначе пост текстовый.
+     * varchar+CHECK, не pg enum — обратимо (см. комментарий в 0014).
+     */
+    visualStatus: varchar("visual_status", { length: 20 }).default("none").notNull(),
+    /** Промпт иллюстрации — чтобы перегенерить без повторного крафта. */
+    visualPrompt: text("visual_prompt"),
 
     /** Автор статьи — ссылка на authors (богатый профиль), brief §6. */
     authorId: uuid("author_id").references(() => authors.id, { onDelete: "set null" }),

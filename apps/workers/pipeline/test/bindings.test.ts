@@ -52,6 +52,17 @@ describe("readBindingsFromEnv", () => {
     expect(b.TELEGRAM_BOT_USERNAME).toBe("Sekretar_Syrov_IP_bot");
   });
 
+  it("читает COVERS_*/IMAGE_MODEL — конфиг ИИ-обложек доходит до воркера", () => {
+    vi.stubEnv("DATABASE_URL", "postgresql://localhost/test");
+    vi.stubEnv("COVERS_DIR", "/data/covers");
+    vi.stubEnv("COVERS_PUBLIC_BASE_URL", "https://app.pro-agent-ai.ru/covers");
+    vi.stubEnv("IMAGE_MODEL", "gemini/gemini-3.1-flash-image-preview");
+    const b = readBindingsFromEnv();
+    expect(b.COVERS_DIR).toBe("/data/covers");
+    expect(b.COVERS_PUBLIC_BASE_URL).toBe("https://app.pro-agent-ai.ru/covers");
+    expect(b.IMAGE_MODEL).toBe("gemini/gemini-3.1-flash-image-preview");
+  });
+
   it("бросает без DATABASE_URL", () => {
     vi.stubEnv("DATABASE_URL", "");
     expect(() => readBindingsFromEnv()).toThrow(/DATABASE_URL/);

@@ -82,6 +82,15 @@ const baseSchema = z
       .optional()
       .catch(undefined),
     /**
+     * ИИ-обложки (Спека 2). Каталог тома для файлов + публичный базовый URL
+     * (раздаёт Caddy). ЛЮБОЙ из двух пуст → генерация выключена: конвейер
+     * скипает шаг, посты остаются текстовыми. Модель — через Timeweb AI Gateway
+     * (спайк: image-модель доступна там же, где текстовые; Google-ключ не нужен).
+     */
+    COVERS_DIR: z.string().optional(),
+    COVERS_PUBLIC_BASE_URL: urlOrEmpty.optional(),
+    IMAGE_MODEL: z.string().default("gemini/gemini-3.1-flash-image-preview"),
+    /**
      * HTTP/HTTPS-прокси для api.telegram.org из workers/pipeline. На Timeweb
      * ru-1 (РФ-ЦОД) прямой fetch к api.telegram.org молча умирает по таймауту
      * (TelegramNetworkError). См. timeweb-telegram-deploy skill §4.

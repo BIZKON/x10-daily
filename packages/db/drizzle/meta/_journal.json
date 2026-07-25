@@ -99,6 +99,13 @@
       "when": 1780924572448,
       "tag": "0013_source_adapter_status",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1781010972448,
+      "tag": "0014_article_visual",
+      "breakpoints": true
     }
   ]
 }

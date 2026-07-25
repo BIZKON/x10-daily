@@ -44,11 +44,14 @@ export type SendInput = {
    */
   html?: string | null;
   /**
-   * Deep-link на Mini App (`t.me/<bot>?startapp=<slug>`). Задан → под постом
-   * inline url-кнопка «Открыть в ProAgent AI» (открывает Mini App на статье
-   * ВНУТРИ Telegram). Только tg. Пусто → кнопки нет (обратная совместимость).
+   * URL для КАРТОЧКИ ПРЕВЬЮ поста (`link_preview_options.url`) — web-страница
+   * статьи. Разведён со ссылкой В ТЕКСТЕ намеренно: текст ведёт на Mini App
+   * (deep-link t.me), а превью строится по web-URL, иначе Telegram нарисовал бы
+   * карточку бота вместо статьи с og-картинкой. По доке Bot API: «URL to use for
+   * the link preview. If empty, then the first URL found in the message text will
+   * be used». Только tg + sendMessage. Пусто → превью по ссылке из текста.
    */
-  deepLinkUrl?: string | null;
+  previewUrl?: string | null;
 };
 
 /**
@@ -78,13 +81,12 @@ export async function sendToChannel(
       fetchImpl: opts.fetchImpl,
     };
 
-    // Deep-link кнопка «Открыть в ProAgent AI» (Спека 1) — одна url-кнопка,
-    // открывает Mini App на статье. Ставится во ВСЕ tg-пути (html/photo/text).
-    const replyMarkup = input.deepLinkUrl
-      ? { inline_keyboard: [[{ text: "Открыть в ProAgent AI", url: input.deepLinkUrl }]] }
-      : undefined;
-    const withMarkup = <T extends Record<string, unknown>>(body: T) =>
-      replyMarkup ? { ...body, reply_markup: replyMarkup } : body;
+    // Превью-карточка поста строится по web-URL статьи (og-картинка), тогда как
+    // ссылка в тексте ведёт в Mini App. Отдельной inline-кнопки НЕТ — решение
+    // владельца: две точки входа (кнопка + ссылка) путали, вход должен быть один
+    // — тап по тексту. Только sendMessage: у sendPhoto своя картинка.
+    const withPreview = <T extends Record<string, unknown>>(body: T) =>
+      input.previewUrl ? { ...body, link_preview_options: { url: input.previewUrl } } : body;
 
     // Форматированный пост (session 27): html без картинки → sendMessage с
     // parse_mode=HTML (Слой 1 — рендерится у ВСЕХ клиентов). Золотое правило (skill
@@ -94,7 +96,7 @@ export async function sendToChannel(
       try {
         const res = await callTelegram(
           "sendMessage",
-          withMarkup({ chat_id: chatId, text: input.html, parse_mode: "HTML" }),
+          withPreview({ chat_id: chatId, text: input.html, parse_mode: "HTML" }),
           tgOpts,
         );
         return { ok: true, postRef: res.messageId != null ? String(res.messageId) : null };
@@ -106,10 +108,13 @@ export async function sendToChannel(
 
     // visualRef → sendPhoto (M0 не использует, VisualAgent выключен); иначе sendMessage.
     const method = input.visualRef ? "sendPhoto" : "sendMessage";
-    const body = input.visualRef
-      ? { chat_id: chatId, photo: input.visualRef, caption: text }
-      : { chat_id: chatId, text };
-    const res = await callTelegram(method, withMarkup(body), tgOpts);
+    const res = input.visualRef
+      ? await callTelegram(
+          method,
+          { chat_id: chatId, photo: input.visualRef, caption: text },
+          tgOpts,
+        )
+      : await callTelegram(method, withPreview({ chat_id: chatId, text }), tgOpts);
     return { ok: true, postRef: res.messageId != null ? String(res.messageId) : null };
   }
 

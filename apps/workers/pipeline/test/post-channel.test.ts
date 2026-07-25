@@ -69,8 +69,7 @@ describe("sendToChannel — tg", () => {
     ).rejects.toThrow(/TELEGRAM_BOT_TOKEN/);
   });
 
-  const DEEPLINK = "https://t.me/Sekretar_Syrov_IP_bot?startapp=my-slug";
-  const EXPECTED_BUTTON = { text: "Открыть в ProAgent AI", url: DEEPLINK };
+  const WEB_URL = "https://app.pro-agent-ai.ru/article/my-slug";
 
   function captureBody() {
     let body: Record<string, unknown> = {};
@@ -81,39 +80,7 @@ describe("sendToChannel — tg", () => {
     return { get: () => body, fetchImpl };
   }
 
-  function firstButton(body: Record<string, unknown>) {
-    const rm = body.reply_markup as { inline_keyboard: Array<Array<unknown>> } | undefined;
-    return rm?.inline_keyboard[0]?.[0];
-  }
-
-  it("sendMessage + deepLinkUrl → reply_markup с url-кнопкой", async () => {
-    const cap = captureBody();
-    await sendToChannel(
-      TG_ENV,
-      { channel: "tg", articleId: "a1", text: "T", visualRef: null, deepLinkUrl: DEEPLINK },
-      { fetchImpl: cap.fetchImpl },
-    );
-    expect(firstButton(cap.get())).toEqual(EXPECTED_BUTTON);
-  });
-
-  it("sendPhoto + deepLinkUrl → reply_markup с url-кнопкой (рядом с фото)", async () => {
-    const cap = captureBody();
-    await sendToChannel(
-      TG_ENV,
-      {
-        channel: "tg",
-        articleId: "a1",
-        text: "Подпись",
-        visualRef: "https://img/x.jpg",
-        deepLinkUrl: DEEPLINK,
-      },
-      { fetchImpl: cap.fetchImpl },
-    );
-    expect(cap.get().photo).toBe("https://img/x.jpg");
-    expect(firstButton(cap.get())).toEqual(EXPECTED_BUTTON);
-  });
-
-  it("html-пост + deepLinkUrl → reply_markup с url-кнопкой", async () => {
+  it("html-пост + previewUrl → link_preview_options по web-URL, БЕЗ кнопки", async () => {
     const cap = captureBody();
     await sendToChannel(
       TG_ENV,
@@ -122,22 +89,54 @@ describe("sendToChannel — tg", () => {
         articleId: "a1",
         text: "T",
         visualRef: null,
-        html: "<b>Заголовок</b>",
-        deepLinkUrl: DEEPLINK,
+        html: '<b>Заголовок</b>\n\n<a href="https://t.me/bot?startapp=my-slug">Подробнее</a>',
+        previewUrl: WEB_URL,
       },
       { fetchImpl: cap.fetchImpl },
     );
     expect(cap.get().parse_mode).toBe("HTML");
-    expect(firstButton(cap.get())).toEqual(EXPECTED_BUTTON);
+    // Превью — по web-URL (там og-картинка), хотя ссылка в тексте ведёт в Mini App.
+    expect(cap.get().link_preview_options).toEqual({ url: WEB_URL });
+    // Inline-кнопку убрали: единственная точка входа — ссылка в тексте.
+    expect(cap.get().reply_markup).toBeUndefined();
   });
 
-  it("без deepLinkUrl → нет reply_markup (обратная совместимость)", async () => {
+  it("plain sendMessage + previewUrl → link_preview_options задан", async () => {
+    const cap = captureBody();
+    await sendToChannel(
+      TG_ENV,
+      { channel: "tg", articleId: "a1", text: "T", visualRef: null, previewUrl: WEB_URL },
+      { fetchImpl: cap.fetchImpl },
+    );
+    expect(cap.get().link_preview_options).toEqual({ url: WEB_URL });
+  });
+
+  it("sendPhoto: link_preview_options НЕ шлём (у фото своя картинка)", async () => {
+    const cap = captureBody();
+    await sendToChannel(
+      TG_ENV,
+      {
+        channel: "tg",
+        articleId: "a1",
+        text: "Подпись",
+        visualRef: "https://img/x.jpg",
+        previewUrl: WEB_URL,
+      },
+      { fetchImpl: cap.fetchImpl },
+    );
+    expect(cap.get().photo).toBe("https://img/x.jpg");
+    expect(cap.get().link_preview_options).toBeUndefined();
+    expect(cap.get().reply_markup).toBeUndefined();
+  });
+
+  it("без previewUrl → нет link_preview_options (обратная совместимость)", async () => {
     const cap = captureBody();
     await sendToChannel(
       TG_ENV,
       { channel: "tg", articleId: "a1", text: "T", visualRef: null },
       { fetchImpl: cap.fetchImpl },
     );
+    expect(cap.get().link_preview_options).toBeUndefined();
     expect(cap.get().reply_markup).toBeUndefined();
   });
 });

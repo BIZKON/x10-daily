@@ -142,14 +142,16 @@ export function createDrainPostSlotsFunction(
             );
           }
           // session 27: для TG строим rich-HTML из структуры статьи (заголовок/
-          // подзаг/выноска/ключ-блоки + web-ссылка «Читать в ProAgent AI»). baseUrl
+          // подзаг/выноска/ключ-блоки + ссылка «Подробнее читай в блоге…»). baseUrl
           // из X10_BASE_DOMAIN; нет домена/статьи/visualRef → html=null → плоский
           // sendMessage (+ фолбэк на 400 в sendToChannel).
-          // Спека 1: для TG тянем slug — из него deep-link inline-КНОПКА «Открыть в
-          // ProAgent AI» (t.me/<bot>?startapp=<slug>), ставится и на фото-, и на
-          // текст-пост (отдельно от web-ссылки «Читать»).
+          // Спека 1 (+правка владельца): ссылка В ТЕКСТЕ ведёт в Mini App
+          // (t.me/<bot>?startapp=<slug>) — единственная точка входа, inline-кнопку
+          // убрали. Карточка ПРЕВЬЮ строится по web-URL (previewUrl) через
+          // link_preview_options, иначе Telegram нарисовал бы превью бота.
           let html: string | null = null;
           let deepLinkUrl: string | null = null;
+          let previewUrl: string | null = null;
           // Тянем статью для TG только если она реально нужна: под deep-link кнопку
           // (есть username) или под rich-html (есть домен и нет картинки). Иначе
           // селект бесполезен.
@@ -172,14 +174,19 @@ export function createDrainPostSlotsFunction(
               deepLinkUrl = env.TELEGRAM_BOT_USERNAME
                 ? buildMiniAppDeepLink(env.TELEGRAM_BOT_USERNAME, a.slug)
                 : null;
-              if (env.X10_BASE_DOMAIN && !r.visualRef) {
-                // Текст-ссылка «Читать» — web-URL (универсальна). Deep-link идёт
-                // отдельной inline-кнопкой (deepLinkUrl ниже в SendInput).
-                html = articleToTelegramHtml(a, `https://app.${env.X10_BASE_DOMAIN}`);
+              if (env.X10_BASE_DOMAIN) {
+                const webUrl = `https://app.${env.X10_BASE_DOMAIN}/article/${a.slug}`;
+                // Превью — всегда по web-URL (там og-картинка статьи).
+                previewUrl = webUrl;
+                if (!r.visualRef) {
+                  // Ссылка в тексте — deep-link в Mini App (фолбэк на web, если
+                  // username не задан).
+                  html = articleToTelegramHtml(a, `https://app.${env.X10_BASE_DOMAIN}`, deepLinkUrl);
+                }
               }
             }
           }
-          return { text: r.text, visualRef: r.visualRef, html, deepLinkUrl };
+          return { text: r.text, visualRef: r.visualRef, html, previewUrl };
         });
 
         // Send — отдельный step. Бросок (сеть/5xx) → Inngest ретраит функцию,
@@ -193,7 +200,7 @@ export function createDrainPostSlotsFunction(
               text: row.text,
               visualRef: row.visualRef,
               html: row.html,
-              deepLinkUrl: row.deepLinkUrl,
+              previewUrl: row.previewUrl,
             },
             { fetchImpl: opts.fetchImpl },
           ),

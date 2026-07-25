@@ -148,8 +148,8 @@ describe("drain-post-slots", () => {
     expect(published?.set.status).toBe("published");
   });
 
-  it("с TELEGRAM_BOT_USERNAME: под постом deep-link кнопка на статью (Спека 1)", async () => {
-    // select articleId → load-tg channels row → load-tg article (slug для deep-link).
+  it("deep-link в ТЕКСТЕ + превью по web-URL, без кнопки (правка владельца)", async () => {
+    // select articleId → load-tg channels row → load-tg article (slug для ссылки).
     dbState.selectResults = [
       [{ articleId: "a1" }],
       [{ text: "Новость", visualRef: null }],
@@ -160,14 +160,25 @@ describe("drain-post-slots", () => {
       body = JSON.parse((init as { body: string }).body);
       return { ok: true, status: 200, json: async () => ({ ok: true, result: { message_id: 5 } }) };
     }) as unknown as typeof fetch;
-    await makeHandler({ ...TG_BINDINGS, TELEGRAM_BOT_USERNAME: "Sekretar_Syrov_IP_bot" }, fetchImpl)({
-      step: makeStep(),
+    await makeHandler(
+      {
+        ...TG_BINDINGS,
+        TELEGRAM_BOT_USERNAME: "Sekretar_Syrov_IP_bot",
+        X10_BASE_DOMAIN: "pro-agent-ai.ru",
+      },
+      fetchImpl,
+    )({ step: makeStep() });
+
+    // Ссылка в тексте открывает Mini App…
+    expect(body.text).toContain(
+      '<a href="https://t.me/Sekretar_Syrov_IP_bot?startapp=my-slug">Подробнее читай в блоге ProAgent AI →</a>',
+    );
+    // …а карточка превью строится по web-URL статьи (og-картинка).
+    expect(body.link_preview_options).toEqual({
+      url: "https://app.pro-agent-ai.ru/article/my-slug",
     });
-    const rm = body.reply_markup as { inline_keyboard: Array<Array<{ text: string; url: string }>> };
-    expect(rm.inline_keyboard[0]![0]).toEqual({
-      text: "Открыть в ProAgent AI",
-      url: "https://t.me/Sekretar_Syrov_IP_bot?startapp=my-slug",
-    });
+    // Inline-кнопки больше нет — вход единственный.
+    expect(body.reply_markup).toBeUndefined();
   });
 
   it("VK сконфигурирован: постит tg + vk одной статьёй", async () => {

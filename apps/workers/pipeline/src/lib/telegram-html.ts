@@ -64,11 +64,18 @@ export type TelegramArticle = {
  * Структура статьи + базовый URL миниапп → форматированный Telegram-HTML.
  * baseUrl — напр. `https://app.pro-agent-ai.ru` (из X10_BASE_DOMAIN).
  *
- * Текст-ссылка «Читать» намеренно ведёт на WEB-URL (универсальна: работает и в
- * пересланных постах, и вне Telegram). Deep-link в Mini App (Спека 1) — это
- * отдельная inline-КНОПКА поста (см. post-channel.ts), а не эта ссылка.
+ * `deepLinkUrl` задан → ссылка ведёт в Mini App (`t.me/<bot>?startapp=<slug>`),
+ * то есть открывает статью ВНУТРИ Telegram, а не в браузере. Решение владельца:
+ * единственная точка входа — тап по тексту (inline-кнопку убрали, две точки
+ * входа путали). Карточка превью при этом строится по WEB-URL через
+ * `link_preview_options` в post-channel.ts — иначе Telegram нарисовал бы превью
+ * бота вместо статьи. Пусто → web-ссылка (фолбэк, обратная совместимость).
  */
-export function articleToTelegramHtml(article: TelegramArticle, baseUrl: string): string {
+export function articleToTelegramHtml(
+  article: TelegramArticle,
+  baseUrl: string,
+  deepLinkUrl?: string | null,
+): string {
   const parts: string[] = [
     `<b>${escapeTelegramHtml(article.tease)}</b>`,
     escapeTelegramHtml(article.lede),
@@ -91,8 +98,10 @@ export function articleToTelegramHtml(article: TelegramArticle, baseUrl: string)
     }
   }
 
-  const url = `${baseUrl.replace(/\/+$/, "")}/article/${article.slug}`;
-  parts.push(`<a href="${escapeTelegramHtml(url)}">Читать в ProAgent AI →</a>`);
+  const url = deepLinkUrl || `${baseUrl.replace(/\/+$/, "")}/article/${article.slug}`;
+  parts.push(
+    `<a href="${escapeTelegramHtml(url)}">Подробнее читай в блоге ProAgent AI →</a>`,
+  );
 
   return parts.join("\n\n");
 }

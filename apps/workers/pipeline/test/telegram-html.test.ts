@@ -29,8 +29,16 @@ describe("articleToTelegramHtml", () => {
     );
     expect(html).toContain("• Ставка: <b>17%</b>");
     expect(html).toContain(
-      '<a href="https://app.pro-agent-ai.ru/article/tsb-stavka-17">Читать в ProAgent AI →</a>',
+      '<a href="https://app.pro-agent-ai.ru/article/tsb-stavka-17">Подробнее читай в блоге ProAgent AI →</a>',
     );
+  });
+
+  it("с deepLinkUrl — ссылка ведёт в Mini App (правка владельца: вход один — по тексту)", () => {
+    const deepLink = "https://t.me/Sekretar_Syrov_IP_bot?startapp=tsb-stavka-17";
+    const html = articleToTelegramHtml(article, base, deepLink);
+    expect(html).toContain(`<a href="${deepLink}">Подробнее читай в блоге ProAgent AI →</a>`);
+    // web-URL в тексте больше не фигурирует — он уходит только в превью-карточку.
+    expect(html).not.toContain("app.pro-agent-ai.ru/article/");
   });
 
 

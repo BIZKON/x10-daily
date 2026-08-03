@@ -1,6 +1,7 @@
 import { fetchAdminAuthors } from "@/lib/api";
 import { Plus, Star } from "lucide-react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 
 // Cache Components (Next 16): async fetch ДОЛЖЕН быть внутри <Suspense>.
@@ -17,6 +18,12 @@ function AuthorsSkeleton() {
 }
 
 async function AuthorsContent() {
+  // 🔴 PPR-грабля (CLAUDE.md §8): на билде X10_API_BASE_URL не задан →
+  // fetchAdminAuthors возвращает null НЕ трогая cookies, динамической дыры не
+  // возникает, и Next запекает «apps/api недоступен» в статический HTML
+  // навсегда. connection() ВНУТРИ Suspense-компонента (не на уровне page)
+  // форсирует дыру: шелл статичен, авторы тянутся в рантайме.
+  await connection();
   const data = await fetchAdminAuthors();
 
   return (

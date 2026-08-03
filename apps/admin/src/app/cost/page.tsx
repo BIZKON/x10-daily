@@ -1,5 +1,6 @@
 import { type PipelineRunStats, fetchPipelineRunStats } from "@/lib/api";
 import { AlertTriangle, Ban, CircleCheck, Wallet } from "lucide-react";
+import { connection } from "next/server";
 import { Suspense } from "react";
 
 export const metadata = { title: "Расходы — ProAgent AI Admin" };
@@ -31,6 +32,12 @@ function CostSkeleton() {
 }
 
 async function CostContent() {
+  // 🔴 PPR-грабля (CLAUDE.md §8): на билде X10_API_BASE_URL не задан →
+  // fetchPipelineRunStats возвращает null НЕ трогая cookies, динамической дыры
+  // не возникает, и Next запекает «Данные недоступны» в статический HTML
+  // навсегда. connection() ВНУТРИ Suspense-компонента (не на уровне page)
+  // форсирует дыру: шелл статичен, агрегаты тянутся в рантайме.
+  await connection();
   const stats = await fetchPipelineRunStats();
 
   return (

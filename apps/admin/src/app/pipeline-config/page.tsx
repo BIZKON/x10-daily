@@ -1,6 +1,7 @@
 import { type AdminPipelineConfig, type PipelineAgent, fetchAdminPipelineConfigs } from "@/lib/api";
 import { Cpu, Pencil, Power } from "lucide-react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { AGENTS, STATUS_COLOR, STATUS_LABEL, TIER_COLOR, isPipelineAgent } from "./agent-meta";
 
@@ -28,6 +29,13 @@ function PipelineConfigSkeleton() {
 }
 
 async function PipelineConfigContent() {
+  // 🔴 PPR-грабля (CLAUDE.md §8): на билде X10_API_BASE_URL не задан →
+  // fetchAdminPipelineConfigs возвращает null НЕ трогая cookies, динамической
+  // дыры не возникает, и Next запекает в статический HTML schema-дефолты
+  // (enabled / threshold 0.70) — редактор видел бы их вместо реальных значений
+  // из БД. connection() ВНУТРИ Suspense-компонента (не на уровне page) форсирует
+  // дыру: шелл статичен, конфиги агентов тянутся в рантайме.
+  await connection();
   const data = await fetchAdminPipelineConfigs();
   const byAgent = new Map<PipelineAgent, AdminPipelineConfig>();
   for (const c of data?.items ?? []) byAgent.set(c.agent, c);

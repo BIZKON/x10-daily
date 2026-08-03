@@ -1,5 +1,6 @@
 import { type PostingControl, fetchPostingControl } from "@/lib/api";
 import { CircleCheck, CirclePause, Power } from "lucide-react";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { updatePostingControl } from "./actions";
 import { PostingForm } from "./posting-form";
@@ -19,6 +20,12 @@ export default function PostingPage() {
 }
 
 async function PostingContent() {
+  // 🔴 PPR-грабля (CLAUDE.md §8): на билде X10_API_BASE_URL не задан →
+  // fetchPostingControl возвращает null НЕ трогая cookies, динамической дыры не
+  // возникает, и Next запекает «Данные недоступны» в статический HTML навсегда.
+  // connection() ВНУТРИ Suspense-компонента (не на уровне page) форсирует дыру:
+  // шелл статичен, стоп-кран читается в рантайме.
+  await connection();
   const ctrl = await fetchPostingControl();
 
   return (

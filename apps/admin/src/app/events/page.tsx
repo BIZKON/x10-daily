@@ -1,6 +1,7 @@
 import { type AdminEvent, fetchAdminEvents } from "@/lib/api";
 import { Calendar, MapPin, Plus, Ticket, Users } from "lucide-react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 
 // Ключ "kod-x10" — мёртвое значение PG-enum (X10-наследие), из UI не создаётся.
@@ -34,11 +35,15 @@ function EventsSkeleton() {
 }
 
 async function EventsContent() {
+  // 🔴 PPR-грабля (CLAUDE.md §8): на билде X10_API_BASE_URL не задан →
+  // fetchAdminEvents возвращает null НЕ трогая cookies, динамической дыры не
+  // возникает, и Next запекает «apps/api недоступен» в статический HTML
+  // навсегда. connection() ВНУТРИ Suspense-компонента (не на уровне page)
+  // форсирует дыру: шелл статичен, события тянутся в рантайме. Заодно снимает
+  // запрет Cache Components на Date.now ниже — компонент больше не пререндерится.
+  await connection();
   const data = await fetchAdminEvents("all");
-  // Ранний возврат ДО Date.now: на билде data===null (фейк fetch без реального
-  // HTTP), Cache Components считает что uncached data не была прочитана → Date.now
-  // запекался бы во время сборки. Этот guard выводит Date.now в недостижимую
-  // на билде ветку. В рантайме (data есть) — поведение прежнее.
+  // Честный фолбэк рантайма: api не ответил — показываем это, а не пустой список.
   if (!data) {
     return (
       <>

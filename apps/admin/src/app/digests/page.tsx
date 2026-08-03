@@ -1,7 +1,8 @@
+import { fetchAdminLatestDigest } from "@/lib/api";
 import { CheckCircle2, Clock, Mic, Plus } from "lucide-react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
-import { fetchAdminLatestDigest } from "@/lib/api";
 
 // Cache Components (Next 16): async fetch ДОЛЖЕН быть внутри <Suspense>.
 export default function DigestsPage() {
@@ -17,6 +18,12 @@ function DigestsSkeleton() {
 }
 
 async function DigestsContent() {
+  // 🔴 PPR-грабля (CLAUDE.md §8): на билде X10_API_BASE_URL не задан →
+  // fetchAdminLatestDigest возвращает null НЕ трогая cookies, динамической дыры
+  // не возникает, и Next запекает «Дайджестов ещё нет» в статический HTML
+  // навсегда. connection() ВНУТРИ Suspense-компонента (не на уровне page)
+  // форсирует дыру: шелл статичен, последний выпуск тянется в рантайме.
+  await connection();
   const latest = await fetchAdminLatestDigest();
 
   return (

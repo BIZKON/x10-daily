@@ -1,6 +1,16 @@
 "use client";
 
-import { Calendar, Cpu, FileCheck2, Layers, Mic, Power, Users, Wallet } from "lucide-react";
+import {
+  Calendar,
+  Cpu,
+  FileCheck2,
+  Image as ImageIcon,
+  Layers,
+  Mic,
+  Power,
+  Users,
+  Wallet,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -30,6 +40,7 @@ export function Sidebar() {
         <NavItem href="/authors" label="Авторы" icon={Users} active={isActive("/authors")} />
         <NavItem href="/events" label="События" icon={Calendar} active={isActive("/events")} />
         <NavItem href="/digests" label="Дайджесты" icon={Mic} active={isActive("/digests")} />
+        <NavItem href="/visuals" label="Обложки" icon={ImageIcon} active={isActive("/visuals")} />
 
         <NavSection label="Настройки" />
         <NavItem href="/rubrics" label="Рубрики" icon={Layers} active={isActive("/rubrics")} />

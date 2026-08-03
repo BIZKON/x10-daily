@@ -532,3 +532,52 @@ export async function fetchPipelineRunStats(): Promise<PipelineRunStats | null> 
     return null;
   }
 }
+
+/* ----------------------------------------------------------------
+ * ИИ-обложки (Спека 2) — очередь ревью. HumanGate на картинку.
+ * ---------------------------------------------------------------- */
+
+export type VisualStatus = "none" | "generating" | "pending_review" | "approved" | "rejected";
+
+export type VisualQueueItem = {
+  id: string;
+  slug: string;
+  tease: string;
+  lede: string;
+  category: AdminCategory | null;
+  coverImageUrl: string | null;
+  visualPrompt: string | null;
+  visualStatus: VisualStatus;
+  createdAt: string;
+};
+
+export type VisualQueueResponse = {
+  items: VisualQueueItem[];
+  status: VisualStatus;
+};
+
+/**
+ * Очередь ревью обложек.
+ *
+ * ⚠️ Демо-фолбэка на моки здесь НЕТ намеренно (в отличие от fetchQueue):
+ * редактор не должен «одобрять» несуществующую картинку — одобрение выпускает
+ * её в канал. Нет API → null → экран честно говорит, что данные недоступны.
+ */
+export async function fetchVisualQueue(
+  status: VisualStatus = "pending_review",
+  limit = 50,
+): Promise<VisualQueueResponse | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  const token = await getSessionToken();
+  const params = new URLSearchParams({ status, limit: String(limit) });
+  try {
+    const res = await fetchWithTimeout(`${base}/v1/admin/visuals?${params}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as VisualQueueResponse;
+  } catch {
+    return null;
+  }
+}

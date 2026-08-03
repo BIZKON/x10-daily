@@ -1,5 +1,22 @@
 # ИИ-обложки статей (Nano Banana 2) — Implementation Plan
 
+> ✅ **ИСПОЛНЕН в сессии 30 (03.08.2026).** Task 0-7 сделаны. Отклонения от плана,
+> принятые при исполнении (каждое с обоснованием в коде):
+> 1. **Промпт VisualAgent строится по канону `packages/voice/visual.md`**, а не по
+>    черновику ниже: черновик просил `subtle glow` и тёмный charcoal-фон, что канон
+>    прямо запрещает («не использует неон, киберпанк, AI-свечение»). Порядок блоков —
+>    STYLE → PILLAR → SUBJECT → NEGATIVE → TECH.
+> 2. **Генерация и запись — ОДИН Inngest-шаг** (в плане были `generate` и `store`
+>    раздельно): Inngest сериализует результаты `step.run` в JSON, и ~450-800 КБ байтов
+>    картинки через границу шага распухли бы в `{"0":255,…}`.
+> 3. **URL обложки несёт версию содержимого** (`?v=<хеш байтов>`): имя файла
+>    детерминировано по articleId, перегенерация перезаписывает тот же путь, и
+>    `immutable`+1год из плана залипил бы старую картинку навсегда.
+> 4. **Экран админки — `/visuals`**, а не `(dash)/visuals` (такой группы маршрутов в
+>    админке нет), + `connection()` внутри Suspense (иначе билд запекал fallback).
+> 5. **Плюс к плану:** гейт `visual_status` в API ленты — без него отклонённая
+>    редактором картинка всё равно показывалась бы в ленте (дыра в HumanGate).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development или superpowers:executing-plans. Шаги — чекбоксы (`- [ ]`).
 
 **Goal:** Каждая новая статья получает сгенерированную редакционную иллюстрацию; она становится обложкой в ленте Mini App и крупным фото в посте канала. Публикация картинки — после ревью редактора в админке.
@@ -50,7 +67,7 @@
 **Interfaces:**
 - Produces: колонки `articles.visual_status` (`none|generating|pending_review|approved|rejected`, default `'none'`), `articles.visual_prompt` (text null); env `COVERS_DIR`, `COVERS_PUBLIC_BASE_URL`.
 
-- [ ] **Step 1: Миграция (обратимая, ADD COLUMN — без enum)**
+- [x] **Step 1: Миграция (обратимая, ADD COLUMN — без enum)**
 
 `packages/db/drizzle/0014_article_visual.sql`:
 
@@ -64,7 +81,7 @@ CREATE INDEX IF NOT EXISTS "articles_visual_status_idx" ON "articles" ("visual_s
 
 В `meta/_journal.json` дописать запись с `idx` на 1 больше последней, `tag: "0014_article_visual"`, `when` — текущий unix-ms.
 
-- [ ] **Step 2: Схема Drizzle**
+- [x] **Step 2: Схема Drizzle**
 
 В `packages/db/src/schema/articles.ts` в `articles` добавить:
 
@@ -75,7 +92,7 @@ CREATE INDEX IF NOT EXISTS "articles_visual_status_idx" ON "articles" ("visual_s
   visualPrompt: text("visual_prompt"),
 ```
 
-- [ ] **Step 3: Тест env-плумбинга (падающий)**
+- [x] **Step 3: Тест env-плумбинга (падающий)**
 
 В `apps/workers/pipeline/test/bindings.test.ts`:
 
@@ -92,7 +109,7 @@ CREATE INDEX IF NOT EXISTS "articles_visual_status_idx" ON "articles" ("visual_s
 
 Run: `pnpm --filter @x10/worker-pipeline exec vitest run test/bindings.test.ts` → FAIL.
 
-- [ ] **Step 4: Env-плумбинг**
+- [x] **Step 4: Env-плумбинг**
 
 `packages/config/src/env.ts` (рядом с прочими опциональными):
 
@@ -118,16 +135,16 @@ Run: `pnpm --filter @x10/worker-pipeline exec vitest run test/bindings.test.ts` 
 
 `.env.example`: три ключа с комментарием «пусто → генерация обложек выключена».
 
-- [ ] **Step 5: Тесты зелёные + typecheck**
+- [x] **Step 5: Тесты зелёные + typecheck**
 
 Run: `pnpm --filter @x10/worker-pipeline exec vitest run test/bindings.test.ts && pnpm --filter @x10/db exec tsc --noEmit`
 Expected: PASS.
 
-- [ ] **Step 6: Dry-run миграции на прод-дампе (грабля s28 — обязательно)**
+- [x] **Step 6: Dry-run миграции на прод-дампе (грабля s28 — обязательно)**
 
 Восстановить свежий дамп в `pgvector/pgvector:pg17` и прогнать `db:migrate`; убедиться `applied successfully` и идемпотентность (повторный прогон без ошибок).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/db packages/config apps/workers/pipeline docker-compose.prod.yml .env.example
@@ -146,7 +163,7 @@ git commit -m "feat(db): схема ИИ-обложек (visual_status/visual_pr
 **Interfaces:**
 - Produces: `createVisualAgent(deps)` → `run({ tease, lede, category }) => { imagePrompt: string }`; константа `BRAND_STYLE_SUFFIX`.
 
-- [ ] **Step 1: Падающий тест**
+- [x] **Step 1: Падающий тест**
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -168,7 +185,7 @@ describe("VisualAgent", () => {
 
 Run: `pnpm --filter @x10/agents exec vitest run test/visual.test.ts` → FAIL.
 
-- [ ] **Step 2: Реализация**
+- [x] **Step 2: Реализация**
 
 `packages/agents/src/agents/visual.ts` — следовать паттерну соседних агентов (`define-agent`, JSON-выход). Ключевое содержимое:
 
@@ -194,11 +211,11 @@ export function buildVisualUserPrompt(a: { tease: string; lede: string; category
 
 Агент возвращает `{ scene: string }`; итоговый `imagePrompt = scene + " " + BRAND_STYLE_SUFFIX`.
 
-- [ ] **Step 3: Тесты зелёные**
+- [x] **Step 3: Тесты зелёные**
 
 Run: `pnpm --filter @x10/agents exec vitest run test/visual.test.ts` → PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add packages/agents
@@ -218,7 +235,7 @@ git commit -m "feat(agents): VisualAgent — промпт редакционно
 - Consumes: env `AI_GATEWAY_BASE_URL`, `AI_GATEWAY_API_KEY`, `IMAGE_MODEL`, `COVERS_DIR`, `COVERS_PUBLIC_BASE_URL`.
 - Produces: `generateCoverImage(env, prompt, opts?) => Promise<{ bytes: Uint8Array; mime: string }>`; `saveCover(env, articleId, bytes, mime) => Promise<string /* публичный URL */>`; `parseDataUrl(url) => { mime, bytes }`.
 
-- [ ] **Step 1: Падающий тест разбора ответа**
+- [x] **Step 1: Падающий тест разбора ответа**
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -245,11 +262,11 @@ describe("gemini-image", () => {
 
 Run: `pnpm --filter @x10/worker-pipeline exec vitest run test/gemini-image.test.ts` → FAIL.
 
-- [ ] **Step 2: Реализация клиента**
+- [x] **Step 2: Реализация клиента**
 
 `gemini-image.ts`: `parseDataUrl`, `extractImageFromResponse` (путь `choices[0].message.images[0].image_url.url`, ⚠️ `content` = null — не использовать), `generateCoverImage` (POST `/chat/completions`, `model: env.IMAGE_MODEL`, per-request timeout 300s как у define-agent, ошибка → throw).
 
-- [ ] **Step 3: Падающий тест хранилища**
+- [x] **Step 3: Падающий тест хранилища**
 
 ```ts
 import { mkdtemp, readFile } from "node:fs/promises";
@@ -275,15 +292,15 @@ describe("cover-storage", () => {
 
 Run → FAIL.
 
-- [ ] **Step 4: Реализация хранилища**
+- [x] **Step 4: Реализация хранилища**
 
 `cover-storage.ts` на `node:fs/promises` (`mkdir` recursive + `writeFile`), без новых зависимостей. Докблок: абстракция намеренно узкая (`saveCover`), переезд на S3 = замена тела функции.
 
-- [ ] **Step 5: Тесты зелёные + typecheck**
+- [x] **Step 5: Тесты зелёные + typecheck**
 
 Run: `pnpm --filter @x10/worker-pipeline exec vitest run test/gemini-image.test.ts test/cover-storage.test.ts && pnpm --filter @x10/worker-pipeline exec tsc --noEmit` → PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/workers/pipeline
@@ -303,23 +320,23 @@ git commit -m "feat(pipeline): клиент image-модели Timeweb-шлюз�
 - Consumes: `createVisualAgent`, `generateCoverImage`, `saveCover`.
 - Produces: Inngest-функция id `generate-cover`, событие `article/cover.requested` c `{ articleId }`.
 
-- [ ] **Step 1: Падающий тест оркестрации**
+- [x] **Step 1: Падающий тест оркестрации**
 
 Мокать `@x10/db` chain-объектом (паттерн `drain-post-slots.test.ts`), мокать генерацию и хранилище. Проверять: (а) happy — пишет `coverImageUrl` + `visualStatus='pending_review'` + `visualPrompt`; (б) генерация бросила → `visualStatus` НЕ становится `pending_review` (остаётся `none`), функция не роняет пайплайн; (в) `COVERS_DIR`/`COVERS_PUBLIC_BASE_URL` пусты → шаг скипается с причиной `covers-disabled`.
 
-- [ ] **Step 2: Реализация**
+- [x] **Step 2: Реализация**
 
 Шаги Inngest: `load-article` → `visual-prompt` (VisualAgent) → `generate` → `store` → `mark-pending-review`. Гард в начале: нет `COVERS_DIR`/`COVERS_PUBLIC_BASE_URL` → `return { skipped: true, reason: "covers-disabled" }`. Ошибка любого шага → пробрасывается (Inngest ретраит `retries: 1`), но `visualStatus` не выставляется в approved.
 
-- [ ] **Step 3: Тесты зелёные**
+- [x] **Step 3: Тесты зелёные**
 
 Run: `pnpm --filter @x10/worker-pipeline exec vitest run test/generate-cover.test.ts` → PASS.
 
-- [ ] **Step 4: Триггер из пайплайна**
+- [x] **Step 4: Триггер из пайплайна**
 
 В месте, где статья доведена (после persist, рядом с постановкой в очередь канала), отправить событие `article/cover.requested`. ⚠️ Не блокировать основной поток: отправка события — отдельный шаг, ошибка не роняет публикацию.
 
-- [ ] **Step 5: Полный прогон + commit**
+- [x] **Step 5: Полный прогон + commit**
 
 Run: `pnpm --filter @x10/worker-pipeline test && pnpm --filter @x10/worker-pipeline exec tsc --noEmit`
 
@@ -343,11 +360,11 @@ git commit -m "feat(pipeline): Inngest-функция генерации обл�
 **Interfaces:**
 - Produces: `GET /v1/admin/visuals?status=pending_review` (список: id, tease, coverImageUrl, visualPrompt); `POST /v1/admin/visuals/:id/approve`; `POST /v1/admin/visuals/:id/reject`; `POST /v1/admin/visuals/:id/regenerate` (шлёт `article/cover.requested`).
 
-- [ ] **Step 1: Падающий тест роутов** — авторизация админа (паттерн существующих admin-роутов), смена `visual_status`, 404 на неизвестный id.
-- [ ] **Step 2: Реализация роутов** по паттерну `apps/api/src/routes/admin.ts`.
-- [ ] **Step 3: Тесты зелёные.**
-- [ ] **Step 4: UI очереди** — список карточек: картинка, заголовок, кнопки «Одобрить»/«Перегенерировать»/«Без картинки». Паттерн существующих экранов админки; тексты по-русски.
-- [ ] **Step 5: Сборка admin** (`pnpm --filter @x10/admin build`) + commit.
+- [x] **Step 1: Падающий тест роутов** — авторизация админа (паттерн существующих admin-роутов), смена `visual_status`, 404 на неизвестный id.
+- [x] **Step 2: Реализация роутов** по паттерну `apps/api/src/routes/admin.ts`.
+- [x] **Step 3: Тесты зелёные.**
+- [x] **Step 4: UI очереди** — список карточек: картинка, заголовок, кнопки «Одобрить»/«Перегенерировать»/«Без картинки». Паттерн существующих экранов админки; тексты по-русски.
+- [x] **Step 5: Сборка admin** (`pnpm --filter @x10/admin build`) + commit.
 
 ```bash
 git commit -m "feat(admin): очередь ревью ИИ-обложек (одобрить/перегенерить/без картинки)"
@@ -366,12 +383,12 @@ git commit -m "feat(admin): очередь ревью ИИ-обложек (од�
 **Interfaces:**
 - Produces: `buildPhotoCaption(article) => string` (≤1024, HTML, обрезка по границе слова + «…»).
 
-- [ ] **Step 1: Падающий тест каптиона** — ≤1024; обрезка по слову; заголовок жирным; deep-link-ссылка в конце.
-- [ ] **Step 2: Реализация `caption.ts`.**
-- [ ] **Step 3: Ветка постинга.** В `drain-post-slots` селект статьи дополнить `coverImageUrl`, `visualStatus`. Если `visualStatus === "approved"` и есть `coverImageUrl` → `SendInput.visualRef = coverImageUrl`, `text = buildPhotoCaption(...)`, `html = null` (у `sendPhoto` HTML идёт в `caption`, `parse_mode` — отдельным полем: расширить `sendToChannel` для `caption_parse_mode`). Иначе — как сейчас (текстовый пост).
-- [ ] **Step 4: Тесты + typecheck зелёные.**
-- [ ] **Step 5: Лента miniapp** — карточки уже ветвятся `imageUrl ? <Image> : <BrandedCover>`; убедиться, что `coverImageUrl` доезжает в `FeedItem.imageUrl` (API `feed/daily` уже отдаёт `coverImageUrl`). Проверить LCP: обложке первого экрана добавить `priority`.
-- [ ] **Step 6: Сборка miniapp (PPR цел) + commit.**
+- [x] **Step 1: Падающий тест каптиона** — ≤1024; обрезка по слову; заголовок жирным; deep-link-ссылка в конце.
+- [x] **Step 2: Реализация `caption.ts`.**
+- [x] **Step 3: Ветка постинга.** В `drain-post-slots` селект статьи дополнить `coverImageUrl`, `visualStatus`. Если `visualStatus === "approved"` и есть `coverImageUrl` → `SendInput.visualRef = coverImageUrl`, `text = buildPhotoCaption(...)`, `html = null` (у `sendPhoto` HTML идёт в `caption`, `parse_mode` — отдельным полем: расширить `sendToChannel` для `caption_parse_mode`). Иначе — как сейчас (текстовый пост).
+- [x] **Step 4: Тесты + typecheck зелёные.**
+- [x] **Step 5: Лента miniapp** — карточки уже ветвятся `imageUrl ? <Image> : <BrandedCover>`; убедиться, что `coverImageUrl` доезжает в `FeedItem.imageUrl` (API `feed/daily` уже отдаёт `coverImageUrl`). Проверить LCP: обложке первого экрана добавить `priority`.
+- [x] **Step 6: Сборка miniapp (PPR цел) + commit.**
 
 ```bash
 git commit -m "feat(pipeline,miniapp): фото-пост в канал + реальная обложка в ленте"
@@ -384,7 +401,7 @@ git commit -m "feat(pipeline,miniapp): фото-пост в канал + реа�
 **Files:**
 - Modify: `caddy/Caddyfile.prod` (раздача `/covers/*`), `docker-compose.prod.yml` (том `covers` также в caddy).
 
-- [ ] **Step 1: Caddy.** В блоке `app.{$X10_BASE_DOMAIN}` ДО общего `handle`:
+- [x] **Step 1: Caddy.** В блоке `app.{$X10_BASE_DOMAIN}` ДО общего `handle`:
 
 ```
 	# Сгенерированные обложки статей (том covers, пишет pipeline).
@@ -397,10 +414,10 @@ git commit -m "feat(pipeline,miniapp): фото-пост в канал + реа�
 
 Том `covers:/srv/covers:ro` в сервис `caddy`.
 
-- [ ] **Step 2: Валидация конфига** — `docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile` ПЕРЕД reload (радиус поражения — TLS всего сайта).
-- [ ] **Step 3: Задать env на проде** — `COVERS_PUBLIC_BASE_URL=https://app.pro-agent-ai.ru/covers` в `.env.production`.
-- [ ] **Step 4: Adversarial Workflow-ревью всего диффа** (живой контур постинга + новая внешняя генерация).
-- [ ] **Step 5: `./deploy.sh` по «да» владельца** → re-sync Inngest (новый id функции) → live-verify: генерация одной статьи, картинка отдаётся по URL 200, очередь ревью в админке, тестовый sendPhoto.
+- [x] **Step 2: Валидация конфига** — `docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile` ПЕРЕД reload (радиус поражения — TLS всего сайта).
+- [x] **Step 3: Задать env на проде** — `COVERS_PUBLIC_BASE_URL=https://app.pro-agent-ai.ru/covers` в `.env.production`.
+- [x] **Step 4: Adversarial Workflow-ревью всего диффа** (живой контур постинга + новая внешняя генерация).
+- [x] **Step 5: `./deploy.sh` по «да» владельца** → re-sync Inngest (новый id функции) → live-verify: генерация одной статьи, картинка отдаётся по URL 200, очередь ревью в админке, тестовый sendPhoto.
 
 ---
 

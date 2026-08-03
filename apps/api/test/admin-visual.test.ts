@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import type { AppBindings, RateLimiter } from "../src/bindings";
+import { gateCoverByVisualStatus } from "../src/routes/articles";
 
 const noopLimiter: RateLimiter = {
   async limit() {
@@ -80,5 +81,37 @@ describe("admin-visual — валидация входа", () => {
   it("маршруты смонтированы (не 404)", async () => {
     const res = await call(`/${ARTICLE_ID}/approve`, { method: "POST" });
     expect(res.status).not.toBe(404);
+  });
+});
+
+/**
+ * 🔴 HumanGate в ЧИТАЛКЕ (не только в ленте). Статья публикуется автоматически,
+ * обложка доезжает к уже опубликованной, а deep-link из каждого поста канала
+ * ведёт именно в читалку — поэтому гейт здесь обязателен. Проверяем чистую
+ * функцию маскировки, а не HTTP-путь (тот требует живой БД).
+ */
+describe("гейт обложки в читалке", () => {
+  const gate = gateCoverByVisualStatus;
+
+  const COVER = "https://app.pro-agent-ai.ru/covers/a1.jpg";
+
+  it("approved → обложка видна", () => {
+    expect(gate({ visualStatus: "approved", coverImageUrl: COVER }).coverImageUrl).toBe(COVER);
+  });
+
+  it("none (ручная/легаси обложка) → видна", () => {
+    expect(gate({ visualStatus: "none", coverImageUrl: COVER }).coverImageUrl).toBe(COVER);
+  });
+
+  it("pending_review → скрыта: редактор её ещё не смотрел", () => {
+    expect(gate({ visualStatus: "pending_review", coverImageUrl: COVER }).coverImageUrl).toBeNull();
+  });
+
+  it("rejected → скрыта: редактор сказал «без картинки»", () => {
+    expect(gate({ visualStatus: "rejected", coverImageUrl: COVER }).coverImageUrl).toBeNull();
+  });
+
+  it("generating (перегенерация) → скрыта", () => {
+    expect(gate({ visualStatus: "generating", coverImageUrl: COVER }).coverImageUrl).toBeNull();
   });
 });

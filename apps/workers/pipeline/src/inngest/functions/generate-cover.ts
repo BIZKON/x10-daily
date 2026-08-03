@@ -43,9 +43,15 @@ export function createGenerateCoverFunction(
       name: "Generate AI cover image for an article",
       triggers: [{ event: ARTICLE_COVER_REQUESTED }],
       retries: 1,
-      // Ключ по статье: параллельные события на одну статью сериализуются, две
-      // разные статьи по-прежнему генерятся одновременно.
-      concurrency: { limit: 2, key: "event.data.articleId" },
+      // Плоский лимит, БЕЗ concurrency-ключа по статье. Ключи — единственное
+      // место во всём конвейере, где мы полагались бы на фичу, не используемую
+      // остальными функциями; если self-hosted Inngest её не примет, упадёт
+      // re-sync ВСЕХ функций, то есть весь автономный контур.
+      // Что теряем: гард `cover-already-exists` ниже отсекает повторные
+      // АВТОМАТИЧЕСКИЕ события, но два ручных «Перегенерировать» подряд
+      // (force:true) его обходят → лишний платный вызов модели. Цена ошибки
+      // (~$0.07) несопоставима с риском уронить синхронизацию конвейера.
+      concurrency: { limit: 2 },
     },
     async ({ event, step }) => {
       const env = loadPipelineEnv(bindings);

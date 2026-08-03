@@ -129,11 +129,16 @@ export const adminVisualRoute = new Hono<AppEnv>()
     await requireRole(c, db, EDITOR_ROLES);
     const { id } = c.req.valid("param");
 
+    // 🔴 Снимаем одобрение ДО генерации. Файл обложки перезаписывается по тому
+    // же пути, поэтому после saveCover одобренных редактором байтов физически
+    // больше не существует — а статус в БД ещё говорил бы `approved`, и слот
+    // постинга отправил бы в канал непросмотренную картинку.
+    // `generating` гасит её и в ленте, и в канале до нового одобрения.
     const [row] = await db
-      .select({ id: articles.id })
-      .from(articles)
+      .update(articles)
+      .set({ visualStatus: "generating" })
       .where(eq(articles.id, id))
-      .limit(1);
+      .returning({ id: articles.id });
     if (!row) return c.json({ error: "not_found", id }, 404);
 
     const { ids } = await getInngest(env).send({

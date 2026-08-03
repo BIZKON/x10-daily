@@ -295,6 +295,55 @@ describe("drain-post-slots", () => {
     expect(visibleCaptionLength(String(body.caption))).toBeLessThanOrEqual(CAPTION_LIMIT);
   });
 
+  it("🔴 Telegram отбил картинку (400) → пост НЕ теряется, уходит текстом", async () => {
+    dbState.selectResults = [
+      [{ articleId: "a1" }],
+      [{ text: "TG пост", visualRef: null }],
+      [articleRow({ visualStatus: "approved", coverImageUrl: "https://app.x/covers/a1.jpg" })],
+    ];
+    // sendPhoto → 400 (Telegram не смог скачать URL), sendMessage → ok.
+    const fetchImpl = vi.fn(async (url: unknown) => {
+      if (String(url).includes("/sendPhoto")) {
+        return {
+          ok: false,
+          status: 400,
+          json: async () => ({ ok: false, description: "failed to get HTTP URL content" }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ ok: true, result: { message_id: 5 } }) };
+    }) as unknown as typeof fetch;
+
+    const r = (await makeHandler(TG_BINDINGS, fetchImpl)({ step: makeStep() })) as {
+      posted: number;
+      results: Array<{ channel: string; status: string }>;
+    };
+
+    // Слот НЕ потерян — иначе голова FIFO-очереди залипла бы до STALE_HOURS и
+    // молчали бы до четырёх слотов подряд.
+    expect(r.posted).toBe(1);
+    expect(r.results[0]?.status).toBe("posted");
+    const urls = (fetchImpl as unknown as { mock: { calls: unknown[][] } }).mock.calls.map((c) =>
+      String(c[0]),
+    );
+    expect(urls.some((u) => u.includes("/sendPhoto"))).toBe(true);
+    expect(urls.some((u) => u.includes("/sendMessage"))).toBe(true);
+  });
+
+  it("сеть/5xx на фото НЕ деградирует в текст — это ретрай Inngest, а не отказ картинки", async () => {
+    dbState.selectResults = [
+      [{ articleId: "a1" }],
+      [{ text: "TG пост", visualRef: null }],
+      [articleRow({ visualStatus: "approved", coverImageUrl: "https://app.x/covers/a1.jpg" })],
+    ];
+    const fetchImpl = vi.fn(async () => ({
+      ok: false,
+      status: 502,
+      json: async () => ({ ok: false, description: "bad gateway" }),
+    })) as unknown as typeof fetch;
+
+    await expect(makeHandler(TG_BINDINGS, fetchImpl)({ step: makeStep() })).rejects.toThrow(/502/);
+  });
+
   it("VK сконфигурирован: постит tg + vk одной статьёй", async () => {
     // select articleId → vk-target check → load-tg → load-vk.
     dbState.selectResults = [

@@ -100,24 +100,11 @@ export async function sendToChannel(
     const withPreview = <T extends Record<string, unknown>>(body: T) =>
       input.previewUrl ? { ...body, link_preview_options: { url: input.previewUrl } } : body;
 
-    // Форматированный пост (session 27): html без картинки → sendMessage с
-    // parse_mode=HTML (Слой 1 — рендерится у ВСЕХ клиентов). Золотое правило (skill
-    // telegram-rich-text): бот НЕ молчит — при 400 (битый HTML / лимит) фолбэк на
-    // plain (parse_mode снят). Прочие ошибки (сеть/5xx) пробрасываем → Inngest ретраит.
-    if (input.html && !input.visualRef) {
-      try {
-        const res = await callTelegram(
-          "sendMessage",
-          withPreview({ chat_id: chatId, text: input.html, parse_mode: "HTML" }),
-          tgOpts,
-        );
-        return { ok: true, postRef: res.messageId != null ? String(res.messageId) : null };
-      } catch (e) {
-        if (!(e instanceof Error) || !/HTTP 400/.test(e.message)) throw e;
-        console.warn(`sendToChannel(tg): HTML 400 → фолбэк на plain. ${e.message}`);
-      }
-    }
-
+    // Порядок деградации (золотое правило skill telegram-rich-text: бот НЕ
+    // молчит): фото с HTML-подписью → фото с plain-подписью → rich-HTML текстом
+    // → плоский текст. Каждый переход — только по HTTP 400 (битая разметка,
+    // лимит, недоступная картинка); сеть и 5xx пробрасываем, их ретраит Inngest.
+    //
     // visualRef → sendPhoto: крупная картинка + короткая подпись (Спека 2).
     // Картинка попадает сюда ТОЛЬКО после одобрения редактором (HumanGate) —
     // drain-post-slots не проставляет visualRef неодобренной обложке.
@@ -149,12 +136,40 @@ export async function sendToChannel(
           console.warn(`sendToChannel(tg): подпись HTML 400 → фолбэк на plain. ${e.message}`);
         }
       }
-      const res = await callTelegram(
-        "sendPhoto",
-        { chat_id: chatId, photo: input.visualRef, caption: plainCaption },
-        tgOpts,
-      );
-      return { ok: true, postRef: res.messageId != null ? String(res.messageId) : null };
+      try {
+        const res = await callTelegram(
+          "sendPhoto",
+          { chat_id: chatId, photo: input.visualRef, caption: plainCaption },
+          tgOpts,
+        );
+        return { ok: true, postRef: res.messageId != null ? String(res.messageId) : null };
+      } catch (e) {
+        // 🔴 400 уже ПОСЛЕ plain-подписи = проблема самой КАРТИНКИ (Telegram не
+        // смог скачать URL, IMAGE_PROCESS_FAILED, слишком большой файл), а не
+        // разметки. Раньше здесь бросок уходил наружу и слот терялся целиком:
+        // channels-строка оставалась непостнутой, а выборка FIFO брала бы её
+        // снова каждый следующий слот в пределах STALE_HOURS — до четырёх
+        // молчащих слотов подряд. Поэтому деградируем в ТЕКСТОВЫЙ пост: он
+        // ушёл бы и без обложки, канал молчать не должен.
+        if (!(e instanceof Error) || !/HTTP 400/.test(e.message)) throw e;
+        console.warn(`sendToChannel(tg): sendPhoto 400 → деградация в текст. ${e.message}`);
+      }
+    }
+
+    // Текстовый пост. Сюда попадаем и штатно (нет обложки), и как деградация
+    // фото-ветки выше. Rich-HTML пробуем первым, при 400 — плоский текст.
+    if (input.html) {
+      try {
+        const res = await callTelegram(
+          "sendMessage",
+          withPreview({ chat_id: chatId, text: input.html, parse_mode: "HTML" }),
+          tgOpts,
+        );
+        return { ok: true, postRef: res.messageId != null ? String(res.messageId) : null };
+      } catch (e) {
+        if (!(e instanceof Error) || !/HTTP 400/.test(e.message)) throw e;
+        console.warn(`sendToChannel(tg): HTML 400 → фолбэк на plain. ${e.message}`);
+      }
     }
 
     const res = await callTelegram("sendMessage", withPreview({ chat_id: chatId, text }), tgOpts);

@@ -190,14 +190,20 @@ export function createDrainPostSlotsFunction(
 
               if (visualRef) {
                 // Фото-пост: короткая подпись ≤1024, богатый формат — в Mini App.
-                // previewUrl не нужен: у sendPhoto своя картинка, карточку
-                // превью Telegram не строит.
                 const caption = buildPhotoCaption(a, { linkUrl: deepLinkUrl ?? webUrl });
                 captionHtml = caption.html;
                 captionPlain = caption.plain;
-              } else if (webUrl) {
-                // Текстовый пост (как раньше): превью по web-URL (там
-                // og-картинка), ссылка в тексте — deep-link в Mini App.
+              }
+
+              // Текстовый пост готовим ВСЕГДА, даже когда есть обложка: это то,
+              // во что деградирует фото-ветка, если Telegram отобьёт картинку
+              // (400 «failed to get HTTP URL content»). Без этого слот терялся
+              // бы целиком, а голова FIFO-очереди залипала до STALE_HOURS.
+              // Лишним он не будет: при успешном sendPhoto просто не используется
+              // (в post-channel.ts текстовая ветка идёт ПОСЛЕ фото-веток).
+              if (webUrl) {
+                // Превью по web-URL (там og-картинка), ссылка в тексте —
+                // deep-link в Mini App.
                 previewUrl = webUrl;
                 html = articleToTelegramHtml(a, `https://app.${env.X10_BASE_DOMAIN}`, deepLinkUrl);
               }

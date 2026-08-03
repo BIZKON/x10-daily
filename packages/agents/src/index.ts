@@ -89,3 +89,14 @@ export {
   type ArticleBlock,
   type DraftShape,
 } from "./agents/schemas";
+export {
+  VisualAgent,
+  BRAND_STYLE_SUFFIX,
+  PILLAR_REGISTER,
+  VISUAL_NEGATIVE,
+  buildImagePrompt,
+  buildVisualUserPrompt,
+  pillarFor,
+  type VisualInput,
+  type VisualOutput,
+} from "./agents/visual";

@@ -272,6 +272,11 @@ function makeStep() {
   };
 }
 
+/** Имена событий, отправленных шагом (draft шлёт только запрос обложки). */
+function sentEventNames(step: { sendEvent: { mock: { calls: unknown[][] } } }): string[] {
+  return step.sendEvent.mock.calls.map((c) => (c[1] as { name: string }).name);
+}
+
 describe("draft-article pipeline", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -340,7 +345,10 @@ describe("draft-article pipeline", () => {
     ]);
     // Слот-постинг (session 23): draft больше НЕ шлёт article.ready — пост кладётся
     // в channels-очередь (save-tg-channel выше), а drain-post-slots постит по слотам.
-    expect(step.sendEvent).not.toHaveBeenCalled();
+    // Единственное событие отсюда — запрос ИИ-обложки (Спека 2), он публикацию
+    // не задерживает: генерация идёт своим темпом, к слоту не успела → текст-пост.
+    expect(sentEventNames(step)).toEqual(["article/cover.requested"]);
+    expect(sentEventNames(step)).not.toContain("article.ready");
 
     expect(result.articleId).toBe("art-uuid-1");
     expect(result.totalCostUsd).toBeCloseTo(
@@ -779,7 +787,7 @@ describe("draft-article pipeline", () => {
     expect(stepIds).toContain("save-vk-channel");
 
     // Слот-постинг: vk-вариант кладётся в очередь (save-vk-channel), без события.
-    expect(step.sendEvent).not.toHaveBeenCalled();
+    expect(sentEventNames(step)).toEqual(["article/cover.requested"]);
   });
 
   it("VK НЕ сконфигурирован → один SocialAmplify (tg), без vk-события/шагов", async () => {
@@ -799,7 +807,7 @@ describe("draft-article pipeline", () => {
     const stepIds = step.run.mock.calls.map((c) => c[0]);
     expect(stepIds).not.toContain("social-vk");
     expect(stepIds).not.toContain("save-vk-channel");
-    expect(step.sendEvent).not.toHaveBeenCalled();
+    expect(sentEventNames(step)).toEqual(["article/cover.requested"]);
   });
 
   it("частичный VK-конфиг (токен есть, owner пуст) → VK-ветка ВЫКЛ (review [9])", async () => {
@@ -818,6 +826,6 @@ describe("draft-article pipeline", () => {
     await handler({ event: EVENT, step });
 
     expect(vi.mocked(SocialAmplifyAgent.run)).toHaveBeenCalledOnce();
-    expect(step.sendEvent).not.toHaveBeenCalled();
+    expect(sentEventNames(step)).toEqual(["article/cover.requested"]);
   });
 });

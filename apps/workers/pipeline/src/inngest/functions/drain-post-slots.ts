@@ -181,7 +181,11 @@ export function createDrainPostSlotsFunction(
                 if (!r.visualRef) {
                   // Ссылка в тексте — deep-link в Mini App (фолбэк на web, если
                   // username не задан).
-                  html = articleToTelegramHtml(a, `https://app.${env.X10_BASE_DOMAIN}`, deepLinkUrl);
+                  html = articleToTelegramHtml(
+                    a,
+                    `https://app.${env.X10_BASE_DOMAIN}`,
+                    deepLinkUrl,
+                  );
                 }
               }
             }

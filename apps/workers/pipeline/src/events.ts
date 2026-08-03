@@ -140,3 +140,25 @@ export const articleReadyEvent = eventType("article.ready", {
   schema: articleReadyDataSchema,
 });
 export const ARTICLE_READY = articleReadyEvent.event;
+
+/* ----------------------------------------------------------------
+ * article/cover.requested — сгенерировать ИИ-обложку статьи (Спека 2).
+ * Триггеры: конвейер после persist (новые статьи) и кнопка «Перегенерировать»
+ * в админке. Обложка НЕ публикуется автоматически: генерация ставит
+ * visual_status='pending_review', публикует только редактор (HumanGate).
+ * ---------------------------------------------------------------- */
+export const articleCoverRequestedDataSchema = z.object({
+  articleId: z.string().uuid(),
+  /**
+   * Перегенерация из админки: перезаписать уже сгенерированную/одобренную
+   * обложку. Без флага повторный триггер по статье, у которой обложка уже есть,
+   * скипается — защита от лишних трат на дубль-события.
+   */
+  force: z.boolean().optional(),
+});
+export type ArticleCoverRequestedData = z.infer<typeof articleCoverRequestedDataSchema>;
+
+export const articleCoverRequestedEvent = eventType("article/cover.requested", {
+  schema: articleCoverRequestedDataSchema,
+});
+export const ARTICLE_COVER_REQUESTED = articleCoverRequestedEvent.event;

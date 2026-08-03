@@ -1,13 +1,9 @@
-import {
-  NewsletterAssembleAgent,
-  createMasker,
-  type AgentContext,
-} from "@x10/agents";
-import { loadPipelineEnv } from "../../env";
-import { modelsFromEnv } from "../../lib/agent-context";
-import { newsletterAssembleRequestedEvent } from "../../events";
-import type { PipelineInngest } from "../client";
+import { type AgentContext, NewsletterAssembleAgent, createMasker } from "@x10/agents";
 import type { PipelineBindings } from "../../bindings";
+import { loadPipelineEnv } from "../../env";
+import { newsletterAssembleRequestedEvent } from "../../events";
+import { modelsFromEnv } from "../../lib/agent-context";
+import type { PipelineInngest } from "../client";
 
 /**
  * Собирает daily newsletter из готовых статей. Триггерится:

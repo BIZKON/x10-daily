@@ -41,7 +41,6 @@ describe("articleToTelegramHtml", () => {
     expect(html).not.toContain("app.pro-agent-ai.ru/article/");
   });
 
-
   it("НЕ использует rich-теги (<h*>/<ul>/<li>) — только parse_mode=HTML рендерится у всех", () => {
     const html = articleToTelegramHtml(article, base);
     expect(html).not.toMatch(/<h[1-6]>/);

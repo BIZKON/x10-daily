@@ -99,9 +99,7 @@ export function articleToTelegramHtml(
   }
 
   const url = deepLinkUrl || `${baseUrl.replace(/\/+$/, "")}/article/${article.slug}`;
-  parts.push(
-    `<a href="${escapeTelegramHtml(url)}">Подробнее читай в блоге ProAgent AI →</a>`,
-  );
+  parts.push(`<a href="${escapeTelegramHtml(url)}">Подробнее читай в блоге ProAgent AI →</a>`);
 
   return parts.join("\n\n");
 }

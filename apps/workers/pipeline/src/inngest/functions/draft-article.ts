@@ -15,8 +15,13 @@ import { channels, createDb } from "@x10/db";
 import { NonRetriableError } from "inngest";
 import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
+import {
+  DEFAULT_SECTION,
+  DEFAULT_TEMPLATE,
+  articleCoverRequestedEvent,
+  topicIngestedEvent,
+} from "../../events";
 import { modelsFromEnv } from "../../lib/agent-context";
-import { DEFAULT_SECTION, DEFAULT_TEMPLATE, topicIngestedEvent } from "../../events";
 import { getTodaySpendUsd, mskDayString, recordRun } from "../../lib/cost-ledger";
 import { deliverOpsAlert } from "../../lib/ops-alert";
 import { cleanPostText } from "../../lib/text";
@@ -500,6 +505,25 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
               })
               .onConflictDoNothing();
           });
+        }
+
+        // ИИ-обложка (Спека 2): просим сгенерировать иллюстрацию. Отдельное
+        // событие, а не шаг здесь, намеренно — генерация идёт своим темпом и
+        // своими ретраями, публикацию не задерживает. Обложка уедет в канал
+        // только после одобрения редактором (HumanGate); не успела к слоту —
+        // пост уйдёт текстом, а картинка станет обложкой в ленте.
+        // ⚠️ Сбой отправки события НЕ должен ронять уже сохранённую статью.
+        try {
+          await step.sendEvent("request-cover", {
+            name: articleCoverRequestedEvent.event,
+            data: { articleId: persisted.id },
+          });
+        } catch (e) {
+          console.warn(
+            `draft-article: не удалось запросить обложку для ${persisted.id} — публикация не затронута. ${
+              e instanceof Error ? e.message : e
+            }`,
+          );
         }
 
         // Warn-алерт (session 20): пересчитываем расход за день (уже с этой статьёй)

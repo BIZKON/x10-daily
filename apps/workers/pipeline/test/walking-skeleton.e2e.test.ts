@@ -440,7 +440,11 @@ describe("Walking Skeleton e2e — cron → fetch → dedup → chain → real T
       event: { data: events[1]!.data },
       step: step3,
     });
-    expect(events).toHaveLength(2); // article.ready больше не эмитится
+    // article.ready больше не эмитится; третье событие — запрос ИИ-обложки
+    // (Спека 2), он идёт своим темпом и постинг в слот не задерживает.
+    expect(events).toHaveLength(3);
+    expect(events[2]!.name).toBe("article/cover.requested");
+    expect(events.map((e) => e.name)).not.toContain("article.ready");
 
     // channels row сохранена как ОЧЕРЕДЬ (posted_at NULL).
     const stored = channelsStore.get(`${FAKE_ARTICLE_ID}:tg`);

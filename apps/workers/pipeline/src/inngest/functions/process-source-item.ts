@@ -2,7 +2,6 @@ import { type AgentContext, IngestAgent, createMasker } from "@x10/agents";
 import { createDb } from "@x10/db";
 import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
-import { modelsFromEnv } from "../../lib/agent-context";
 import {
   DEFAULT_CATEGORY,
   DEFAULT_SECTION,
@@ -10,6 +9,7 @@ import {
   sourceItemReceivedEvent,
   topicIngestedEvent,
 } from "../../events";
+import { modelsFromEnv } from "../../lib/agent-context";
 import { recordRun } from "../../lib/cost-ledger";
 import type { PipelineInngest } from "../client";
 

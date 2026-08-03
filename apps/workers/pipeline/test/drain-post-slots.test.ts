@@ -53,6 +53,7 @@ vi.mock("@x10/db", async () => {
 
 import { createPipelineInngest } from "../src/inngest/client";
 import { createDrainPostSlotsFunction } from "../src/inngest/functions/drain-post-slots";
+import { CAPTION_LIMIT, visibleCaptionLength } from "../src/lib/caption";
 
 const TG_BINDINGS: Record<string, string | undefined> = {
   NODE_ENV: "test",
@@ -188,12 +189,130 @@ describe("drain-post-slots", () => {
     expect(body.reply_markup).toBeUndefined();
   });
 
+  /* ===== Спека 2: ИИ-обложка в канале — HumanGate в пути постинга ===== */
+
+  /** Строка статьи для load-tg (Спека 2 селектит её всегда). */
+  const articleRow = (over: Record<string, unknown> = {}) => ({
+    tease: "Склад считает остатки сам",
+    lede: "WMS с ИИ снял ручную сверку.",
+    whyItMatters: null,
+    body: [],
+    slug: "sklad",
+    coverImageUrl: null,
+    visualStatus: "none",
+    ...over,
+  });
+
+  /** Тело запроса к Telegram (dualFetch типизирован как fetch — достаём mock). */
+  const tgBody = (fetchImpl: typeof fetch) => {
+    const calls = (fetchImpl as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    const call = calls.find((c) => String(c[0]).includes("api.telegram.org"));
+    return {
+      url: String(call?.[0] ?? ""),
+      body: JSON.parse(((call?.[1] as RequestInit)?.body as string) ?? "{}") as Record<
+        string,
+        unknown
+      >,
+    };
+  };
+
+  it("🔴 обложка ОДОБРЕНА → sendPhoto с подписью и картинкой статьи", async () => {
+    dbState.selectResults = [
+      [{ articleId: "a1" }],
+      [{ text: "TG пост", visualRef: null }],
+      [articleRow({ visualStatus: "approved", coverImageUrl: "https://app.x/covers/a1.jpg" })],
+    ];
+    const fetchImpl = dualFetch();
+    await makeHandler(TG_BINDINGS, fetchImpl)({ step: makeStep() });
+
+    const { url, body } = tgBody(fetchImpl);
+    expect(url).toContain("/sendPhoto");
+    expect(body.photo).toBe("https://app.x/covers/a1.jpg");
+    expect(String(body.caption)).toContain("Склад считает остатки сам");
+    expect(body.parse_mode).toBe("HTML");
+  });
+
+  it("🔴 обложка ЖДЁТ РЕВЬЮ → в канал уходит ТЕКСТ, картинка не публикуется", async () => {
+    dbState.selectResults = [
+      [{ articleId: "a1" }],
+      [{ text: "TG пост", visualRef: null }],
+      [
+        articleRow({
+          visualStatus: "pending_review",
+          coverImageUrl: "https://app.x/covers/a1.jpg",
+        }),
+      ],
+    ];
+    const fetchImpl = dualFetch();
+    await makeHandler(TG_BINDINGS, fetchImpl)({ step: makeStep() });
+
+    const { url, body } = tgBody(fetchImpl);
+    expect(url).toContain("/sendMessage");
+    expect(url).not.toContain("/sendPhoto");
+    expect(body.photo).toBeUndefined();
+  });
+
+  it("🔴 обложка ОТКЛОНЕНА редактором → текстовый пост", async () => {
+    dbState.selectResults = [
+      [{ articleId: "a1" }],
+      [{ text: "TG пост", visualRef: null }],
+      [articleRow({ visualStatus: "rejected", coverImageUrl: "https://app.x/covers/a1.jpg" })],
+    ];
+    const fetchImpl = dualFetch();
+    await makeHandler(TG_BINDINGS, fetchImpl)({ step: makeStep() });
+
+    expect(tgBody(fetchImpl).url).toContain("/sendMessage");
+  });
+
+  it("статус approved, но картинки нет → текстовый пост (не шлём пустое фото)", async () => {
+    dbState.selectResults = [
+      [{ articleId: "a1" }],
+      [{ text: "TG пост", visualRef: null }],
+      [articleRow({ visualStatus: "approved", coverImageUrl: null })],
+    ];
+    const fetchImpl = dualFetch();
+    await makeHandler(TG_BINDINGS, fetchImpl)({ step: makeStep() });
+
+    expect(tgBody(fetchImpl).url).toContain("/sendMessage");
+  });
+
+  it("подпись фото укладывается в лимит Telegram даже при огромной вводке", async () => {
+    dbState.selectResults = [
+      [{ articleId: "a1" }],
+      [{ text: "TG пост", visualRef: null }],
+      [
+        articleRow({
+          lede: "Длинная вводка. ".repeat(300),
+          visualStatus: "approved",
+          coverImageUrl: "https://app.x/covers/a1.jpg",
+        }),
+      ],
+    ];
+    const fetchImpl = dualFetch();
+    await makeHandler(TG_BINDINGS, fetchImpl)({ step: makeStep() });
+
+    const { body } = tgBody(fetchImpl);
+    expect(visibleCaptionLength(String(body.caption))).toBeLessThanOrEqual(CAPTION_LIMIT);
+  });
+
   it("VK сконфигурирован: постит tg + vk одной статьёй", async () => {
     // select articleId → vk-target check → load-tg → load-vk.
     dbState.selectResults = [
       [{ articleId: "a1" }],
       [{ id: "vkrow" }],
       [{ text: "TG", visualRef: null }],
+      // Спека 2: для tg статья тянется ВСЕГДА (нужен visual_status обложки).
+      [
+        {
+          tease: "T",
+          lede: "L",
+          whyItMatters: null,
+          body: [],
+          slug: "s",
+          coverImageUrl: null,
+          visualStatus: "none",
+        },
+      ],
       [{ text: "VK", visualRef: null }],
     ];
     const fetchImpl = dualFetch({ postId: 77 });
@@ -211,6 +330,18 @@ describe("drain-post-slots", () => {
       [{ articleId: "a1" }],
       [{ id: "vkrow" }],
       [{ text: "TG", visualRef: null }],
+      // Спека 2: для tg статья тянется ВСЕГДА (нужен visual_status обложки).
+      [
+        {
+          tease: "T",
+          lede: "L",
+          whyItMatters: null,
+          body: [],
+          slug: "s",
+          coverImageUrl: null,
+          visualStatus: "none",
+        },
+      ],
       [{ text: "VK", visualRef: null }],
     ];
     const fetchImpl = dualFetch({ errorCode: 214 });

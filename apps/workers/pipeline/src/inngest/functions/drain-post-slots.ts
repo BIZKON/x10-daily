@@ -13,6 +13,7 @@ import {
 } from "@x10/db";
 import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
+import { buildPhotoCaption } from "../../lib/caption";
 import { buildMiniAppDeepLink } from "../../lib/miniapp-link";
 import {
   type PostableChannel,
@@ -152,13 +153,13 @@ export function createDrainPostSlotsFunction(
           let html: string | null = null;
           let deepLinkUrl: string | null = null;
           let previewUrl: string | null = null;
-          // Тянем статью для TG только если она реально нужна: под deep-link кнопку
-          // (есть username) или под rich-html (есть домен и нет картинки). Иначе
-          // селект бесполезен.
-          const needArticle =
-            channel === "tg" &&
-            Boolean(env.TELEGRAM_BOT_USERNAME || (env.X10_BASE_DOMAIN && !r.visualRef));
-          if (needArticle) {
+          let visualRef: string | null = r.visualRef;
+          let captionHtml: string | null = null;
+          let captionPlain: string | null = null;
+
+          // Для TG статью тянем ВСЕГДА: без неё не узнать, одобрена ли обложка
+          // (Спека 2). Это PK-лукап — дешевле прежней хитрой ветки needArticle.
+          if (channel === "tg") {
             const [a] = await db
               .select({
                 tease: articles.tease,
@@ -166,6 +167,8 @@ export function createDrainPostSlotsFunction(
                 whyItMatters: articles.whyItMatters,
                 body: articles.body,
                 slug: articles.slug,
+                coverImageUrl: articles.coverImageUrl,
+                visualStatus: articles.visualStatus,
               })
               .from(articles)
               .where(eq(articles.id, articleId))
@@ -174,23 +177,33 @@ export function createDrainPostSlotsFunction(
               deepLinkUrl = env.TELEGRAM_BOT_USERNAME
                 ? buildMiniAppDeepLink(env.TELEGRAM_BOT_USERNAME, a.slug)
                 : null;
-              if (env.X10_BASE_DOMAIN) {
-                const webUrl = `https://app.${env.X10_BASE_DOMAIN}/article/${a.slug}`;
-                // Превью — всегда по web-URL (там og-картинка статьи).
+              const webUrl = env.X10_BASE_DOMAIN
+                ? `https://app.${env.X10_BASE_DOMAIN}/article/${a.slug}`
+                : null;
+
+              // 🔴 HumanGate (Спека 2): фото уходит в канал ТОЛЬКО с обложкой,
+              // одобренной редактором. pending_review / rejected / none →
+              // остаёмся на текстовом посте, как раньше.
+              if (a.visualStatus === "approved" && a.coverImageUrl) {
+                visualRef = a.coverImageUrl;
+              }
+
+              if (visualRef) {
+                // Фото-пост: короткая подпись ≤1024, богатый формат — в Mini App.
+                // previewUrl не нужен: у sendPhoto своя картинка, карточку
+                // превью Telegram не строит.
+                const caption = buildPhotoCaption(a, { linkUrl: deepLinkUrl ?? webUrl });
+                captionHtml = caption.html;
+                captionPlain = caption.plain;
+              } else if (webUrl) {
+                // Текстовый пост (как раньше): превью по web-URL (там
+                // og-картинка), ссылка в тексте — deep-link в Mini App.
                 previewUrl = webUrl;
-                if (!r.visualRef) {
-                  // Ссылка в тексте — deep-link в Mini App (фолбэк на web, если
-                  // username не задан).
-                  html = articleToTelegramHtml(
-                    a,
-                    `https://app.${env.X10_BASE_DOMAIN}`,
-                    deepLinkUrl,
-                  );
-                }
+                html = articleToTelegramHtml(a, `https://app.${env.X10_BASE_DOMAIN}`, deepLinkUrl);
               }
             }
           }
-          return { text: r.text, visualRef: r.visualRef, html, previewUrl };
+          return { text: r.text, visualRef, html, previewUrl, captionHtml, captionPlain };
         });
 
         // Send — отдельный step. Бросок (сеть/5xx) → Inngest ретраит функцию,
@@ -205,6 +218,8 @@ export function createDrainPostSlotsFunction(
               visualRef: row.visualRef,
               html: row.html,
               previewUrl: row.previewUrl,
+              captionHtml: row.captionHtml,
+              captionPlain: row.captionPlain,
             },
             { fetchImpl: opts.fetchImpl },
           ),

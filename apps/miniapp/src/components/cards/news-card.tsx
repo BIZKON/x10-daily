@@ -18,7 +18,7 @@ import { StatusBadge } from "./status-badge";
  * CardReactions (z-[2]) — сиблинг, тап по нему не навигирует. Корень БЕЗ
  * overflow-hidden (иначе клипается popover) — обрезку даёт обёртка хедера.
  */
-export function NewsCard({ item }: { item: FeedItem }) {
+export function NewsCard({ item, priority }: { item: FeedItem; priority?: boolean }) {
   const dateLabel = formatPublishedAt(item.publishedAt);
   const status = deriveCardStatus(item);
 
@@ -53,6 +53,7 @@ export function NewsCard({ item }: { item: FeedItem }) {
             height={400}
             className="h-44 w-full object-cover"
             unoptimized
+            priority={priority}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-night/80 via-night/30 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-4">{rubricRow}</div>

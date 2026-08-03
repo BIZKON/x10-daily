@@ -291,6 +291,10 @@ function makeTestDb() {
       return builder;
     },
     select(_fields: unknown) {
+      // Спека 2: drain-post-slots для tg селектит ещё и articles (нужен
+      // visual_status обложки). Отличаем по составу полей — иначе стаб отдал бы
+      // на этот select channels-строку и подпись собралась бы из пустоты.
+      const isArticleSelect = typeof _fields === "object" && _fields !== null && "tease" in _fields;
       const builder: {
         from: () => typeof builder;
         where: () => typeof builder;
@@ -309,6 +313,19 @@ function makeTestDb() {
           return builder;
         },
         async limit(n: number) {
+          if (isArticleSelect) {
+            return [
+              {
+                tease: "Тест walking",
+                lede: "Walking skeleton lede.",
+                whyItMatters: "Walking skeleton проверяет автономный контур.",
+                body: [],
+                slug: "test-walking",
+                coverImageUrl: null,
+                visualStatus: "none",
+              },
+            ] as never;
+          }
           // Тесты используют единственный articleId — отдаём всё что есть.
           return Array.from(channelsStore.values()).slice(0, n);
         },
@@ -322,12 +339,13 @@ function makeTestDb() {
   };
 }
 
-// === Imports после vi.mock (hoisted) ===
 import { createPipelineInngest } from "../src/inngest/client";
 import { createDraftArticleFunction } from "../src/inngest/functions/draft-article";
 import { createDrainPostSlotsFunction } from "../src/inngest/functions/drain-post-slots";
 import { createIngestRssFunction } from "../src/inngest/functions/ingest-rss";
 import { createProcessSourceItemFunction } from "../src/inngest/functions/process-source-item";
+// === Imports после vi.mock (hoisted) ===
+import { CAPTION_LIMIT, visibleCaptionLength } from "../src/lib/caption";
 
 const BINDINGS = {
   NODE_ENV: "test",
@@ -531,10 +549,18 @@ describe("Walking Skeleton e2e — cron → fetch → dedup → chain → real T
     const body = JSON.parse(((tgSpy.mock.calls[0]![1] as RequestInit).body as string) ?? "{}") as {
       photo: string;
       caption: string;
+      parse_mode?: string;
       text?: string;
     };
     expect(body.photo).toBe("stub://photo.jpg");
-    expect(body.caption).toBe("Caption под фото walking skeleton");
+    // Спека 2: подпись фото строится билдером (жирный заголовок + вводка +
+    // ссылка) и укладывается в лимит 1024. Раньше подписью шёл сырой
+    // channels.text — полный пост соцсети, который в лимит не влезает и дал бы
+    // HTTP 400, как только ветка sendPhoto стала боевой.
+    expect(body.caption).toContain("<b>Тест walking</b>");
+    expect(body.caption.length).toBeLessThanOrEqual(4096);
+    expect(visibleCaptionLength(body.caption)).toBeLessThanOrEqual(CAPTION_LIMIT);
+    expect(body.parse_mode).toBe("HTML");
     expect(body.text).toBeUndefined();
     expect(result.results[0]!.status).toBe("posted");
   });

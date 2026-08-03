@@ -54,9 +54,10 @@ async function LearnFeed() {
 
   return (
     <ul className="flex flex-col gap-3.5">
-      {items.map((item) => (
+      {items.map((item, i) => (
         <li key={item.id}>
-          <FeedCard item={item} />
+          {/* Первая карточка — LCP-элемент экрана: грузим её обложку с приоритетом. */}
+          <FeedCard item={item} priority={i === 0} />
         </li>
       ))}
     </ul>

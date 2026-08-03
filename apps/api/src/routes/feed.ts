@@ -43,6 +43,16 @@ export const feedRoute = new Hono<AppEnv>().get(
     // время публикации — publishedAt, а для ready (publishedAt=null) — createdAt.
     const effectiveAt = sql<Date>`coalesce(${articles.publishedAt}, ${articles.createdAt})`;
 
+    // 🔴 HumanGate на картинку (Спека 2): ИИ-обложка видна в ленте ТОЛЬКО после
+    // одобрения редактором. `pending_review` — ещё не смотрели, `rejected` —
+    // редактор сказал «без картинки», `generating` — не готова. Показать любую
+    // из них значило бы опубликовать ИИ-контент мимо ревью.
+    // `none` пропускаем намеренно: это обложки, заданные вручную/легаси, к
+    // ИИ-генерации отношения не имеющие.
+    const visibleCover = sql<
+      string | null
+    >`case when ${articles.visualStatus} in ('approved','none') then ${articles.coverImageUrl} else null end`;
+
     const rows = await db
       .select({
         id: articles.id,
@@ -52,7 +62,7 @@ export const feedRoute = new Hono<AppEnv>().get(
         subcategory: articles.subcategory,
         template: articles.template,
         tags: articles.tags,
-        coverImageUrl: articles.coverImageUrl,
+        coverImageUrl: visibleCover,
         tease: articles.tease,
         lede: articles.lede,
         readSeconds: articles.readSeconds,

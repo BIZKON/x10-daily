@@ -52,6 +52,18 @@ export type SendInput = {
    * be used». Только tg + sendMessage. Пусто → превью по ссылке из текста.
    */
   previewUrl?: string | null;
+  /**
+   * HTML-подпись фото-поста (Спека 2). Только вместе с `visualRef`. Уже
+   * уложена в лимит Telegram 1024 по ВИДИМОЙ длине (см. lib/caption.ts).
+   * Пусто → подписью идёт `captionPlain`/`text`.
+   */
+  captionHtml?: string | null;
+  /**
+   * Plain-подпись фото-поста — фолбэк, если Telegram отверг разметку (HTTP 400).
+   * ⚠️ Обязана быть ≤1024: `text` (полный пост соцсети) в лимит подписи НЕ
+   * укладывается и сам по себе дал бы 400.
+   */
+  captionPlain?: string | null;
 };
 
 /**
@@ -106,15 +118,46 @@ export async function sendToChannel(
       }
     }
 
-    // visualRef → sendPhoto (M0 не использует, VisualAgent выключен); иначе sendMessage.
-    const method = input.visualRef ? "sendPhoto" : "sendMessage";
-    const res = input.visualRef
-      ? await callTelegram(
-          method,
-          { chat_id: chatId, photo: input.visualRef, caption: text },
-          tgOpts,
-        )
-      : await callTelegram(method, withPreview({ chat_id: chatId, text }), tgOpts);
+    // visualRef → sendPhoto: крупная картинка + короткая подпись (Спека 2).
+    // Картинка попадает сюда ТОЛЬКО после одобрения редактором (HumanGate) —
+    // drain-post-slots не проставляет visualRef неодобренной обложке.
+    if (input.visualRef) {
+      // ⚠️ `text` — полный пост соцсети, в лимит подписи (1024) он не влезает.
+      // Поэтому подпись берём из caption-полей; на `text` падаем только для
+      // обратной совместимости с уже лежащими в очереди строками.
+      // `||`, не `??`: пустая построенная подпись (нет ни заголовка, ни
+      // вводки, ни ссылки) не должна глушить фолбэк на текст очереди.
+      const plainCaption = input.captionPlain || text;
+      if (input.captionHtml) {
+        try {
+          const res = await callTelegram(
+            "sendPhoto",
+            {
+              chat_id: chatId,
+              photo: input.visualRef,
+              caption: input.captionHtml,
+              parse_mode: "HTML",
+            },
+            tgOpts,
+          );
+          return { ok: true, postRef: res.messageId != null ? String(res.messageId) : null };
+        } catch (e) {
+          // Золотое правило (skill telegram-rich-text): бот НЕ молчит. Битая
+          // разметка/лимит (400) → шлём ту же картинку с plain-подписью.
+          // Сеть/5xx пробрасываем — их ретраит Inngest.
+          if (!(e instanceof Error) || !/HTTP 400/.test(e.message)) throw e;
+          console.warn(`sendToChannel(tg): подпись HTML 400 → фолбэк на plain. ${e.message}`);
+        }
+      }
+      const res = await callTelegram(
+        "sendPhoto",
+        { chat_id: chatId, photo: input.visualRef, caption: plainCaption },
+        tgOpts,
+      );
+      return { ok: true, postRef: res.messageId != null ? String(res.messageId) : null };
+    }
+
+    const res = await callTelegram("sendMessage", withPreview({ chat_id: chatId, text }), tgOpts);
     return { ok: true, postRef: res.messageId != null ? String(res.messageId) : null };
   }
 

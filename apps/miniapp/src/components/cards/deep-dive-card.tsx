@@ -18,7 +18,7 @@ import { StatusBadge } from "./status-badge";
  *
  * «Stretched link» (см. NewsCard): absolute <Link> z-[1] + CardReactions z-[2].
  */
-export function DeepDiveCard({ item }: { item: FeedItem }) {
+export function DeepDiveCard({ item, priority }: { item: FeedItem; priority?: boolean }) {
   const dateLabel = formatPublishedAt(item.publishedAt);
   const status = deriveCardStatus(item);
 
@@ -63,6 +63,7 @@ export function DeepDiveCard({ item }: { item: FeedItem }) {
             height={700}
             className="h-64 w-full object-cover"
             unoptimized
+            priority={priority}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-night via-night/60 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-5">

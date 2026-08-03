@@ -2,7 +2,7 @@ import { mkdtemp, readFile, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { coverFileName, coversEnabled, saveCover } from "../src/lib/cover-storage";
+import { coverFileName, coverVersion, coversEnabled, saveCover } from "../src/lib/cover-storage";
 
 async function tmpEnv() {
   const dir = await mkdtemp(join(tmpdir(), "covers-"));
@@ -42,7 +42,7 @@ describe("saveCover", () => {
   it("пишет файл и возвращает публичный URL", async () => {
     const { dir, env } = await tmpEnv();
     const url = await saveCover(env, "a1", new Uint8Array([1, 2, 3]), "image/jpeg");
-    expect(url).toBe("https://app.example.ru/covers/a1.jpg");
+    expect(url).toMatch(/^https:\/\/app\.example\.ru\/covers\/a1\.jpg\?v=[0-9a-f]{8}$/);
     expect((await readFile(join(dir, "a1.jpg"))).length).toBe(3);
   });
 
@@ -55,7 +55,7 @@ describe("saveCover", () => {
       new Uint8Array([9]),
       "image/png",
     );
-    expect(url).toBe("https://app.example.ru/covers/a2.png");
+    expect(url).toMatch(/^https:\/\/app\.example\.ru\/covers\/a2\.png\?v=[0-9a-f]{8}$/);
     expect(await readdir(nested)).toContain("a2.png");
   });
 
@@ -67,7 +67,7 @@ describe("saveCover", () => {
       new Uint8Array([1]),
       "image/jpeg",
     );
-    expect(url).toBe("https://app.example.ru/covers/a3.jpg");
+    expect(url).toMatch(/^https:\/\/app\.example\.ru\/covers\/a3\.jpg\?v=/);
   });
 
   it("перезапись той же статьи идемпотентна — один файл, свежие байты", async () => {
@@ -87,5 +87,23 @@ describe("saveCover", () => {
     await expect(saveCover(env, "../../pwned", new Uint8Array([1]), "image/jpeg")).rejects.toThrow(
       /articleId/i,
     );
+  });
+});
+
+describe("coverVersion — версия содержимого в URL", () => {
+  it("одинаковые байты → одинаковая версия (URL не дёргается зря)", () => {
+    expect(coverVersion(new Uint8Array([1, 2, 3]))).toBe(coverVersion(new Uint8Array([1, 2, 3])));
+  });
+
+  it("🔴 разные байты → разная версия: перегенерация обязана пробить immutable-кэш", () => {
+    expect(coverVersion(new Uint8Array([1, 2, 3]))).not.toBe(coverVersion(new Uint8Array([3, 2, 1])));
+  });
+
+  it("перегенерация той же статьи меняет URL, хотя путь на диске тот же", async () => {
+    const { env } = await tmpEnv();
+    const first = await saveCover(env, "a9", new Uint8Array([1, 1, 1]), "image/jpeg");
+    const second = await saveCover(env, "a9", new Uint8Array([2, 2, 2]), "image/jpeg");
+    expect(first).not.toBe(second);
+    expect(first.split("?")[0]).toBe(second.split("?")[0]);
   });
 });

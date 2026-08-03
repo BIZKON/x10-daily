@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -56,7 +57,20 @@ export function coverFileName(articleId: string, mime: string): string {
 }
 
 /**
- * Пишет байты обложки на диск и возвращает её публичный URL.
+ * Версия содержимого в URL (`?v=…`) — короткий хеш байтов.
+ *
+ * ⚠️ Зачем: имя файла детерминировано по articleId, поэтому перегенерация
+ * ПЕРЕЗАПИСЫВАЕТ тот же путь. Caddy раздаёт обложки с `immutable` и годовым
+ * max-age — без версии в URL новая картинка навсегда осталась бы невидимой
+ * (браузеры и кэш Telegram держали бы старую). Хеш содержимого меняет URL
+ * ровно тогда, когда изменилась картинка, и не меняет — когда нет.
+ */
+export function coverVersion(bytes: Uint8Array): string {
+  return createHash("sha256").update(bytes).digest("hex").slice(0, 8);
+}
+
+/**
+ * Пишет байты обложки на диск и возвращает её публичный URL с версией.
  * Перезапись идемпотентна: имя детерминировано по articleId, поэтому
  * перегенерация заменяет файл, а не плодит мусор.
  */
@@ -79,5 +93,5 @@ export async function saveCover(
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, name), bytes);
 
-  return `${publicBase.replace(/\/+$/, "")}/${name}`;
+  return `${publicBase.replace(/\/+$/, "")}/${name}?v=${coverVersion(bytes)}`;
 }

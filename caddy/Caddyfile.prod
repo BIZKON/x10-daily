@@ -32,6 +32,18 @@ app.{$X10_BASE_DOMAIN:pro-agent-ai.ru} {
 		}
 	}
 
+	# Сгенерированные ИИ-обложки статей (Спека 2): том `covers`, пишет pipeline
+	# (/data/covers), Caddy отдаёт только на чтение (/srv/covers:ro).
+	# ⚠️ Блок обязан стоять ДО общего handle: handle-блоки в Caddyfile
+	# срабатывают в порядке записи, иначе всё уйдёт в miniapp-прокси.
+	# immutable безопасен: URL несёт версию содержимого (?v=<хеш байтов>), и
+	# перегенерация обложки меняет URL — см. lib/cover-storage.ts.
+	handle_path /covers/* {
+		root * /srv/covers
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
 	# Всё остальное → miniapp (fallback-handle, тот же прокси что был).
 	handle {
 		reverse_proxy miniapp:3000 {

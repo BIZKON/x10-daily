@@ -155,12 +155,14 @@ describe("generate-cover", () => {
       step: makeStep(),
     })) as { coverImageUrl: string; visualStatus: string };
 
-    expect(r.coverImageUrl).toBe(`https://app.example.ru/covers/${ARTICLE_ID}.jpg`);
+    expect(r.coverImageUrl).toMatch(
+      new RegExp(`^https://app\\.example\\.ru/covers/${ARTICLE_ID}\\.jpg\\?v=[0-9a-f]{8}$`),
+    );
     expect(r.visualStatus).toBe("pending_review");
 
     const upd = dbState.updates[0] as Record<string, unknown>;
     expect(upd.visualStatus).toBe("pending_review");
-    expect(upd.coverImageUrl).toBe(`https://app.example.ru/covers/${ARTICLE_ID}.jpg`);
+    expect(String(upd.coverImageUrl)).toContain(`/covers/${ARTICLE_ID}.jpg?v=`);
     expect(String(upd.visualPrompt)).toContain("A single closed warehouse door");
     // Канон визуала доехал до промпта.
     expect(String(upd.visualPrompt).toLowerCase()).toContain("no text");

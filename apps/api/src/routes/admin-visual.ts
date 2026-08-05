@@ -120,8 +120,16 @@ export const adminVisualRoute = new Hono<AppEnv>()
   /**
    * Перегенерировать. Событие уходит с `force: true` — иначе generate-cover
    * увидит уже существующую обложку и скипнется (гард от дубль-событий).
-   * Статус НЕ трогаем: пока новая картинка не готова, в канал по-прежнему
-   * годится старая (если была одобрена) либо текст.
+   *
+   * 🔴 Статус НЕ трогаем. Раньше здесь стоял `generating` «на всякий случай»:
+   * версия обложки жила в query (`?v=`), файл перезаписывался по тому же пути,
+   * и одобренных редактором байтов после saveCover физически не оставалось.
+   * С переносом версии в ИМЯ файла (Telegram не принимает URL с query) новая
+   * картинка пишется отдельным файлом, а `coverImageUrl` и `visualStatus`
+   * меняются одним UPDATE в конце generate-cover. Значит, всё время генерации
+   * старая одобренная обложка остаётся валидной — и в ленте, и в канале.
+   * Гасить её заранее было бы хуже: при падении генерации статья застряла бы
+   * в `generating` с живой, но невидимой обложкой.
    */
   .post("/visuals/:id/regenerate", zValidator("param", idParam), async (c) => {
     const env = getEnv(c.env);
@@ -129,16 +137,11 @@ export const adminVisualRoute = new Hono<AppEnv>()
     await requireRole(c, db, EDITOR_ROLES);
     const { id } = c.req.valid("param");
 
-    // 🔴 Снимаем одобрение ДО генерации. Файл обложки перезаписывается по тому
-    // же пути, поэтому после saveCover одобренных редактором байтов физически
-    // больше не существует — а статус в БД ещё говорил бы `approved`, и слот
-    // постинга отправил бы в канал непросмотренную картинку.
-    // `generating` гасит её и в ленте, и в канале до нового одобрения.
     const [row] = await db
-      .update(articles)
-      .set({ visualStatus: "generating" })
+      .select({ id: articles.id })
+      .from(articles)
       .where(eq(articles.id, id))
-      .returning({ id: articles.id });
+      .limit(1);
     if (!row) return c.json({ error: "not_found", id }, 404);
 
     const { ids } = await getInngest(env).send({

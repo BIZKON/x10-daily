@@ -1,6 +1,6 @@
 "use client";
 
-import type { VisualQueueItem } from "@/lib/api";
+import type { VisualQueueItem, VisualStatus } from "@/lib/api";
 import { Check, RefreshCw, X } from "lucide-react";
 import { useState, useTransition } from "react";
 
@@ -13,11 +13,14 @@ import { useState, useTransition } from "react";
  */
 export function VisualCard({
   item,
+  status,
   onApprove,
   onReject,
   onRegenerate,
 }: {
   item: VisualQueueItem;
+  /** Вкладка, из которой пришла карточка: определяет доступные действия. */
+  status: VisualStatus;
   onApprove: (id: string) => Promise<void>;
   onReject: (id: string) => Promise<void>;
   onRegenerate: (id: string) => Promise<void>;
@@ -81,18 +84,23 @@ export function VisualCard({
           <p className="mt-4 text-[13px] font-semibold text-success">{done}</p>
         ) : (
           <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={pending || !item.coverImageUrl}
-              onClick={() => run(onApprove, "Одобрено — уйдёт фото-постом")}
-              className="flex items-center gap-1.5 rounded-lg bg-success/15 px-3 py-2 text-[13px] font-semibold text-success disabled:opacity-50"
-            >
-              <Check size={14} strokeWidth={2} /> Одобрить
-            </button>
+            {/* Одобрять можно только то, что реально ждёт ревью: api гейтит
+                approve по `pending_review` и вернёт 409. Не показываем кнопку,
+                которая заведомо не сработает. */}
+            {status === "pending_review" && (
+              <button
+                type="button"
+                disabled={pending || !item.coverImageUrl}
+                onClick={() => run(onApprove, "Одобрено — уйдёт фото-постом")}
+                className="flex items-center gap-1.5 rounded-lg bg-success/15 px-3 py-2 text-[13px] font-semibold text-success disabled:opacity-50"
+              >
+                <Check size={14} strokeWidth={2} /> Одобрить
+              </button>
+            )}
             <button
               type="button"
               disabled={pending}
-              onClick={() => run(onRegenerate, "Перегенерация запущена")}
+              onClick={() => run(onRegenerate, "Перегенерация запущена — новая придёт на ревью")}
               className="flex items-center gap-1.5 rounded-lg bg-fence/50 px-3 py-2 text-[13px] font-semibold text-paper disabled:opacity-50"
             >
               <RefreshCw size={14} strokeWidth={2} /> Перегенерировать

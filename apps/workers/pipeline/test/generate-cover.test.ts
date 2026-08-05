@@ -61,7 +61,11 @@ vi.mock("@x10/agents", async () => {
       run: vi.fn(async () => {
         if (agentState.shouldThrow) throw new Error("VisualAgent упал");
         return {
-          output: { scene: agentState.scene },
+          output: {
+            headline: "Склад считает сам",
+            sub: "WMS с ИИ снял сверку",
+            scene: agentState.scene,
+          },
           usage: { inputTokens: 100, outputTokens: 20, cachedInputTokens: 0 },
           costUsd: 0.0001,
           modelUsed: "deepseek/deepseek-v4-flash",
@@ -171,7 +175,8 @@ describe("generate-cover", () => {
     expect(String(upd.coverImageUrl)).toContain(`/covers/${ARTICLE_ID}.jpg?v=`);
     expect(String(upd.visualPrompt)).toContain("A single closed warehouse door");
     // Канон визуала доехал до промпта.
-    expect(String(upd.visualPrompt).toLowerCase()).toContain("no text");
+    expect(String(upd.visualPrompt)).toContain("Склад считает сам");
+    expect(String(upd.visualPrompt)).toContain("БЕЗ кавычек");
   });
 
   it("🔴 HumanGate: функция НИКОГДА не ставит approved", async () => {
@@ -395,5 +400,108 @@ describe("generate-cover", () => {
       step: makeStep(),
     })) as { visualStatus: string };
     expect(r.visualStatus).toBe("pending_review");
+  });
+});
+
+describe("ретрай на отказ фильтра", () => {
+  // Свой сброс: этот describe — сосед внешнего, его beforeEach сюда не достаёт,
+  // и состояние мока протекало бы между тестами.
+  beforeEach(() => {
+    dbState.selectResults = [];
+    dbState.updates = [];
+    dbState.inserts = [];
+    agentState.shouldThrow = false;
+    vi.clearAllMocks();
+  });
+
+  /** Ответ шлюза с finish_reason=content_filter и без картинок. */
+  const filtered = () =>
+    new Response(
+      JSON.stringify({ choices: [{ finish_reason: "content_filter", message: { content: "" } }] }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+
+  const okBody = () =>
+    new Response(
+      JSON.stringify({
+        choices: [{ message: { content: null, images: [{ image_url: { url: IMAGE_DATA_URL } }] } }],
+        usage: {
+          prompt_tokens: 52,
+          completion_tokens: 1514,
+          completion_tokens_details: { text_tokens: 394, image_tokens: 1120 },
+        },
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+
+  it("отказ на первой попытке → повтор, обложка всё равно получена", async () => {
+    vi.useFakeTimers();
+    try {
+      dbState.selectResults = [[ARTICLE_ROW]];
+      let call = 0;
+      const fetchImpl = vi.fn(async () => {
+        call++;
+        return call === 1 ? filtered() : okBody();
+      }) as unknown as typeof fetch;
+
+      const bindings = await baseBindings();
+      const p = makeHandler(
+        bindings,
+        fetchImpl,
+      )({
+        event: { data: { articleId: ARTICLE_ID } },
+        step: makeStep(),
+      });
+      await vi.runAllTimersAsync();
+      const r = (await p) as { visualStatus: string };
+
+      expect(call).toBe(2);
+      expect(r.visualStatus).toBe("pending_review");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("🔴 отказ на всех попытках → бросает, visual_status НЕ меняется (пост уйдёт текстом)", async () => {
+    vi.useFakeTimers();
+    try {
+      dbState.selectResults = [[ARTICLE_ROW]];
+      const fetchImpl = vi.fn(async () => filtered()) as unknown as typeof fetch;
+
+      const bindings = await baseBindings();
+      const p = makeHandler(
+        bindings,
+        fetchImpl,
+      )({
+        event: { data: { articleId: ARTICLE_ID } },
+        step: makeStep(),
+      }).catch((e: Error) => e);
+      await vi.runAllTimersAsync();
+      const err = await p;
+
+      expect((err as Error).name).toBe("ImageContentFilterError");
+      expect(dbState.updates).toHaveLength(0);
+      expect(fetchImpl).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("сетевая ошибка НЕ ретраится здесь — это работа Inngest", async () => {
+    dbState.selectResults = [[ARTICLE_ROW]];
+    const fetchImpl = vi.fn(
+      async () => new Response("boom", { status: 502 }),
+    ) as unknown as typeof fetch;
+    const bindings = await baseBindings();
+    await expect(
+      makeHandler(
+        bindings,
+        fetchImpl,
+      )({
+        event: { data: { articleId: ARTICLE_ID } },
+        step: makeStep(),
+      }),
+    ).rejects.toThrow(/502/);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 });

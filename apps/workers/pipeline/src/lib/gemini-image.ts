@@ -26,6 +26,28 @@ export type ImageGenEnv = {
  */
 const IMAGE_TIMEOUT_MS = 300_000;
 
+/**
+ * Модель отказалась рисовать: `finish_reason: "content_filter"`, картинок ноль.
+ *
+ * ⚠️ Это НЕ сетевой сбой и НЕ ошибка запроса — HTTP 200, тело валидное. Замер
+ * сессии 30: на цельном постере (сцена + надписи + брендовый знак + кнопка)
+ * отказ приходит примерно в четверти вызовов и идёт ВОЛНАМИ во времени —
+ * мгновенный повтор бесполезен, повтор через паузу обычно проходит. На простой
+ * сцене без надписей отказов не наблюдалось (11/11).
+ *
+ * Отдельный класс нужен, чтобы вызывающий отличал «попробуй позже» от «запрос
+ * битый» и не жёг бюджет мгновенными ретраями.
+ */
+export class ImageContentFilterError extends Error {
+  constructor() {
+    super(
+      "Модель отказалась генерировать изображение (finish_reason=content_filter). " +
+        "Отказ временный: повтор через паузу обычно проходит.",
+    );
+    this.name = "ImageContentFilterError";
+  }
+}
+
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 /**
@@ -51,7 +73,7 @@ export function parseDataUrl(url: string): { mime: string; bytes: Uint8Array } {
 }
 
 type GatewayImagePart = { image_url?: { url?: unknown } };
-type GatewayChoice = { message?: { images?: unknown } };
+type GatewayChoice = { message?: { images?: unknown }; finish_reason?: unknown };
 type GatewayBody = { choices?: unknown; usage?: unknown };
 
 /**
@@ -110,6 +132,10 @@ export function extractImageFromResponse(body: unknown): { mime: string; bytes: 
   const part = Array.isArray(images) ? (images[0] as GatewayImagePart | undefined) : undefined;
   const url = part?.image_url?.url;
   if (typeof url !== "string" || url.length === 0) {
+    // Отказ фильтра отличаем ДО общей ошибки: у него своя стратегия повтора.
+    if (first?.finish_reason === "content_filter") {
+      throw new ImageContentFilterError();
+    }
     throw new Error(
       "Ответ image-модели не содержит картинки (choices[0].message.images[0].image_url.url). " +
         "⚠️ message.content у этой модели всегда null — картинку там искать бесполезно.",

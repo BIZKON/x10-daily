@@ -1,4 +1,10 @@
-export { defineAgent, type Agent, type AgentContext, type AgentDefinition, type AgentResult } from "./define-agent";
+export {
+  defineAgent,
+  type Agent,
+  type AgentContext,
+  type AgentDefinition,
+  type AgentResult,
+} from "./define-agent";
 export { calculateCostUsd, type TokenUsage } from "./cost";
 export {
   createMasker,
@@ -91,12 +97,14 @@ export {
 } from "./agents/schemas";
 export {
   VisualAgent,
-  BRAND_STYLE_SUFFIX,
+  KICKER,
   PILLAR_REGISTER,
-  VISUAL_NEGATIVE,
-  buildImagePrompt,
-  buildVisualUserPrompt,
+  HEADLINE_MAX,
+  SUB_MAX,
+  buildPosterPrompt,
+  ctaFor,
   pillarFor,
+  type PosterInput,
   type VisualInput,
   type VisualOutput,
 } from "./agents/visual";

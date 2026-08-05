@@ -1,7 +1,7 @@
 import {
   type AgentContext,
   VisualAgent,
-  buildImagePrompt,
+  buildPosterPrompt,
   calculateCostUsd,
   createMasker,
 } from "@x10/agents";
@@ -12,7 +12,7 @@ import { ARTICLE_COVER_REQUESTED } from "../../events";
 import { modelsFromEnv } from "../../lib/agent-context";
 import { recordRun } from "../../lib/cost-ledger";
 import { coversEnabled, saveCover } from "../../lib/cover-storage";
-import { generateCoverImage } from "../../lib/gemini-image";
+import { ImageContentFilterError, generateCoverImage } from "../../lib/gemini-image";
 import type { PipelineInngest } from "../client";
 
 /**
@@ -35,6 +35,53 @@ import type { PipelineInngest } from "../client";
  * Фолбэк железный: любой сбой → visual_status НЕ становится pending_review →
  * drain-post-slots отправит текстовый пост, лента покажет BrandedCover.
  */
+/**
+ * Сколько раз пробуем сгенерировать кадр и с какой паузой.
+ *
+ * ⚠️ Замер сессии 30: цельный постер (сцена + надписи + знак + кнопка) проходит
+ * примерно в 3 из 4 вызовов, отказ приходит как `content_filter` и идёт ВОЛНАМИ
+ * во времени — мгновенный повтор почти всегда снова отказ, повтор через паузу
+ * обычно проходит. Отсюда пауза, а не немедленный ретрай.
+ *
+ * Три попытки с паузой 20 с укладываются в таймаут шага с большим запасом
+ * (IMAGE_TIMEOUT_MS = 300 с на вызов, но реальная генерация ~8 с). Сверху ещё
+ * работают ретраи самой Inngest-функции — суммарно попыток больше, и они
+ * разнесены на минуты, что для волновых отказов и нужно.
+ */
+const IMAGE_ATTEMPTS = 3;
+const IMAGE_RETRY_DELAY_MS = 20_000;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Генерация с повтором ТОЛЬКО на отказ фильтра. Прочие ошибки (сеть, 5xx, битый
+ * ответ) пробрасываются сразу — их ретраит Inngest, и повторять их здесь значило
+ * бы держать шаг занятым впустую.
+ */
+async function generateWithRetry(
+  env: Parameters<typeof generateCoverImage>[0],
+  prompt: string,
+  opts: { fetchImpl?: typeof fetch },
+): Promise<Awaited<ReturnType<typeof generateCoverImage>>> {
+  let last: unknown;
+  for (let attempt = 1; attempt <= IMAGE_ATTEMPTS; attempt++) {
+    try {
+      return await generateCoverImage(env, prompt, { fetchImpl: opts.fetchImpl });
+    } catch (e) {
+      if (!(e instanceof ImageContentFilterError)) throw e;
+      last = e;
+      console.warn(
+        `generate-cover: отказ фильтра, попытка ${attempt}/${IMAGE_ATTEMPTS}` +
+          (attempt < IMAGE_ATTEMPTS ? ` — повтор через ${IMAGE_RETRY_DELAY_MS / 1000} с.` : "."),
+      );
+      if (attempt < IMAGE_ATTEMPTS) await sleep(IMAGE_RETRY_DELAY_MS);
+    }
+  }
+  // Все попытки — отказ фильтра. Бросаем: visual_status НЕ станет
+  // pending_review, пост уйдёт текстом (железный фолбэк).
+  throw last;
+}
+
 export function createGenerateCoverFunction(
   inngest: PipelineInngest,
   bindings: PipelineBindings,
@@ -118,7 +165,9 @@ export function createGenerateCoverFunction(
           ctx,
         );
         return {
-          imagePrompt: buildImagePrompt({
+          imagePrompt: buildPosterPrompt({
+            headline: res.output.headline,
+            sub: res.output.sub,
             scene: res.output.scene,
             category: article.category ?? "news",
           }),
@@ -131,9 +180,7 @@ export function createGenerateCoverFunction(
       // Генерация + запись на диск одним шагом (см. докблок выше — байты не
       // должны пересекать границу Inngest-шага).
       const stored = await step.run("generate-and-store", async () => {
-        const img = await generateCoverImage(env, crafted.imagePrompt, {
-          fetchImpl: opts.fetchImpl,
-        });
+        const img = await generateWithRetry(env, crafted.imagePrompt, opts);
         const url = await saveCover(env, articleId, img.bytes, img.mime);
         return {
           coverUrl: url,

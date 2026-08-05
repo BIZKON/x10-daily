@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  ImageContentFilterError,
   extractImageFromResponse,
   generateCoverImage,
   parseDataUrl,
@@ -164,5 +165,27 @@ describe("usage картинки — расход должен попадать 
     });
     expect(r.mime).toBe("image/jpeg");
     expect(r.bytes.length).toBeGreaterThan(0);
+  });
+});
+
+describe("отказ фильтра — отдельный класс ошибки", () => {
+  it("finish_reason=content_filter → ImageContentFilterError, а не общая ошибка", () => {
+    const body = { choices: [{ finish_reason: "content_filter", message: { content: "" } }] };
+    expect(() => extractImageFromResponse(body)).toThrow(ImageContentFilterError);
+  });
+
+  it("нет картинки без content_filter → обычная ошибка", () => {
+    const body = { choices: [{ finish_reason: "stop", message: { content: "текст" } }] };
+    expect(() => extractImageFromResponse(body)).toThrow(/картинк/i);
+    expect(() => extractImageFromResponse(body)).not.toThrow(ImageContentFilterError);
+  });
+
+  it("отказ фильтра прорастает через generateCoverImage", async () => {
+    const fetchImpl = vi.fn(async () =>
+      okResponse({ choices: [{ finish_reason: "content_filter", message: { content: "" } }] }),
+    );
+    await expect(
+      generateCoverImage(ENV, "s", { fetchImpl: fetchImpl as unknown as typeof fetch }),
+    ).rejects.toThrow(ImageContentFilterError);
   });
 });

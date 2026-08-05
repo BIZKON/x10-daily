@@ -45,34 +45,49 @@ export function coversEnabled(env: CoverStorageEnv): boolean {
   return Boolean(env.COVERS_DIR && env.COVERS_PUBLIC_BASE_URL);
 }
 
-/** Детерминированное имя файла обложки: `<articleId>.<ext>`. */
-export function coverFileName(articleId: string, mime: string): string {
+/**
+ * Имя файла обложки: `<articleId>-<версия>.<ext>`, где версия — хеш содержимого.
+ *
+ * ⚠️ Версия именно в ИМЕНИ, а не в query (`?v=…`), и это не косметика:
+ *  1. Telegram НЕ принимает sendPhoto по URL с query-хвостом — отвечает
+ *     «Bad Request: wrong type of the web page content» (проверено вживую:
+ *     тот же файл без query проходит). Тип он определяет по URL.
+ *  2. Query не закрепляет содержимое: Caddy резолвит файл по пути и query
+ *     игнорирует, поэтому перегенерация подменяла байты под уже одобренным
+ *     редактором URL.
+ * Плата: старые версии остаются на диске (перегенерация не перезаписывает).
+ */
+export function coverFileName(articleId: string, mime: string, version: string): string {
   if (!SAFE_ID.test(articleId)) {
     throw new Error(
       `coverFileName: недопустимый articleId «${articleId}» — ожидались только [A-Za-z0-9_-].`,
     );
   }
+  if (!/^[0-9a-f]{6,32}$/.test(version)) {
+    throw new Error(`coverFileName: недопустимая версия «${version}» — ожидался hex-хеш.`);
+  }
   const ext = EXT_BY_MIME[mime.toLowerCase()] ?? "jpg";
-  return `${articleId}.${ext}`;
+  return `${articleId}-${version}.${ext}`;
 }
 
 /**
- * Версия содержимого в URL (`?v=…`) — короткий хеш байтов.
+ * Версия содержимого — короткий хеш байтов, попадает в ИМЯ файла.
  *
- * ⚠️ Зачем: имя файла детерминировано по articleId, поэтому перегенерация
- * ПЕРЕЗАПИСЫВАЕТ тот же путь. Caddy раздаёт обложки с `immutable` и годовым
- * max-age — без версии в URL новая картинка навсегда осталась бы невидимой
- * (браузеры и кэш Telegram держали бы старую). Хеш содержимого меняет URL
- * ровно тогда, когда изменилась картинка, и не меняет — когда нет.
+ * Зачем: Caddy раздаёт обложки с `immutable` и годовым max-age. Без версии
+ * перегенерация оставалась бы невидимой — браузеры и кэш Telegram держали бы
+ * старую картинку. Хеш меняет URL ровно тогда, когда изменились байты.
  */
 export function coverVersion(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex").slice(0, 8);
 }
 
 /**
- * Пишет байты обложки на диск и возвращает её публичный URL с версией.
- * Перезапись идемпотентна: имя детерминировано по articleId, поэтому
- * перегенерация заменяет файл, а не плодит мусор.
+ * Пишет байты обложки на диск и возвращает её публичный URL.
+ *
+ * Идемпотентно по СОДЕРЖИМОМУ: те же байты → то же имя → тот же URL, файл
+ * просто перезаписывается собой. Другие байты → другое имя, старый файл
+ * остаётся: одобренный редактором URL продолжает отдавать ровно те байты,
+ * которые он видел.
  */
 export async function saveCover(
   env: CoverStorageEnv,
@@ -88,10 +103,11 @@ export async function saveCover(
     );
   }
   // Валидация ДО mkdir: битый id не должен создавать каталоги.
-  const name = coverFileName(articleId, mime);
+  const name = coverFileName(articleId, mime, coverVersion(bytes));
 
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, name), bytes);
 
-  return `${publicBase.replace(/\/+$/, "")}/${name}?v=${coverVersion(bytes)}`;
+  // URL БЕЗ query — иначе Telegram откажется брать картинку (см. coverFileName).
+  return `${publicBase.replace(/\/+$/, "")}/${name}`;
 }

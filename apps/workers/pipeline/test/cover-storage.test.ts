@@ -11,18 +11,18 @@ async function tmpEnv() {
 
 describe("coverFileName", () => {
   it("имя файла детерминировано по articleId и расширению mime", () => {
-    expect(coverFileName("a1b2", "image/jpeg")).toBe("a1b2.jpg");
-    expect(coverFileName("a1b2", "image/png")).toBe("a1b2.png");
+    expect(coverFileName("a1b2", "image/jpeg", "deadbeef")).toBe("a1b2-deadbeef.jpg");
+    expect(coverFileName("a1b2", "image/png", "deadbeef")).toBe("a1b2-deadbeef.png");
   });
 
   it("неизвестный mime → .jpg (шлюз отдаёт jpeg)", () => {
-    expect(coverFileName("a1b2", "image/heic")).toBe("a1b2.jpg");
+    expect(coverFileName("a1b2", "image/heic", "deadbeef")).toBe("a1b2-deadbeef.jpg");
   });
 
   it("🔴 path traversal в articleId отвергается, а не пишет мимо каталога", () => {
-    expect(() => coverFileName("../../etc/passwd", "image/jpeg")).toThrow(/articleId/i);
-    expect(() => coverFileName("a/b", "image/jpeg")).toThrow(/articleId/i);
-    expect(() => coverFileName("", "image/jpeg")).toThrow(/articleId/i);
+    expect(() => coverFileName("../../etc/passwd", "image/jpeg", "deadbeef")).toThrow(/articleId/i);
+    expect(() => coverFileName("a/b", "image/jpeg", "deadbeef")).toThrow(/articleId/i);
+    expect(() => coverFileName("", "image/jpeg", "deadbeef")).toThrow(/articleId/i);
   });
 });
 
@@ -42,8 +42,8 @@ describe("saveCover", () => {
   it("пишет файл и возвращает публичный URL", async () => {
     const { dir, env } = await tmpEnv();
     const url = await saveCover(env, "a1", new Uint8Array([1, 2, 3]), "image/jpeg");
-    expect(url).toMatch(/^https:\/\/app\.example\.ru\/covers\/a1\.jpg\?v=[0-9a-f]{8}$/);
-    expect((await readFile(join(dir, "a1.jpg"))).length).toBe(3);
+    expect(url).toMatch(/^https:\/\/app\.example\.ru\/covers\/a1-[0-9a-f]{8}\.jpg$/);
+    expect((await readdir(dir))[0]).toMatch(/^a1-[0-9a-f]{8}\.jpg$/);
   });
 
   it("создаёт каталог, если его нет", async () => {
@@ -55,8 +55,8 @@ describe("saveCover", () => {
       new Uint8Array([9]),
       "image/png",
     );
-    expect(url).toMatch(/^https:\/\/app\.example\.ru\/covers\/a2\.png\?v=[0-9a-f]{8}$/);
-    expect(await readdir(nested)).toContain("a2.png");
+    expect(url).toMatch(/^https:\/\/app\.example\.ru\/covers\/a2-[0-9a-f]{8}\.png$/);
+    expect(await readdir(nested)).toHaveLength(1);
   });
 
   it("не дублирует слэш, если публичный URL заканчивается на /", async () => {
@@ -67,15 +67,21 @@ describe("saveCover", () => {
       new Uint8Array([1]),
       "image/jpeg",
     );
-    expect(url).toMatch(/^https:\/\/app\.example\.ru\/covers\/a3\.jpg\?v=/);
+    expect(url).toMatch(/^https:\/\/app\.example\.ru\/covers\/a3-[0-9a-f]{8}\.jpg$/);
   });
 
-  it("перезапись той же статьи идемпотентна — один файл, свежие байты", async () => {
+  it("та же картинка повторно → тот же файл, без дублей", async () => {
     const { dir, env } = await tmpEnv();
-    await saveCover(env, "a4", new Uint8Array([1, 1, 1, 1]), "image/jpeg");
-    await saveCover(env, "a4", new Uint8Array([2, 2]), "image/jpeg");
-    expect(await readdir(dir)).toEqual(["a4.jpg"]);
-    expect((await readFile(join(dir, "a4.jpg"))).length).toBe(2);
+    const a = await saveCover(env, "a4", new Uint8Array([1, 1, 1, 1]), "image/jpeg");
+    const b = await saveCover(env, "a4", new Uint8Array([1, 1, 1, 1]), "image/jpeg");
+    expect(a).toBe(b);
+    expect(await readdir(dir)).toHaveLength(1);
+  });
+
+  it("🔴 URL обложки НЕ содержит query — иначе Telegram её не примет", async () => {
+    const { env } = await tmpEnv();
+    const url = await saveCover(env, "a8", new Uint8Array([7, 7]), "image/jpeg");
+    expect(url).not.toContain("?");
   });
 
   it("хранилище не сконфигурировано → бросает (вызывающий обязан гейтить coversEnabled)", async () => {
@@ -96,14 +102,18 @@ describe("coverVersion — версия содержимого в URL", () => {
   });
 
   it("🔴 разные байты → разная версия: перегенерация обязана пробить immutable-кэш", () => {
-    expect(coverVersion(new Uint8Array([1, 2, 3]))).not.toBe(coverVersion(new Uint8Array([3, 2, 1])));
+    expect(coverVersion(new Uint8Array([1, 2, 3]))).not.toBe(
+      coverVersion(new Uint8Array([3, 2, 1])),
+    );
   });
 
-  it("перегенерация той же статьи меняет URL, хотя путь на диске тот же", async () => {
-    const { env } = await tmpEnv();
+  it("🔴 перегенерация даёт ДРУГОЙ файл — одобренные байты не подменяются", async () => {
+    const { dir, env } = await tmpEnv();
     const first = await saveCover(env, "a9", new Uint8Array([1, 1, 1]), "image/jpeg");
     const second = await saveCover(env, "a9", new Uint8Array([2, 2, 2]), "image/jpeg");
     expect(first).not.toBe(second);
-    expect(first.split("?")[0]).toBe(second.split("?")[0]);
+    // Старый файл на месте: URL, одобренный редактором, продолжает отдавать
+    // ровно те байты, которые он видел.
+    expect(await readdir(dir)).toHaveLength(2);
   });
 });

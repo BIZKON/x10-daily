@@ -52,7 +52,52 @@ export function parseDataUrl(url: string): { mime: string; bytes: Uint8Array } {
 
 type GatewayImagePart = { image_url?: { url?: unknown } };
 type GatewayChoice = { message?: { images?: unknown } };
-type GatewayBody = { choices?: unknown };
+type GatewayBody = { choices?: unknown; usage?: unknown };
+
+/**
+ * Расход на генерацию картинки. Форма снята с живого шлюза:
+ *
+ *   usage: {
+ *     prompt_tokens: 52,
+ *     completion_tokens: 1514,          ← УЖЕ включает image_tokens
+ *     completion_tokens_details: { text_tokens: 394, image_tokens: 1120 }
+ *   }
+ *
+ * `image_tokens` и `text_tokens` отдаём отдельно только для аудита в
+ * `pipeline_runs.output` — в стоимость идёт `completion_tokens` целиком, иначе
+ * расход посчитался бы дважды.
+ */
+export type ImageUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  cachedInputTokens: number;
+  imageTokens: number;
+  textTokens: number;
+};
+
+type GatewayUsage = {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  completion_tokens_details?: { text_tokens?: number; image_tokens?: number };
+  prompt_tokens_details?: { cached_tokens?: number };
+};
+
+/**
+ * Разбирает usage ответа. Шлюз не обязан его присылать — тогда нули, и расход
+ * просто не попадёт в $-ledger. Ронять из-за учёта уже сгенерированную картинку
+ * нельзя.
+ */
+function extractUsage(body: unknown): ImageUsage {
+  const u = (body as GatewayBody | null)?.usage as GatewayUsage | undefined;
+  const details = u?.completion_tokens_details;
+  return {
+    inputTokens: u?.prompt_tokens ?? 0,
+    outputTokens: u?.completion_tokens ?? 0,
+    cachedInputTokens: u?.prompt_tokens_details?.cached_tokens ?? 0,
+    imageTokens: details?.image_tokens ?? 0,
+    textTokens: details?.text_tokens ?? 0,
+  };
+}
 
 /**
  * Достаёт первую картинку из ответа шлюза. Все промахи схемы сводит к одной
@@ -82,7 +127,7 @@ export async function generateCoverImage(
   env: ImageGenEnv,
   prompt: string,
   opts: { fetchImpl?: typeof fetch } = {},
-): Promise<{ bytes: Uint8Array; mime: string }> {
+): Promise<{ bytes: Uint8Array; mime: string; usage: ImageUsage }> {
   const apiKey = env.AI_GATEWAY_API_KEY;
   if (!apiKey) {
     throw new Error("generateCoverImage: AI_GATEWAY_API_KEY не задан — генерация невозможна.");
@@ -114,5 +159,5 @@ export async function generateCoverImage(
   }
 
   const body: unknown = await res.json();
-  return extractImageFromResponse(body);
+  return { ...extractImageFromResponse(body), usage: extractUsage(body) };
 }

@@ -15,6 +15,14 @@ const ENV = {
 function gatewayBody(url = "data:image/jpeg;base64,/9j/4AAQ") {
   return {
     choices: [{ message: { content: null, images: [{ image_url: { url } }] } }],
+    // Форма снята с живого шлюза: completion_tokens УЖЕ включает image_tokens.
+    usage: {
+      prompt_tokens: 52,
+      completion_tokens: 1514,
+      total_tokens: 1566,
+      completion_tokens_details: { text_tokens: 394, image_tokens: 1120 },
+      prompt_tokens_details: { text_tokens: 52 },
+    },
   };
 }
 
@@ -122,5 +130,39 @@ describe("generateCoverImage", () => {
       fetchImpl: fetchImpl as unknown as typeof fetch,
     }).catch((e: Error) => e);
     expect(String((err as Error).message)).not.toContain("test-key");
+  });
+});
+
+describe("usage картинки — расход должен попадать в $-ledger", () => {
+  it("возвращает токены: completion_tokens уже включает image_tokens", async () => {
+    const fetchImpl = vi.fn(async () => okResponse(gatewayBody()));
+    const r = await generateCoverImage(ENV, "s", {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(r.usage.inputTokens).toBe(52);
+    expect(r.usage.outputTokens).toBe(1514);
+    expect(r.usage.imageTokens).toBe(1120);
+    expect(r.usage.textTokens).toBe(394);
+  });
+
+  it("шлюз не вернул usage → нули, а не падение (расход просто не учтётся)", async () => {
+    const body = gatewayBody();
+    body.usage = undefined as never;
+    const fetchImpl = vi.fn(async () => okResponse(body));
+    const r = await generateCoverImage(ENV, "s", {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(r.usage.inputTokens).toBe(0);
+    expect(r.usage.outputTokens).toBe(0);
+    expect(r.usage.imageTokens).toBe(0);
+  });
+
+  it("картинка по-прежнему извлекается", async () => {
+    const fetchImpl = vi.fn(async () => okResponse(gatewayBody()));
+    const r = await generateCoverImage(ENV, "s", {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(r.mime).toBe("image/jpeg");
+    expect(r.bytes.length).toBeGreaterThan(0);
   });
 });

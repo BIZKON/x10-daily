@@ -1,4 +1,10 @@
-import { type AgentContext, VisualAgent, buildImagePrompt, createMasker } from "@x10/agents";
+import {
+  type AgentContext,
+  VisualAgent,
+  buildImagePrompt,
+  calculateCostUsd,
+  createMasker,
+} from "@x10/agents";
 import { articles, createDb, eq } from "@x10/db";
 import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
@@ -129,7 +135,13 @@ export function createGenerateCoverFunction(
           fetchImpl: opts.fetchImpl,
         });
         const url = await saveCover(env, articleId, img.bytes, img.mime);
-        return { coverUrl: url, mime: img.mime, byteLength: img.bytes.length };
+        return {
+          coverUrl: url,
+          mime: img.mime,
+          byteLength: img.bytes.length,
+          // Расход самой картинки — в $-ledger отдельной строкой ниже.
+          usage: img.usage,
+        };
       });
 
       // 🔴 pending_review, НЕ approved — HumanGate.
@@ -146,11 +158,13 @@ export function createGenerateCoverFunction(
         return { marked: true };
       });
 
-      // $-ledger: расход VisualAgent виден дневному потолку. Стоимость самой
-      // картинки шлюз в usage не отдаёт (спайк: только image_tokens) — считаем
-      // по факту в отчётах, здесь фиксируем крафт промпта.
+      // $-ledger. ДВЕ строки, а не одна: у крафта промпта и у генерации картинки
+      // разные модели и разные тарифы, сложить их в одну строку значило бы
+      // посчитать по неверной ставке. Дневной потолок суммирует cost_usd по всем
+      // строкам, поэтому обе попадают в бюджет.
       await step.run("record-run", async () => {
         const db = createDb(env.DATABASE_URL);
+        // (1) крафт сцены — DeepSeek.
         await recordRun(db, {
           articleId,
           agent: "visual",
@@ -160,7 +174,29 @@ export function createGenerateCoverFunction(
           inputTokens: crafted.usage.inputTokens,
           outputTokens: crafted.usage.outputTokens,
           cachedInputTokens: crafted.usage.cachedInputTokens,
-          output: { imageModel: env.IMAGE_MODEL, byteLength: stored.byteLength, force },
+          output: { stage: "prompt", imageModel: env.IMAGE_MODEL, force },
+        });
+
+        // (2) сама картинка. `outputTokens` = completion_tokens, куда шлюз уже
+        // включил image_tokens — складывать их отдельно нельзя, вышел бы двойной
+        // счёт. image/text-разбивка кладётся в output для аудита.
+        const u = stored.usage;
+        await recordRun(db, {
+          articleId,
+          agent: "visual",
+          status: "succeeded",
+          costUsd: calculateCostUsd("HAIKU", u, env.IMAGE_MODEL),
+          modelUsed: env.IMAGE_MODEL,
+          inputTokens: u.inputTokens,
+          outputTokens: u.outputTokens,
+          cachedInputTokens: u.cachedInputTokens,
+          output: {
+            stage: "image",
+            imageTokens: u.imageTokens,
+            textTokens: u.textTokens,
+            byteLength: stored.byteLength,
+            force,
+          },
         });
         return { recorded: true };
       });

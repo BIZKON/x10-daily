@@ -85,6 +85,12 @@ function gatewayFetch(ok = true) {
     return new Response(
       JSON.stringify({
         choices: [{ message: { content: null, images: [{ image_url: { url: IMAGE_DATA_URL } }] } }],
+        // Форма снята с живого шлюза (05.08.2026).
+        usage: {
+          prompt_tokens: 52,
+          completion_tokens: 1514,
+          completion_tokens_details: { text_tokens: 394, image_tokens: 1120 },
+        },
       }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
@@ -195,6 +201,83 @@ describe("generate-cover", () => {
     });
     expect(dbState.inserts[0]?.agent).toBe("visual");
     expect(dbState.inserts[0]?.status).toBe("succeeded");
+  });
+
+  it("🔴 расход на КАРТИНКУ попадает в ledger отдельной строкой", async () => {
+    dbState.selectResults = [[ARTICLE_ROW]];
+    const bindings = await baseBindings();
+    await makeHandler(
+      bindings,
+      gatewayFetch(),
+    )({
+      event: { data: { articleId: ARTICLE_ID } },
+      step: makeStep(),
+    });
+
+    // Две строки: крафт промпта и сама картинка — у них разные модели и тарифы.
+    expect(dbState.inserts).toHaveLength(2);
+    const prompt = dbState.inserts.find(
+      (r) => (r.output as { stage?: string })?.stage === "prompt",
+    );
+    const image = dbState.inserts.find((r) => (r.output as { stage?: string })?.stage === "image");
+    expect(prompt).toBeDefined();
+    expect(image).toBeDefined();
+
+    // Токены картинки — реальные, из usage шлюза.
+    expect(image?.inputTokens).toBe(52);
+    expect(image?.outputTokens).toBe(1514);
+    expect(image?.modelUsed).toBe("gemini/gemini-3.1-flash-image-preview");
+    // Разбивка для аудита.
+    expect((image?.output as { imageTokens: number }).imageTokens).toBe(1120);
+    expect((image?.output as { textTokens: number }).textTokens).toBe(394);
+    // Картинка не бесплатна — иначе дневной потолок её не увидит.
+    expect(Number(image?.costUsd)).toBeGreaterThan(0);
+  });
+
+  it("⚠️ нет двойного счёта: outputTokens = completion_tokens, image_tokens внутрь НЕ добавляются", async () => {
+    dbState.selectResults = [[ARTICLE_ROW]];
+    const bindings = await baseBindings();
+    await makeHandler(
+      bindings,
+      gatewayFetch(),
+    )({
+      event: { data: { articleId: ARTICLE_ID } },
+      step: makeStep(),
+    });
+
+    const image = dbState.inserts.find((r) => (r.output as { stage?: string })?.stage === "image");
+    const o = image?.output as { imageTokens: number; textTokens: number };
+    // completion_tokens уже включает image+text, поэтому сумма разбивки равна ему,
+    // а не «плюсуется» к нему.
+    expect(o.imageTokens + o.textTokens).toBe(image?.outputTokens);
+  });
+
+  it("шлюз не прислал usage → строка всё равно пишется, с нулями", async () => {
+    dbState.selectResults = [[ARTICLE_ROW]];
+    const noUsage = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            choices: [
+              { message: { content: null, images: [{ image_url: { url: IMAGE_DATA_URL } }] } },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+    ) as unknown as typeof fetch;
+
+    const bindings = await baseBindings();
+    await makeHandler(
+      bindings,
+      noUsage,
+    )({
+      event: { data: { articleId: ARTICLE_ID } },
+      step: makeStep(),
+    });
+
+    const image = dbState.inserts.find((r) => (r.output as { stage?: string })?.stage === "image");
+    expect(image?.outputTokens).toBe(0);
+    expect(Number(image?.costUsd)).toBe(0);
   });
 
   it("COVERS_* пусты → скип с причиной covers-disabled, БД не трогается", async () => {

@@ -13,6 +13,7 @@ import {
 } from "@x10/db";
 import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
+import { POSTING_DRAIN_REQUESTED } from "../../events";
 import { buildPhotoCaption } from "../../lib/caption";
 import { buildMiniAppDeepLink } from "../../lib/miniapp-link";
 import {
@@ -59,7 +60,11 @@ export function createDrainPostSlotsFunction(
     {
       id: "drain-post-slots",
       name: "Publish one queued article per posting slot",
-      triggers: [{ cron: "30 6,9,12,15 * * *" }],
+      // Крон — штатный ритм 4/день. Событие — ручная публикация «сейчас»
+      // (админка / разовая выкладка). Путь ОДИН и тот же: те же гарды паузы,
+      // тихих часов и окна свежести, та же пометка posted_at — ручной запуск
+      // не плодит дубли и не нарушает очередь.
+      triggers: [{ cron: "30 6,9,12,15 * * *" }, { event: POSTING_DRAIN_REQUESTED }],
       retries: 1,
       // Один слот за раз — корректность выбора/маркировки (нет гонок на channels).
       concurrency: { limit: 1 },

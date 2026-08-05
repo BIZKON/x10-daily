@@ -162,3 +162,21 @@ export const articleCoverRequestedEvent = eventType("article/cover.requested", {
   schema: articleCoverRequestedDataSchema,
 });
 export const ARTICLE_COVER_REQUESTED = articleCoverRequestedEvent.event;
+
+/* ----------------------------------------------------------------
+ * posting/drain.requested — опубликовать одну статью из очереди НЕМЕДЛЕННО,
+ * не дожидаясь слота. Тот же путь, что у крона: те же гарды (пауза, тихие
+ * часы, окно свежести), та же пометка posted_at — поэтому ручная публикация
+ * не создаёт дублей и не ломает очередь.
+ * Нужен для «опубликовать сейчас» из админки и разовых выкладок владельца.
+ * ---------------------------------------------------------------- */
+export const postingDrainRequestedDataSchema = z.object({
+  /** Свободная пометка, зачем дёрнули (попадает в логи). Не влияет на выбор. */
+  reason: z.string().optional(),
+});
+export type PostingDrainRequestedData = z.infer<typeof postingDrainRequestedDataSchema>;
+
+export const postingDrainRequestedEvent = eventType("posting/drain.requested", {
+  schema: postingDrainRequestedDataSchema,
+});
+export const POSTING_DRAIN_REQUESTED = postingDrainRequestedEvent.event;

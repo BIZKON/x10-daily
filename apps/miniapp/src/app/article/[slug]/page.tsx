@@ -7,8 +7,8 @@ import { TrackArticleOpen } from "@/components/article/track-article-open";
 import { ANONYMOUS_USER_STATE, fetchArticleUserState } from "@/lib/api";
 import { type ArticleDetail, loadArticle } from "@/lib/feed";
 import { formatPublishedAt } from "@/lib/format";
-import { BookOpen, ChevronLeft, ExternalLink, Headphones, Quote } from "lucide-react";
 import { OG_IMAGE, SITE_LOCALE, SITE_NAME } from "@/lib/site-meta";
+import { BookOpen, ChevronLeft, ExternalLink, Headphones, Quote } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -101,16 +101,20 @@ export default async function ArticlePage({
       ) : article.coverImageUrl ? (
         // Реальная обложка — рисуем hero-картинку. У авто-статей её обычно нет
         // (VisualAgent — post-M0), тогда ниже идёт чистый типографский хедер.
+        // ⚠️ Обложка — цельный ПОСТЕР: заголовок, логотип и рекламная плашка
+        // ЗАПЕЧЕНЫ в картинку (Спека 3). Поэтому кадр нельзя кропать и нельзя
+        // перекрывать градиентом: фиксированная высота с object-cover срезала
+        // текст по бокам, а градиент съедал нижнюю плашку с логотипом.
+        // aspect-[16/9] совпадает с пропорцией генерации → кроп нулевой.
         <div className="relative">
           <Image
             src={article.coverImageUrl}
             alt=""
-            width={1200}
-            height={600}
-            className="h-64 w-full object-cover"
+            width={1280}
+            height={720}
+            className="aspect-[16/9] w-full object-cover"
             unoptimized
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-night/85" />
           {isDeepDive && (
             <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-pill bg-gold/95 px-3 py-1.5 font-display text-[10px] font-extrabold uppercase tracking-[0.15em] text-steel">
               <BookOpen size={11} strokeWidth={2.25} />

@@ -55,21 +55,20 @@ export function DeepDiveCard({ item, priority }: { item: FeedItem; priority?: bo
       />
 
       {item.imageUrl ? (
-        <div className="relative overflow-hidden rounded-t-[24px]">
+        // Обложка-постер самодостаточна (Спека 3). Раньше поверх неё лежали
+        // градиент, бейджи И ЗАГОЛОВОК — а заголовок уже запечён в картинку,
+        // выходил дубль поверх обрезанного кадра. Теперь кадр чистый, подписи
+        // под ним.
+        <div className="overflow-hidden rounded-t-[24px]">
           <Image
             src={item.imageUrl}
             alt=""
-            width={1200}
-            height={700}
-            className="h-64 w-full object-cover"
+            width={1280}
+            height={720}
+            className="aspect-[16/9] w-full object-cover"
             unoptimized
             priority={priority}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-night via-night/60 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-5">
-            <div className="mb-2.5">{badges}</div>
-            {title}
-          </div>
         </div>
       ) : (
         <BrandedCover category={item.categoryKey} className="rounded-t-[24px] px-5 pb-6 pt-6">
@@ -79,6 +78,12 @@ export function DeepDiveCard({ item, priority }: { item: FeedItem; priority?: bo
       )}
 
       <div className="p-5">
+        {item.imageUrl ? (
+          <>
+            <div className="mb-2.5">{badges}</div>
+            <div className="mb-3">{title}</div>
+          </>
+        ) : null}
         <p className="m-0 text-[14px] leading-[1.55] text-mist">{item.excerpt}</p>
 
         <div className="mt-4 flex items-center justify-between gap-3 border-t border-fence pt-4 text-[12px] text-haze">

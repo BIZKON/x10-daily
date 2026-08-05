@@ -45,18 +45,20 @@ export function NewsCard({ item, priority }: { item: FeedItem; priority?: boolea
       />
 
       {item.imageUrl ? (
-        <div className="relative overflow-hidden rounded-t-[20px]">
+        // Обложка-постер самодостаточна (Спека 3): в ней уже есть заголовок,
+        // логотип и кнопка. Не кропаем (aspect совпадает с генерацией) и НЕ
+        // кладём поверх ни градиент, ни плашку рубрики — они перекрывали
+        // нижнюю треть кадра, где логотип. Рубрика ушла под картинку.
+        <div className="overflow-hidden rounded-t-[20px]">
           <Image
             src={item.imageUrl}
             alt=""
-            width={800}
-            height={400}
-            className="h-44 w-full object-cover"
+            width={1280}
+            height={720}
+            className="aspect-[16/9] w-full object-cover"
             unoptimized
             priority={priority}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-night/80 via-night/30 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-4">{rubricRow}</div>
         </div>
       ) : (
         <BrandedCover category={item.categoryKey} className="rounded-t-[20px] px-4 pb-3.5 pt-4">
@@ -65,6 +67,7 @@ export function NewsCard({ item, priority }: { item: FeedItem; priority?: boolea
       )}
 
       <div className="px-4 pb-4 pt-3.5">
+        {item.imageUrl ? <div className="mb-2.5">{rubricRow}</div> : null}
         <h4 className="m-0 mb-2 line-clamp-3 font-display text-[17px] font-extrabold leading-[1.3] text-paper">
           {item.title}
         </h4>

@@ -100,3 +100,17 @@ describe("лимиты текста в кадре", () => {
     expect(() => buildPosterPrompt({ ...BASE, sub: "" })).not.toThrow();
   });
 });
+
+describe("резерв места под служебную плашку Mini App", () => {
+  it("промпт требует пустой верхний левый угол", () => {
+    // Без резерва плашка «Глубокий разбор»/статус ложится на заголовок постера
+    // и оба становятся нечитаемыми (живой баг 05.08.2026).
+    const p = buildPosterPrompt(BASE);
+    expect(p).toContain("ВЕРХНИЙ ЛЕВЫЙ УГОЛ");
+    expect(p.toLowerCase()).toContain("пуст");
+  });
+
+  it("промпт требует надписи строго в нижней трети", () => {
+    expect(buildPosterPrompt(BASE)).toContain("НИЖНЕЙ ТРЕТИ");
+  });
+});

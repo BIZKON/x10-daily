@@ -115,8 +115,13 @@ export default async function ArticlePage({
             className="aspect-[16/9] w-full object-cover"
             unoptimized
           />
+          {/* Служебная плашка ложится в ЗАРЕЗЕРВИРОВАННЫЙ верхний левый угол:
+              промпт генерации требует держать его пустым (треть ширины, пятая
+              часть высоты). Мягкая подложка-градиент страхует на случай, если
+              модель угол всё же займёт — плашка останется читаемой. */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-1/5 bg-gradient-to-b from-night/70 to-transparent" />
           {isDeepDive && (
-            <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-pill bg-gold/95 px-3 py-1.5 font-display text-[10px] font-extrabold uppercase tracking-[0.15em] text-steel">
+            <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-pill bg-gold/95 px-3 py-1.5 font-display text-[10px] font-extrabold uppercase tracking-[0.15em] text-steel shadow-lg shadow-night/50">
               <BookOpen size={11} strokeWidth={2.25} />
               Глубокий разбор · {article.readMinutes} мин
             </span>

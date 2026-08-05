@@ -59,7 +59,11 @@ export function DeepDiveCard({ item, priority }: { item: FeedItem; priority?: bo
         // градиент, бейджи И ЗАГОЛОВОК — а заголовок уже запечён в картинку,
         // выходил дубль поверх обрезанного кадра. Теперь кадр чистый, подписи
         // под ним.
-        <div className="overflow-hidden rounded-t-[24px]">
+        <div className="relative overflow-hidden rounded-t-[24px]">
+          {/* Статусы — поверх картинки, в зарезервированном промптом углу.
+              Заголовок сюда НЕ кладём: он уже запечён в постер. */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-1/5 bg-gradient-to-b from-night/70 to-transparent" />
+          <div className="absolute left-4 top-4 z-[2]">{badges}</div>
           <Image
             src={item.imageUrl}
             alt=""
@@ -78,12 +82,7 @@ export function DeepDiveCard({ item, priority }: { item: FeedItem; priority?: bo
       )}
 
       <div className="p-5">
-        {item.imageUrl ? (
-          <>
-            <div className="mb-2.5">{badges}</div>
-            <div className="mb-3">{title}</div>
-          </>
-        ) : null}
+        {item.imageUrl ? <div className="mb-3">{title}</div> : null}
         <p className="m-0 text-[14px] leading-[1.55] text-mist">{item.excerpt}</p>
 
         <div className="mt-4 flex items-center justify-between gap-3 border-t border-fence pt-4 text-[12px] text-haze">

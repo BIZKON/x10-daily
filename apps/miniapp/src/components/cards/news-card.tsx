@@ -49,7 +49,10 @@ export function NewsCard({ item, priority }: { item: FeedItem; priority?: boolea
         // логотип и кнопка. Не кропаем (aspect совпадает с генерацией) и НЕ
         // кладём поверх ни градиент, ни плашку рубрики — они перекрывали
         // нижнюю треть кадра, где логотип. Рубрика ушла под картинку.
-        <div className="overflow-hidden rounded-t-[20px]">
+        <div className="relative overflow-hidden rounded-t-[20px]">
+          {/* Статусы — поверх картинки, в зарезервированном промптом углу. */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-1/5 bg-gradient-to-b from-night/70 to-transparent" />
+          <div className="absolute left-3 top-3 z-[2]">{rubricRow}</div>
           <Image
             src={item.imageUrl}
             alt=""
@@ -67,7 +70,6 @@ export function NewsCard({ item, priority }: { item: FeedItem; priority?: boolea
       )}
 
       <div className="px-4 pb-4 pt-3.5">
-        {item.imageUrl ? <div className="mb-2.5">{rubricRow}</div> : null}
         <h4 className="m-0 mb-2 line-clamp-3 font-display text-[17px] font-extrabold leading-[1.3] text-paper">
           {item.title}
         </h4>

@@ -1,7 +1,7 @@
 import { MODELS, type ModelTier } from "@x10/config";
 import type OpenAI from "openai";
 import type { z } from "zod";
-import { calculateCostUsd, type TokenUsage } from "./cost";
+import { type TokenUsage, calculateCostUsd } from "./cost";
 import type { Masker } from "./masker";
 import { getOpenAIClient } from "./openai-client";
 import { zodToToolSchema } from "./zod-to-tool-schema";
@@ -63,10 +63,11 @@ const TOOL_NAME_PREFIX = "x10_emit_";
  * reasoning (reasoning_effort / enable_thinking / chat_template_kwargs) gateway
  * Timeweb ИГНОРИРУЕТ (проверено) — отключить thinking нельзя. Поэтому добавляем
  * запас к maxOutputTokens на DeepSeek-пути + ретрай с удвоенным запасом на пустой
- * content. Non-reasoning `deepseek-chat` (V3.2) лишний бюджет НЕ тратит
- * (finish=stop) — headroom для неё бесплатен (биллится фактический usage).
- * Gateway клампит max_tokens по капу модели (проверено: deepseek-chat принимает
- * 14336 → finish=stop), HTTP 400 не отдаёт — кламп в коде не нужен.
+ * content.
+ *
+ * ⚠️ ИНЦИДЕНТ 31.07.2026 (сессия 30) — читать перед правкой бюджета: запас и
+ * ретрай сами по себе НЕ спасают, если бюджет передан НЕ ТЕМ параметром. См.
+ * докблок про `max_completion_tokens` ниже.
  */
 const DEEPSEEK_REASONING_HEADROOM = 8192;
 
@@ -80,6 +81,32 @@ const DEEPSEEK_REASONING_HEADROOM = 8192;
  * (maxTokens + headroom×2). Claude-путь таймаут не трогает (быстрый, 60s хватает).
  */
 const DEEPSEEK_TIMEOUT_MS = 420_000;
+
+/**
+ * 🔴 БЮДЖЕТ ВЫВОДА ПЕРЕДАЁТСЯ ТОЛЬКО ЧЕРЕЗ `max_completion_tokens`.
+ *
+ * Инцидент 31.07.2026: конвейер встал на 4 дня (0 статей, канал молчал) —
+ * `draft` падал на 100% с `finish_reason: "length"` и пустым content на агентах
+ * social/brevity. Причина: после перехода DeepSeek на версию `0731` устаревший
+ * `max_tokens` перестал задавать бюджет вывода — шлюз применяет вместо него
+ * дефолтную отсечку 8192, и рассуждения модели упираются в неё, не успев выдать
+ * ни одного токена контента.
+ *
+ * Замер на живом шлюзе, payload идентичен, отличается ТОЛЬКО имя параметра
+ * (по два прогона на вариант, результат стабилен):
+ *   `max_tokens=10240`            → finish=length, completion=8192  (весь reasoning), JSON битый
+ *   `max_completion_tokens=10240` → finish=stop,   completion=27671 / 17628,          JSON валиден
+ *
+ * ⚠️ Слать ОБА параметра НЕЛЬЗЯ: присутствие `max_tokens` возвращает отсечку 8192.
+ * ⚠️ Отсюда же: ретрай «с удвоенным запасом» против этой отсечки бессилен —
+ * серверный лимит им не превысить. Симптом выглядит как «модель много думает»,
+ * но замер с разными бюджетами показывает одно и то же число — это отсечка.
+ * Диагностический приём и таблица капов — в памяти проекта
+ * (reference_timeweb_gateway_output_cap).
+ *
+ * Подтверждено поддержкой Timeweb и самим SDK OpenAI: `max_tokens` помечен
+ * deprecated в пользу `max_completion_tokens` (openai@6.39, completions.d.ts).
+ */
 
 /**
  * defineAgent — фабрика декларативных LLM-агентов (OpenAI Chat Completions через
@@ -146,7 +173,7 @@ export function defineAgent<I, O>(def: AgentDefinition<I, O>): Agent<I, O> {
           client.chat.completions.create(
             {
               model,
-              max_tokens: budget,
+              max_completion_tokens: budget,
               response_format: { type: "json_object" },
               messages: [
                 { role: "system", content: jsonSystem },
@@ -179,7 +206,7 @@ export function defineAgent<I, O>(def: AgentDefinition<I, O>): Agent<I, O> {
       } else {
         response = await client.chat.completions.create({
           model,
-          max_tokens: maxTokens,
+          max_completion_tokens: maxTokens,
           messages: [
             { role: "system", content: systemText },
             { role: "user", content: userText },

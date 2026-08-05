@@ -996,10 +996,10 @@ describe("DeepSeek path (response_format json_object, session 23)", () => {
   });
 
   // Thinking-headroom (session 24): reasoning-варианты DeepSeek (v4-flash/pro)
-  // тратят max_tokens на reasoning_content ПЕРЕД JSON-выводом — без запаса сложные
+  // тратят max_completion_tokens на reasoning_content ПЕРЕД JSON-выводом — без запаса сложные
   // агенты (Brevity) получали пустой content. Управление reasoning'ом gateway
   // игнорирует, поэтому бюджет добавляется всегда на deepseek-пути.
-  it("deepseek-путь добавляет reasoning-headroom 8192 к max_tokens (Numbers: 1536→9728)", async () => {
+  it("deepseek-путь добавляет reasoning-headroom 8192 к max_completion_tokens (Numbers: 1536→9728)", async () => {
     const { client, spy } = mockOpenAI({
       toolName: "x10_emit_numbers",
       toolInput: { items: [], hasUnsourcedNumbers: false },
@@ -1010,16 +1010,20 @@ describe("DeepSeek path (response_format json_object, session 23)", () => {
       { text: "x", sources: [] },
       { apiKey: "test", client, models: { HAIKU: "deepseek/deepseek-v4-flash" } },
     );
-    expect((spy.mock.calls[0]![0] as { max_tokens: number }).max_tokens).toBe(1536 + 8192);
+    expect((spy.mock.calls[0]![0] as { max_completion_tokens: number }).max_completion_tokens).toBe(
+      1536 + 8192,
+    );
   });
 
-  it("Claude-путь headroom НЕ получает (max_tokens = заявленный лимит агента)", async () => {
+  it("Claude-путь headroom НЕ получает (max_completion_tokens = заявленный лимит агента)", async () => {
     const { client, spy } = mockOpenAI({
       toolName: "x10_emit_numbers",
       toolInput: { items: [], hasUnsourcedNumbers: false },
     });
     await NumbersAgent.run({ text: "x", sources: [] }, { apiKey: "test", client });
-    expect((spy.mock.calls[0]![0] as { max_tokens: number }).max_tokens).toBe(1536);
+    expect((spy.mock.calls[0]![0] as { max_completion_tokens: number }).max_completion_tokens).toBe(
+      1536,
+    );
   });
 
   it("пустой content → один ретрай с удвоенным headroom, результат из второго ответа", async () => {
@@ -1055,15 +1059,19 @@ describe("DeepSeek path (response_format json_object, session 23)", () => {
     );
     expect(result.output.hasUnsourcedNumbers).toBe(false);
     expect(spy).toHaveBeenCalledTimes(2);
-    expect((spy.mock.calls[0]![0] as { max_tokens: number }).max_tokens).toBe(1536 + 8192);
-    expect((spy.mock.calls[1]![0] as { max_tokens: number }).max_tokens).toBe(1536 + 16384);
+    expect((spy.mock.calls[0]![0] as { max_completion_tokens: number }).max_completion_tokens).toBe(
+      1536 + 8192,
+    );
+    expect((spy.mock.calls[1]![0] as { max_completion_tokens: number }).max_completion_tokens).toBe(
+      1536 + 16384,
+    );
     // Выброшенный (пустой) вызов биллится — usage суммирует ОБА вызова,
     // иначе $-ledger недосчитывает расход ретрая.
     expect(result.usage.inputTokens).toBe(10 + 10);
     expect(result.usage.outputTokens).toBe(9728 + 9728);
   });
 
-  it("пустой content и после ретрая → понятная ошибка про reasoning/max_tokens", async () => {
+  it("пустой content и после ретрая → понятная ошибка про reasoning/max_completion_tokens", async () => {
     const empty = {
       id: "c1",
       object: "chat.completion",
@@ -1128,7 +1136,9 @@ describe("DeepSeek path (response_format json_object, session 23)", () => {
     );
     expect(result.output.hasUnsourcedNumbers).toBe(false);
     expect(spy).toHaveBeenCalledTimes(2);
-    expect((spy.mock.calls[1]![0] as { max_tokens: number }).max_tokens).toBe(1536 + 16384);
+    expect((spy.mock.calls[1]![0] as { max_completion_tokens: number }).max_completion_tokens).toBe(
+      1536 + 16384,
+    );
     // usage обрезанного (wasted) вызова тоже учтён в $-ledger: 9728 + 500.
     expect(result.usage.outputTokens).toBe(9728 + 500);
   });

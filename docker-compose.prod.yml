@@ -181,6 +181,10 @@ services:
     build:
       context: .
       dockerfile: apps/admin/Dockerfile
+      args:
+        # ⚠️ Обязательно как build-arg: Next инлайнит NEXT_PUBLIC_* на сборке.
+        # Одного `environment` ниже НЕ хватает — виджет входа не отрисуется.
+        NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: "${NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:-}"
     restart: unless-stopped
     environment:
       NODE_ENV: production

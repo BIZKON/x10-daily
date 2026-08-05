@@ -38,6 +38,15 @@ COPY packages ./packages
 # `next build` (Turbopack) падает «extends doesn't resolve correctly».
 COPY tsconfig.base.json ./
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# ⚠️ NEXT_PUBLIC_* инлайнится в бандл на СБОРКЕ, а не читается в рантайме.
+# Передавать её только через `environment` в compose бесполезно: значение
+# окажется пустым, страница /login решит, что бот не настроен, и НЕ отрисует
+# виджет входа — админка становится недоступной (ровно это и случилось).
+# Тот же приём уже применён в apps/miniapp/Dockerfile для ключей PostHog.
+ARG NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=""
+ENV NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=${NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}
+
 WORKDIR /app/apps/admin
 RUN pnpm exec next build
 

@@ -122,6 +122,20 @@ function getBaseUrl(): string | null {
   return url.replace(/\/+$/, "");
 }
 
+/**
+ * Заголовки авторизации для /v1/admin/*.
+ *
+ * ⚠️ ВСЕ эндпоинты под /v1/admin требуют роль editor|admin (requireRole в
+ * apps/api). Запрос без токена получает 401, фетчер возвращает null, а страница
+ * показывает «apps/api недоступен» — сообщение, уводящее в ложную сторону: API
+ * жив, не хватает именно авторизации. Так молча не работали очередь, карточка
+ * статьи и публикация — то есть основной маршрут админки.
+ */
+async function authHeaders(): Promise<Record<string, string>> {
+  const token = await getSessionToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
@@ -169,7 +183,9 @@ export async function fetchQueue(
   if (filter.category) params.set("category", filter.category);
   if (filter.subcategory) params.set("subcategory", filter.subcategory);
   try {
-    const res = await fetchWithTimeout(`${base}/v1/admin/queue?${params}`);
+    const res = await fetchWithTimeout(`${base}/v1/admin/queue?${params}`, {
+      headers: await authHeaders(),
+    });
     if (!res.ok) return null;
     return (await res.json()) as QueueResponse;
   } catch {
@@ -184,7 +200,9 @@ export async function fetchArticleDetail(id: string): Promise<ArticleDetail | nu
     return findMockArticleDetail(id) ?? null;
   }
   try {
-    const res = await fetchWithTimeout(`${base}/v1/admin/article/${encodeURIComponent(id)}`);
+    const res = await fetchWithTimeout(`${base}/v1/admin/article/${encodeURIComponent(id)}`, {
+      headers: await authHeaders(),
+    });
     if (!res.ok) return null;
     return (await res.json()) as ArticleDetail;
   } catch {
@@ -200,6 +218,7 @@ export async function publishArticle(
   try {
     const res = await fetchWithTimeout(`${base}/v1/admin/publish/${encodeURIComponent(id)}`, {
       method: "POST",
+      headers: await authHeaders(),
     });
     const data = (await res.json()) as { status?: string; error?: string; message?: string };
     if (!res.ok) return { ok: false, error: data.error ?? data.message ?? `HTTP ${res.status}` };
@@ -299,7 +318,10 @@ async function getJson<T>(path: string): Promise<T | null> {
   const base = getBaseUrl();
   if (!base) return null;
   try {
-    const res = await fetchWithTimeout(`${base}${path}`);
+    // Токен шлём всегда: часть путей публичная (/v1/authors, /v1/events), но
+    // часть — под /v1/admin (pipeline-config) и без него отвечает 401.
+    // Для публичных лишний заголовок безвреден.
+    const res = await fetchWithTimeout(`${base}${path}`, { headers: await authHeaders() });
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {

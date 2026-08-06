@@ -1,22 +1,34 @@
+"use client";
+
 import { CheckboxInput, Field, TextArea, TextInput } from "@/components/form/field";
 import { ImageUrlField } from "@/components/form/image-url-field";
 import { SubmitButton } from "@/components/form/submit-button";
 import type { AdminAuthor } from "@/lib/api";
+import { Check } from "lucide-react";
+import { useActionState } from "react";
+import { AUTHOR_FORM_IDLE, type AuthorFormState } from "./form-state";
 
 /**
- * Form для create/edit автора. action прокидывается извне (createAuthor / updateAuthor.bind).
+ * Form для create/edit автора. action прокидывается извне (createAuthor /
+ * updateAuthor.bind).
+ *
+ * 🔴 Клиентский компонент ради `useActionState`: сохранение обязано давать
+ * видимый исход. Раньше экшен молчал на успехе и бросал на ошибке — редактор
+ * жал кнопку повторно, считая, что она не работает (см. докблок в actions.ts).
  */
 export function AuthorForm({
   action,
   defaults,
   submitLabel = "Сохранить",
 }: {
-  action: (form: FormData) => void | Promise<void>;
+  action: (prev: AuthorFormState, form: FormData) => Promise<AuthorFormState>;
   defaults?: Partial<AdminAuthor>;
   submitLabel?: string;
 }) {
+  const [state, formAction] = useActionState(action, AUTHOR_FORM_IDLE);
+
   return (
-    <form action={action} className="space-y-4">
+    <form action={formAction} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Slug (URL)" required hint="Латиница, дефисы. Используется в /author/...">
           <TextInput
@@ -51,7 +63,7 @@ export function AuthorForm({
         />
       </Field>
 
-      <Field label="Avatar" hint="URL или загрузка с диска (R2)">
+      <Field label="Avatar" hint="Ссылка или загрузка файла — файл ляжет на наш сервер">
         <ImageUrlField name="avatarUrl" defaultValue={defaults?.avatarUrl ?? ""} />
       </Field>
 
@@ -77,7 +89,18 @@ export function AuthorForm({
         />
       </div>
 
-      <div className="flex justify-end border-t border-fence pt-4">
+      {state.status === "error" && (
+        <div className="rounded-lg border border-red/40 bg-red/[0.06] px-3 py-2 text-[13px] text-red">
+          {state.message}
+        </div>
+      )}
+
+      <div className="flex items-center justify-end gap-3 border-t border-fence pt-4">
+        {state.status === "saved" && (
+          <span className="flex items-center gap-1.5 text-[13px] font-semibold text-success">
+            <Check size={14} strokeWidth={2.5} /> Сохранено
+          </span>
+        )}
         <SubmitButton label={submitLabel} />
       </div>
     </form>

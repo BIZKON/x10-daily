@@ -1,9 +1,9 @@
+import { DeleteButton } from "@/components/form/delete-button";
+import { fetchAdminAuthorBySlug } from "@/lib/api";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { DeleteButton } from "@/components/form/delete-button";
-import { fetchAdminAuthorBySlug } from "@/lib/api";
 import { deleteAuthor, updateAuthor } from "../actions";
 import { AuthorForm } from "../author-form";
 

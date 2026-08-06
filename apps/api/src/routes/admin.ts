@@ -205,7 +205,12 @@ export const adminRoute = new Hono<AppEnv>()
         })
         .from(costAlerts)
         .where(
-          sql`${costAlerts.alertDate} = to_char(now() AT TIME ZONE 'Europe/Moscow', 'YYYY-MM-DD')`,
+          // 🔴 `alert_date` — колонка типа `date`, а `to_char` возвращает text.
+          // PostgreSQL не сравнивает date с text: запрос падал, эндпоинт отдавал
+          // 500, и раздел «Расходы» показывал «Данные недоступны». Приводим
+          // текущий момент к дате в МСК — тем же поясом, что и остальные
+          // границы дня в этом эндпоинте.
+          sql`${costAlerts.alertDate} = (now() AT TIME ZONE 'Europe/Moscow')::date`,
         )
         .orderBy(desc(costAlerts.createdAt)),
       // Расход за календарный месяц — вторая цифра, без которой дневная сумма

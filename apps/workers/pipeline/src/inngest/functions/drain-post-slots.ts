@@ -17,6 +17,7 @@ import { POSTING_DRAIN_REQUESTED } from "../../events";
 import { buildPhotoCaption } from "../../lib/caption";
 import { buildMiniAppDeepLink } from "../../lib/miniapp-link";
 import {
+  type PostMode,
   type PostableChannel,
   markChannelPosted,
   recordChannelFailure,
@@ -131,8 +132,13 @@ export function createDrainPostSlotsFunction(
         return list;
       });
 
-      const results: Array<{ channel: PostableChannel; status: string; postRef?: string | null }> =
-        [];
+      const results: Array<{
+        channel: PostableChannel;
+        status: string;
+        postRef?: string | null;
+        /** Чем пост ушёл: photo / photo_plain / text_html / text_plain / vk. */
+        mode?: PostMode;
+      }> = [];
 
       for (const channel of targets) {
         const row = await step.run(`load-${channel}`, async () => {

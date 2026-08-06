@@ -180,3 +180,26 @@ export const postingDrainRequestedEvent = eventType("posting/drain.requested", {
   schema: postingDrainRequestedDataSchema,
 });
 export const POSTING_DRAIN_REQUESTED = postingDrainRequestedEvent.event;
+
+/* ----------------------------------------------------------------
+ * source/prime.requested — приминание нового источника парсинга.
+ *
+ * 🔴 Зачем это обязательный шаг (CLAUDE.md §4). Свежедобавленный источник ещё
+ * не имеет ни одной строки в `seen_items`, поэтому первый же тик ingest-rss
+ * принимает ВЕСЬ исторический фид за новости. Раньше от этого спасала только
+ * инструкция человеку в `scripts/seed-sources.sql`; в админке, которой
+ * пользуется клиент, инструкции не работают.
+ *
+ * Поэтому источник заводится ВЫКЛЮЧЕННЫМ, а включает его только эта функция —
+ * и только после того, как фид реально прочитан и записан в `seen_items`.
+ * Источник обязан доказать свою работоспособность прежде, чем начать вещать.
+ * ---------------------------------------------------------------- */
+export const sourcePrimeRequestedDataSchema = z.object({
+  sourceId: z.string().uuid(),
+});
+export type SourcePrimeRequestedData = z.infer<typeof sourcePrimeRequestedDataSchema>;
+
+export const sourcePrimeRequestedEvent = eventType("source/prime.requested", {
+  schema: sourcePrimeRequestedDataSchema,
+});
+export const SOURCE_PRIME_REQUESTED = sourcePrimeRequestedEvent.event;

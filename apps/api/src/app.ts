@@ -6,6 +6,7 @@ import { logger } from "hono/logger";
 import type { AppBindings } from "./bindings";
 import { adminRoute } from "./routes/admin";
 import { adminContentRoute } from "./routes/admin-content";
+import { adminSourcesRoute } from "./routes/admin-sources";
 import { adminVisualRoute } from "./routes/admin-visual";
 import { articlesRoute } from "./routes/articles";
 import { authRoute } from "./routes/auth";
@@ -116,6 +117,7 @@ export function createApp() {
   app.route("/v1/admin", adminRoute);
   app.route("/v1/admin", adminContentRoute);
   app.route("/v1/admin", adminVisualRoute);
+  app.route("/v1/admin", adminSourcesRoute);
   app.route("/v1/admin/upload", uploadRoute);
   app.route("/v1/events", eventsRoute);
   app.route("/v1/authors", authorsRoute);

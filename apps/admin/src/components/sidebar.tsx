@@ -8,6 +8,7 @@ import {
   Layers,
   Mic,
   Power,
+  Rss,
   Users,
   Wallet,
 } from "lucide-react";
@@ -43,6 +44,7 @@ export function Sidebar() {
         <NavItem href="/visuals" label="Обложки" icon={ImageIcon} active={isActive("/visuals")} />
 
         <NavSection label="Настройки" />
+        <NavItem href="/sources" label="Источники" icon={Rss} active={isActive("/sources")} />
         <NavItem href="/rubrics" label="Рубрики" icon={Layers} active={isActive("/rubrics")} />
         <NavItem
           href="/pipeline-config"

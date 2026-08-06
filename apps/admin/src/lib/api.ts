@@ -246,6 +246,26 @@ export type AdminAuthor = {
   subscriberCount: number;
 };
 
+/**
+ * Источник парсинга. `status` и `enabled` — разные вещи: крон фетчит по
+ * `enabled`, `status` несёт смысл жизненного цикла. Клиенту показываем одно
+ * понятное состояние, см. sourceState() на странице.
+ */
+export type AdminSource = {
+  id: string;
+  name: string;
+  url: string;
+  adapterType: string;
+  tier: string;
+  locale: string;
+  enabled: boolean;
+  status: string;
+  pollIntervalSec: number;
+  lastPolledAt: string | null;
+  notes: string | null;
+  createdAt: string;
+};
+
 export type AdminEvent = {
   id: string;
   slug: string;
@@ -327,6 +347,10 @@ async function getJson<T>(path: string): Promise<T | null> {
   } catch {
     return null;
   }
+}
+
+export async function fetchAdminSources(): Promise<{ items: AdminSource[] } | null> {
+  return getJson<{ items: AdminSource[] }>("/v1/admin/sources");
 }
 
 export async function fetchAdminAuthors(): Promise<{ items: AdminAuthor[] } | null> {

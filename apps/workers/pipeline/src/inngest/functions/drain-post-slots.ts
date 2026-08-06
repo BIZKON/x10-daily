@@ -249,12 +249,13 @@ export function createDrainPostSlotsFunction(
         }
 
         const postRef = outcome.postRef;
+        const mode = outcome.mode;
         await step.run(`mark-${channel}`, async () => {
           const db = createDb(env.DATABASE_URL);
-          await markChannelPosted(db, { articleId, channel, postRef, at: new Date() });
+          await markChannelPosted(db, { articleId, channel, postRef, at: new Date(), mode });
           return { posted: true };
         });
-        results.push({ channel, status: "posted", postRef });
+        results.push({ channel, status: "posted", postRef, mode });
       }
 
       // Статья опубликована (постнулась хотя бы в tg) → articles.status='published'.

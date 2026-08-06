@@ -143,14 +143,19 @@ describe("drain-post-slots", () => {
     const r = (await makeHandler(TG_BINDINGS, fetchImpl)({ step: makeStep() })) as {
       articleId: string;
       posted: number;
-      results: Array<{ channel: string; status: string; postRef?: string | null }>;
+      results: Array<{ channel: string; status: string; postRef?: string | null; mode?: string }>;
     };
     expect(r.articleId).toBe("a1");
     expect(r.posted).toBe(1);
-    expect(r.results).toEqual([{ channel: "tg", status: "posted", postRef: "555" }]);
+    expect(r.results).toEqual([
+      { channel: "tg", status: "posted", postRef: "555", mode: "text_plain" },
+    ]);
     expect(fetchImpl).toHaveBeenCalledOnce();
     const tables = dbState.updates.map((u) => u.table);
     expect(tables).toContain("channels"); // mark posted
+    // 🔴 Ступень успеха обязана осесть в БД: без неё деградация фото→текст
+    // не оставляет следа нигде (see PostMode).
+    expect(dbState.updates.find((u) => u.table === "channels")?.set.postMode).toBe("text_plain");
     expect(tables).toContain("articles"); // mark published
     const published = dbState.updates.find((u) => u.table === "articles");
     expect(published?.set.status).toBe("published");

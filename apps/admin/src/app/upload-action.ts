@@ -35,7 +35,9 @@ export async function uploadImage(form: FormData): Promise<UploadResult> {
     });
     const data = (await res.json()) as { url?: string; error?: string; message?: string };
     if (!res.ok) {
-      return { ok: false, error: data.error ?? data.message ?? `HTTP ${res.status}` };
+      // Человеческое `message` вперёд машинного `error`: редактор видел в форме
+      // голый код вроде `r2_not_configured` и не мог понять, что делать.
+      return { ok: false, error: data.message ?? data.error ?? `HTTP ${res.status}` };
     }
     if (!data.url) return { ok: false, error: "API не вернул url" };
     return { ok: true, url: data.url };

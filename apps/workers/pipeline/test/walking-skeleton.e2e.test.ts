@@ -497,7 +497,9 @@ describe("Walking Skeleton e2e — cron → fetch → dedup → chain → real T
     expect(body.photo).toBeUndefined();
     expect(drainResult.articleId).toBe(FAKE_ARTICLE_ID);
     expect(drainResult.posted).toBe(1);
-    expect(drainResult.results).toEqual([{ channel: "tg", status: "posted", postRef: "42" }]);
+    expect(drainResult.results).toEqual([
+      { channel: "tg", status: "posted", postRef: "42", mode: "text_plain" },
+    ]);
   });
 
   it("повторный cron-тик НЕ эмитит дубль (dedup по seen_items)", async () => {

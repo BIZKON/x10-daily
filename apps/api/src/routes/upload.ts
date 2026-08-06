@@ -16,9 +16,9 @@ import {
  * POST /v1/admin/upload — multipart/form-data, поле "file".
  * Returns: { url, key, contentType, size }.
  *
- * Storage: Cloudflare R2 bucket binding X10_IMAGES (см. wrangler.toml).
- * Public URLs строятся через X10_IMAGES_PUBLIC_BASE.
- * Если R2 не настроен → 503 c понятной инструкцией.
+ * Storage: биндинг X10_IMAGES — S3-совместимое хранилище, если заданы `S3_*`,
+ * иначе диск тома (`UPLOADS_DIR`, раздаёт Caddy). Публичные URL строятся через
+ * X10_IMAGES_PUBLIC_BASE. Ничего не настроено → 503 с инструкцией.
  *
  * Validation:
  *   - mime in image/png, image/jpeg, image/webp, image/gif (MEDIUM-3: SVG убран — XSS)
@@ -161,10 +161,11 @@ export const uploadRoute = new Hono<AppEnv>().post("/", async (c) => {
   if (!images) {
     return c.json(
       {
-        error: "r2_not_configured",
+        error: "storage_not_configured",
         message:
-          "R2 не настроен. Создай bucket: `wrangler r2 bucket create x10-images`, " +
-          "раскомментируй r2_buckets в wrangler.toml, задай X10_IMAGES_PUBLIC_BASE.",
+          "Хранилище загрузок не настроено. Задай UPLOADS_DIR (том на диске) " +
+          "или полный набор S3_*, и обязательно X10_IMAGES_PUBLIC_BASE — " +
+          "публичный адрес, по которому Caddy раздаёт этот каталог.",
       },
       503,
     );
@@ -205,10 +206,7 @@ export const uploadRoute = new Hono<AppEnv>().post("/", async (c) => {
     return c.json({ error: "empty_file" }, 400);
   }
   if (file.size > MAX_BYTES) {
-    return c.json(
-      { error: "file_too_large", maxBytes: MAX_BYTES, actualBytes: file.size },
-      413,
-    );
+    return c.json({ error: "file_too_large", maxBytes: MAX_BYTES, actualBytes: file.size }, 413);
   }
 
   // HIGH-7: финальная quota check с учётом file.size. Count уже OK из preCheck,
@@ -234,10 +232,7 @@ export const uploadRoute = new Hono<AppEnv>().post("/", async (c) => {
   const mime = file.type.toLowerCase();
   const declaredExt = ALLOWED_MIME[mime];
   if (!declaredExt) {
-    return c.json(
-      { error: "unsupported_mime", mime, allowed: Object.keys(ALLOWED_MIME) },
-      415,
-    );
+    return c.json({ error: "unsupported_mime", mime, allowed: Object.keys(ALLOWED_MIME) }, 415);
   }
 
   // MEDIUM-2: магические байты должны совпадать с заявленным MIME.
@@ -253,8 +248,7 @@ export const uploadRoute = new Hono<AppEnv>().post("/", async (c) => {
         error: "mime_signature_mismatch",
         mime,
         detected,
-        message:
-          "Magic bytes файла не совпадают с Content-Type. Не пытайтесь спуфить MIME.",
+        message: "Magic bytes файла не совпадают с Content-Type. Не пытайтесь спуфить MIME.",
       },
       415,
     );

@@ -36,14 +36,28 @@ app.{$X10_BASE_DOMAIN:pro-agent-ai.ru} {
 	# (/data/covers), Caddy отдаёт только на чтение (/srv/covers:ro).
 	# ⚠️ Блок обязан стоять ДО общего handle: handle-блоки в Caddyfile
 	# срабатывают в порядке записи, иначе всё уйдёт в miniapp-прокси.
-	# immutable безопасен: URL несёт версию содержимого (?v=<хеш байтов>), и
-	# перегенерация обложки меняет URL — см. lib/cover-storage.ts.
+	# immutable безопасен: URL несёт версию содержимого в ИМЕНИ файла
+	# (<id>-<хеш байтов>.jpg), и перегенерация обложки даёт новое имя —
+	# см. lib/cover-storage.ts. Версию нельзя класть в query: Telegram отвергает
+	# такие URL в sendPhoto («wrong type of the web page content»).
 	handle_path /covers/* {
 		root * /srv/covers
 		# ⚠️ Заголовок вешаем ТОЛЬКО на существующий файл. Без матчера `header`
 		# сработал бы и на 404 от file_server — и клиент закэшировал бы «нет
 		# картинки» на год. Опасно ровно в окно первого включения (том covers
 		# ещё пуст): у затронутых читателей карточка осталась бы битой навсегда.
+		@exists file
+		header @exists Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# Загрузки админки (аватары авторов, обложки событий): том `uploads`, пишет
+	# api (/data/uploads), Caddy отдаёт только на чтение (/srv/uploads:ro).
+	# Ключ уникален по построению (дата/юзер/время-случайность), файл под ним
+	# не меняется — immutable честен. Тот же матчер @exists, что и у обложек:
+	# иначе 404 закэшировался бы на год.
+	handle_path /uploads/* {
+		root * /srv/uploads
 		@exists file
 		header @exists Cache-Control "public, max-age=31536000, immutable"
 		file_server

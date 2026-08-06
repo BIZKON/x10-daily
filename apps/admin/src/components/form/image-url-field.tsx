@@ -1,8 +1,8 @@
 "use client";
 
+import { uploadImage } from "@/app/upload-action";
 import { Image as ImageIcon, Loader2, Upload, X } from "lucide-react";
 import { useId, useRef, useState, useTransition } from "react";
-import { uploadImage } from "@/app/upload-action";
 
 /**
  * Combo-поле для URL изображения: текстовый input + загрузка с диска.
@@ -95,12 +95,14 @@ export function ImageUrlField({
           id={inputId}
           ref={fileInputRef}
           type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+          // SVG убран: api отвергает его (может нести <script>, XSS при раздаче
+          // с нашего домена). Оставлять в accept — обещать то, что упадёт 415.
+          accept="image/png,image/jpeg,image/webp,image/gif"
           onChange={onFileChange}
           disabled={isPending}
           className="hidden"
         />
-        <span className="text-[11px] text-haze">PNG/JPEG/WebP/GIF/SVG, до 5 МБ</span>
+        <span className="text-[11px] text-haze">PNG/JPEG/WebP/GIF, до 5 МБ</span>
       </div>
 
       {error && (

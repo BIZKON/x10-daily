@@ -86,9 +86,15 @@ services:
       S3_ACCESS_KEY_ID: "${S3_ACCESS_KEY_ID:-}"
       S3_SECRET_ACCESS_KEY: "${S3_SECRET_ACCESS_KEY:-}"
       S3_BUCKET: "${S3_BUCKET:-}"
-      X10_IMAGES_PUBLIC_BASE: "${X10_IMAGES_PUBLIC_BASE:-}"
+      # Загрузки админки (аватары авторов, обложки событий). S3_* пусты →
+      # пишем на диск тома, раздаёт Caddy — как обложки статей.
+      UPLOADS_DIR: "${UPLOADS_DIR:-/data/uploads}"
+      X10_IMAGES_PUBLIC_BASE: "${X10_IMAGES_PUBLIC_BASE:-https://app.${X10_BASE_DOMAIN:-pro-agent-ai.ru}/uploads}"
       SENTRY_DSN: "${SENTRY_DSN:-}"
       NEXT_PUBLIC_POSTHOG_HOST: "${NEXT_PUBLIC_POSTHOG_HOST:-https://eu.posthog.com}"
+    volumes:
+      # Загрузки: api пишет, caddy раздаёт (тот же том, ro).
+      - uploads:/data/uploads
     expose:
       - "8080"
     healthcheck:
@@ -255,6 +261,8 @@ services:
       - caddy-config:/config
       # Обложки статей — только чтение: пишет их pipeline.
       - covers:/srv/covers:ro
+      # Загрузки админки — только чтение: пишет их api.
+      - uploads:/srv/uploads:ro
     environment:
       X10_BASE_DOMAIN: "${X10_BASE_DOMAIN:-pro-agent-ai.ru}"
       CADDY_ACME_EMAIL: "${CADDY_ACME_EMAIL:-admin@pro-agent-ai.ru}"
@@ -272,6 +280,8 @@ volumes:
   caddy-config:
   # ИИ-обложки статей: пишет pipeline (/data/covers), раздаёт caddy (/srv/covers).
   covers:
+  # Загрузки админки: пишет api (/data/uploads), раздаёт caddy (/srv/uploads).
+  uploads:
 
 networks:
   # IPv6 включён намеренно: api.telegram.org из этой РФ-сети доступен ТОЛЬКО по

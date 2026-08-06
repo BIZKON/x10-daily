@@ -26,8 +26,16 @@ import { NON_RETRYABLE_VK_CODES, VkApiError, vkWallPost } from "./vk";
 
 export type PostableChannel = "tg" | "vk";
 
+/**
+ * Ступень, на которой отправка удалась. Пишется в `channels.post_mode` —
+ * единственный след того, что картинка НЕ взлетела: деградация фото→текст
+ * ошибкой не считается (пост уходит, `lastError` пуст, `attempts` не растёт),
+ * и без этого поля факт был невосстановим уже через один деплой.
+ */
+export type PostMode = "photo" | "photo_plain" | "text_html" | "text_plain" | "vk";
+
 export type SendOutcome =
-  | { ok: true; postRef: string | null }
+  | { ok: true; postRef: string | null; mode: PostMode }
   | { ok: false; skipped: true; reason: string };
 
 export type SendInput = {
@@ -65,6 +73,11 @@ export type SendInput = {
    */
   captionPlain?: string | null;
 };
+
+/** Успешный исход одной ступени: message_id + чем именно ушло. */
+function ok(res: { messageId?: number | null }, mode: PostMode): SendOutcome {
+  return { ok: true, postRef: res.messageId != null ? String(res.messageId) : null, mode };
+}
 
 /**
  * Отправляет пост в канал. Текст чистится `cleanPostText` (идемпотентно).
@@ -127,7 +140,7 @@ export async function sendToChannel(
             },
             tgOpts,
           );
-          return { ok: true, postRef: res.messageId != null ? String(res.messageId) : null };
+          return ok(res, "photo");
         } catch (e) {
           // Золотое правило (skill telegram-rich-text): бот НЕ молчит. Битая
           // разметка/лимит (400) → шлём ту же картинку с plain-подписью.
@@ -142,7 +155,10 @@ export async function sendToChannel(
           { chat_id: chatId, photo: input.visualRef, caption: plainCaption },
           tgOpts,
         );
-        return { ok: true, postRef: res.messageId != null ? String(res.messageId) : null };
+        // `photo_plain` только если HTML-подпись РЕАЛЬНО пробовали и её отбили.
+        // Когда captionHtml не строился вовсе (старые строки очереди), никакой
+        // деградации не было — это обычный `photo`, и врать в аудите нельзя.
+        return ok(res, input.captionHtml ? "photo_plain" : "photo");
       } catch (e) {
         // 🔴 400 уже ПОСЛЕ plain-подписи = проблема самой КАРТИНКИ (Telegram не
         // смог скачать URL, IMAGE_PROCESS_FAILED, слишком большой файл), а не
@@ -165,7 +181,7 @@ export async function sendToChannel(
           withPreview({ chat_id: chatId, text: input.html, parse_mode: "HTML" }),
           tgOpts,
         );
-        return { ok: true, postRef: res.messageId != null ? String(res.messageId) : null };
+        return ok(res, "text_html");
       } catch (e) {
         if (!(e instanceof Error) || !/HTTP 400/.test(e.message)) throw e;
         console.warn(`sendToChannel(tg): HTML 400 → фолбэк на plain. ${e.message}`);
@@ -173,7 +189,7 @@ export async function sendToChannel(
     }
 
     const res = await callTelegram("sendMessage", withPreview({ chat_id: chatId, text }), tgOpts);
-    return { ok: true, postRef: res.messageId != null ? String(res.messageId) : null };
+    return ok(res, "text_plain");
   }
 
   // channel === "vk"
@@ -189,7 +205,7 @@ export async function sendToChannel(
       guid: input.articleId.replace(/-/g, ""),
       fetchImpl: opts.fetchImpl,
     });
-    return { ok: true, postRef: String(res.postId) };
+    return { ok: true, postRef: String(res.postId), mode: "vk" };
   } catch (e) {
     if (e instanceof VkApiError && NON_RETRYABLE_VK_CODES.has(e.code)) {
       return { ok: false, skipped: true, reason: `vk-error-${e.code}` };
@@ -201,11 +217,18 @@ export async function sendToChannel(
 /** Помечает channels-row опубликованной: posted_at + post_ref. */
 export async function markChannelPosted(
   db: Database,
-  args: { articleId: string; channel: PostableChannel; postRef: string | null; at: Date },
+  args: {
+    articleId: string;
+    channel: PostableChannel;
+    postRef: string | null;
+    at: Date;
+    /** Ступень успеха. Единственный след деградации фото→текст — см. `PostMode`. */
+    mode: PostMode;
+  },
 ): Promise<void> {
   await db
     .update(channels)
-    .set({ postedAt: args.at, postRef: args.postRef })
+    .set({ postedAt: args.at, postRef: args.postRef, postMode: args.mode })
     .where(and(eq(channels.articleId, args.articleId), eq(channels.channel, args.channel)));
 }
 

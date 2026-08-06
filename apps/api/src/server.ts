@@ -15,8 +15,9 @@
 import { serve } from "@hono/node-server";
 import { createApp } from "./app";
 import type { AppBindings, ObjectStorage, RateLimiter } from "./bindings";
-import { disconnectRedis, getRedis } from "./services/redis";
+import { DiskStorage } from "./services/disk-storage";
 import { RedisRateLimiter } from "./services/rate-limiter-redis";
+import { disconnectRedis, getRedis } from "./services/redis";
 import { S3Storage, createS3Client } from "./services/s3-storage";
 
 /** Заглушка RateLimiter — всегда allow. Используется когда REDIS_URL не задан. */
@@ -26,9 +27,10 @@ const noopLimiter: RateLimiter = {
   },
 };
 
-function buildRateLimiters(
-  redisUrl: string | undefined,
-): { engagement: RateLimiter; pipeline: RateLimiter } {
+function buildRateLimiters(redisUrl: string | undefined): {
+  engagement: RateLimiter;
+  pipeline: RateLimiter;
+} {
   if (!redisUrl) {
     console.warn("[server] REDIS_URL не задан — rate limit disabled (noop)");
     return { engagement: noopLimiter, pipeline: noopLimiter };
@@ -41,6 +43,14 @@ function buildRateLimiters(
   };
 }
 
+/**
+ * Хранилище загрузок. Приоритет — S3 (когда файлов станет много); если `S3_*` не
+ * заданы, падаем на диск тома, как обложки.
+ *
+ * 🔴 Раньше здесь был только S3, и при пустых `S3_*` возвращался undefined →
+ * загрузка аватара отдавала 503 `r2_not_configured`. То есть с переезда с
+ * Cloudflare она не работала ни разу: настроенного бакета в проде не было.
+ */
 function buildObjectStorage(env: NodeJS.ProcessEnv): ObjectStorage | undefined {
   const endpoint = env.S3_ENDPOINT?.trim();
   const region = env.S3_REGION?.trim();
@@ -48,8 +58,13 @@ function buildObjectStorage(env: NodeJS.ProcessEnv): ObjectStorage | undefined {
   const secretAccessKey = env.S3_SECRET_ACCESS_KEY?.trim();
   const bucket = env.S3_BUCKET?.trim();
   if (!endpoint || !region || !accessKeyId || !secretAccessKey || !bucket) {
+    const dir = env.UPLOADS_DIR?.trim();
+    if (dir) {
+      console.warn(`[server] S3_* не заданы — загрузки пишем на диск: ${dir}`);
+      return new DiskStorage(dir);
+    }
     if (env.NODE_ENV === "production") {
-      console.warn("[server] S3_* env неполные — upload endpoint вернёт 503");
+      console.warn("[server] ни S3_*, ни UPLOADS_DIR — upload endpoint вернёт 503");
     }
     return undefined;
   }
@@ -86,7 +101,8 @@ function readBindings(): AppBindings {
     AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
 
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-    ANTHROPIC_ZDR_CONFIRMED: process.env.ANTHROPIC_ZDR_CONFIRMED as AppBindings["ANTHROPIC_ZDR_CONFIRMED"],
+    ANTHROPIC_ZDR_CONFIRMED: process.env
+      .ANTHROPIC_ZDR_CONFIRMED as AppBindings["ANTHROPIC_ZDR_CONFIRMED"],
 
     MASKER_BASE_URL: process.env.MASKER_BASE_URL,
     MASKER_API_KEY: process.env.MASKER_API_KEY,

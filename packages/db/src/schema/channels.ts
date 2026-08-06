@@ -8,6 +8,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  varchar,
 } from "drizzle-orm/pg-core";
 import { id } from "./_shared";
 import { articles } from "./articles";
@@ -49,9 +50,14 @@ export const channels = pgTable(
     lastError: text("last_error"),
     /** Идентификатор опубликованного поста (TG message_id / VK post id) — аудит. */
     postRef: text("post_ref"),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    /**
+     * Чем пост УШЁЛ на самом деле: `photo` | `photo_plain` | `text_html` |
+     * `text_plain` | `vk`. Деградация фото→текст не считается ошибкой (пост
+     * уходит, `lastError` пуст), поэтому без этого поля факт «картинка не
+     * взлетела» не сохранялся нигде. NULL — строки старше миграции 0015.
+     */
+    postMode: varchar("post_mode", { length: 16 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("channels_article_channel_uidx").on(t.articleId, t.channel),

@@ -111,6 +111,34 @@ export function createDrainPostSlotsFunction(
       const selected = await step.run("select", async () => {
         const db = createDb(env.DATABASE_URL);
         const staleBefore = new Date(gate.nowMs - STALE_HOURS * 3_600_000);
+
+        // 🔴 Ворота ревью (Спека 4). Статью, у которой карточка ещё ждёт
+        // решения, крон НЕ публикует. Раньше слот забирал что угодно, не
+        // глядя на статус, и кнопка «Одобрить» была не воротами, а
+        // ускорителем: не нажал — ушло само в ближайший слот.
+        //
+        // Предохранитель: блокировка снимается через REVIEW_GATE_HOURS часов
+        // от создания карточки. Жёсткие ворота означают, что день без
+        // редактора = день тишины в канале, а медиа так себе позволить не
+        // может. `0` — предохранитель выключен, ворота жёсткие.
+        //
+        // ⚠️ Прицельная публикация ворота НЕ проверяет: она приходит ровно из
+        // нажатия «Одобрить», то есть решение уже принято.
+        const gateHours = env.REVIEW_GATE_HOURS;
+        const gated =
+          !wantedArticleId && gateHours >= 0
+            ? sql`not exists (
+                select 1 from review_cards rc
+                where rc.article_id = ${channels.articleId}
+                  and rc.state = 'awaiting'
+                  ${
+                    gateHours > 0
+                      ? sql`and rc.created_at > now() - make_interval(hours => ${gateHours})`
+                      : sql``
+                  }
+              )`
+            : undefined;
+
         const [r] = await db
           .select({ articleId: channels.articleId })
           .from(channels)
@@ -122,6 +150,7 @@ export function createDrainPostSlotsFunction(
               // Окно свежести намеренно сохраняется и для прицельного случая:
               // одобрить статью суточной давности — это опубликовать вчерашнее.
               ...(wantedArticleId ? [eq(channels.articleId, wantedArticleId)] : []),
+              ...(gated ? [gated] : []),
             ),
           )
           .orderBy(asc(channels.createdAt))

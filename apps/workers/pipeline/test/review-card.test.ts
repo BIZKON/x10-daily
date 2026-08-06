@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildCallbackData,
-  parseCallbackData,
-  reviewKeyboard,
-} from "../src/lib/review-card";
+import { buildCallbackData, parseCallbackData, reviewKeyboard } from "../src/lib/review-card";
 
 /**
  * Карточка ревью (Спека 4). Формат кнопок пишет конвейер, а читает api —
@@ -47,7 +43,9 @@ describe("клавиатура", () => {
   });
 
   it("подписи по-русски и говорят, что произойдёт", () => {
-    const texts = reviewKeyboard(CARD).inline_keyboard.flat().map((b) => b.text);
+    const texts = reviewKeyboard(CARD)
+      .inline_keyboard.flat()
+      .map((b) => b.text);
     expect(texts.join(" ")).toMatch(/Одобрить/);
     expect(texts.join(" ")).toMatch(/картинк/i);
   });

@@ -50,6 +50,8 @@ export interface PipelineBindings {
    * (Спека 4). Пусто → карточки не шлём, HumanGate живёт только в кабинете.
    */
   TG_REVIEW_CHAT_ID?: string;
+  /** Часы ожидания решения редактора перед автопубликацией (Спека 4). */
+  REVIEW_GATE_HOURS?: string;
   /** Жёсткий дневной потолок $-расхода. Строка (coerce.number в @x10/config). */
   DAILY_BUDGET_USD?: string;
   /** Warn-порог $-расхода (< DAILY_BUDGET_USD). */
@@ -134,6 +136,7 @@ export function readBindingsFromEnv(): PipelineBindings {
 
     TG_OPS_CHAT_ID: process.env.TG_OPS_CHAT_ID,
     TG_REVIEW_CHAT_ID: process.env.TG_REVIEW_CHAT_ID,
+    REVIEW_GATE_HOURS: process.env.REVIEW_GATE_HOURS,
     DAILY_BUDGET_USD: process.env.DAILY_BUDGET_USD,
     DAILY_BUDGET_WARN_USD: process.env.DAILY_BUDGET_WARN_USD,
 

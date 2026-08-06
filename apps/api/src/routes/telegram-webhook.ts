@@ -103,7 +103,11 @@ export const telegramWebhookRoute = new Hono<AppEnv>().post("/webhook", async (c
   const [card] = await db
     .update(reviewCards)
     .set({
-      state: parsed.action === "rewrite" ? "awaiting" : "decided",
+      // 🔴 `awaiting` сохраняется для рерайта И перерисовки: статья всё ещё
+      // ждёт решения, просто с другим текстом или картинкой. Перевод в
+      // `decided` снял бы ворота на время работы конвейера, и слот успел бы
+      // опубликовать ровно то, что редактор отправил переделывать.
+      state: parsed.action === "rewrite" || parsed.action === "regenerate" ? "awaiting" : "decided",
       decision: parsed.action,
       decidedBy: actor.id,
       decidedAt: new Date(),
@@ -190,6 +194,8 @@ export const telegramWebhookRoute = new Hono<AppEnv>().post("/webhook", async (c
   // нажатие смысла не имеет. Если Telegram откажет — не страшно, состояние
   // карточки в БД уже не `awaiting`, и второе нажатие ничего не сделает.
   if (parsed.action !== "rewrite") {
+    // Кнопки со СТАРОЙ карточки убираем и при перерисовке: она уже неактуальна,
+    // решение примут на новой. Ворота при этом держит её состояние в БД.
     await editReplyMarkup(tg, card.chatId, card.messageId, null).catch(() => undefined);
     await sendMessage(tg, card.chatId, decisionNote(parsed.action, who), card.messageId).catch(
       () => undefined,

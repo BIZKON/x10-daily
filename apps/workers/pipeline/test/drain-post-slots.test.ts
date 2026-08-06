@@ -16,6 +16,7 @@ const { dbState } = vi.hoisted(() => ({
   dbState: {
     paused: { paused: false, reason: null as string | null },
     selectResults: [] as Array<Array<Record<string, unknown>>>,
+    selectWheres: [] as unknown[][],
     updates: [] as Array<{ table: string; set: Record<string, unknown> }>,
   },
 }));
@@ -25,7 +26,12 @@ vi.mock("@x10/db", async () => {
   const makeChain = () => {
     const chain: Record<string, unknown> = {
       from: () => chain,
-      where: () => chain,
+      // Условия записываем: мок их не исполняет, но проводку ворот ревью
+      // (Спека 4) иначе не проверить — SQL уходит в базу, которой в тесте нет.
+      where: (...args: unknown[]) => {
+        dbState.selectWheres.push(args);
+        return chain;
+      },
       orderBy: () => chain,
       limit: async () => dbState.selectResults.shift() ?? [],
     };
@@ -75,8 +81,16 @@ function makeHandler(bindings: Record<string, string | undefined>, fetchImpl?: t
   const fn = createDrainPostSlotsFunction(inngest, bindings as unknown as PipelineBindings, {
     fetchImpl,
   });
-  return (fn as unknown as { fn: (a: { step: ReturnType<typeof makeStep> }) => Promise<unknown> })
-    .fn;
+  return (
+    fn as unknown as {
+      // `event` опционален: у функции два триггера — крон (события нет) и
+      // прицельная публикация (событие с articleId).
+      fn: (a: {
+        event?: { data?: { articleId?: string; reason?: string } };
+        step: ReturnType<typeof makeStep>;
+      }) => Promise<unknown>;
+    }
+  ).fn;
 }
 
 /** fetch по host: TG ok всегда; VK по opts (post_id или error_code). */
@@ -107,6 +121,7 @@ describe("drain-post-slots", () => {
   beforeEach(() => {
     dbState.paused = { paused: false, reason: null };
     dbState.selectResults = [];
+    dbState.selectWheres = [];
     dbState.updates = [];
     vi.clearAllMocks();
   });
@@ -409,5 +424,92 @@ describe("drain-post-slots", () => {
     expect(
       dbState.updates.some((u) => u.table === "articles" && u.set.status === "published"),
     ).toBe(true);
+  });
+});
+
+/**
+ * Ворота ревью (Спека 4). До них слот забирал статью, не глядя на решение
+ * редактора: кнопка «Одобрить» была не воротами, а ускорителем.
+ *
+ * Мок не исполняет SQL, поэтому проверяем ПРОВОДКУ — попало ли условие с
+ * `review_cards` в запрос выбора. Само поведение SQL проверяется на проде.
+ */
+describe("ворота ревью", () => {
+  // ⚠️ Свой сброс: блок вынесен из describe выше, и его beforeEach сюда не
+  // достаёт — без этого условия протекали бы из предыдущего теста.
+  beforeEach(() => {
+    dbState.paused = { paused: false, reason: null };
+    dbState.selectResults = [];
+    dbState.selectWheres = [];
+    dbState.updates = [];
+    vi.clearAllMocks();
+  });
+
+  /**
+   * Текст первого условия выбора.
+   *
+   * ⚠️ JSON.stringify не годится: объекты drizzle ссылаются на таблицы, а те —
+   * обратно на колонки, и обход зацикливается. Собираем только строковые куски
+   * SQL, помечая пройденные объекты.
+   */
+  function firstWhereSql(): string {
+    const parts: string[] = [];
+    const seen = new WeakSet<object>();
+    const walk = (v: unknown): void => {
+      if (typeof v === "string") {
+        parts.push(v);
+        return;
+      }
+      if (!v || typeof v !== "object" || seen.has(v as object)) return;
+      seen.add(v as object);
+      for (const item of Object.values(v as Record<string, unknown>)) walk(item);
+    };
+    walk(dbState.selectWheres[0] ?? []);
+    return parts.join(" ");
+  }
+
+  it("крон: в выборку добавлено условие по карточкам ревью", async () => {
+    dbState.selectResults = [[], []];
+    await makeHandler(TG_BINDINGS, dualFetch())({ step: makeStep() });
+    expect(firstWhereSql()).toContain("review_cards");
+  });
+
+  it("🔴 прицельная публикация ворота НЕ проверяет — решение уже принято", async () => {
+    dbState.selectResults = [[], []];
+    await makeHandler(
+      TG_BINDINGS,
+      dualFetch(),
+    )({
+      event: { data: { articleId: "a1", reason: "review-card-approve" } },
+      step: makeStep(),
+    });
+    // Иначе «Одобрить» не сработало бы никогда: карточка ещё `awaiting` в тот
+    // самый момент, когда редактор её одобряет.
+    expect(firstWhereSql()).not.toContain("review_cards");
+  });
+
+  it("предохранитель выключен (0 часов) → ворота жёсткие, условие всё равно есть", async () => {
+    dbState.selectResults = [[], []];
+    await makeHandler(
+      { ...TG_BINDINGS, REVIEW_GATE_HOURS: "0" },
+      dualFetch(),
+    )({
+      step: makeStep(),
+    });
+    const w = firstWhereSql();
+    expect(w).toContain("review_cards");
+    // Без окна: блокировка не снимается по времени вообще.
+    expect(w).not.toContain("make_interval");
+  });
+
+  it("предохранитель включён → в условии есть окно по времени", async () => {
+    dbState.selectResults = [[], []];
+    await makeHandler(
+      { ...TG_BINDINGS, REVIEW_GATE_HOURS: "6" },
+      dualFetch(),
+    )({
+      step: makeStep(),
+    });
+    expect(firstWhereSql()).toContain("make_interval");
   });
 });

@@ -147,6 +147,10 @@ services:
       # Закрытая группа «Редакция» — карточки ревью с кнопками (Спека 4).
       # Пусто → карточки не шлём, HumanGate остаётся в кабинете.
       TG_REVIEW_CHAT_ID: "${TG_REVIEW_CHAT_ID:-}"
+      # Сколько часов пост ждёт решения редактора, прежде чем уйти сам
+      # (Спека 4). Предохранитель: жёсткие ворота = день без редактора — день
+      # тишины в канале. 0 — выключить предохранитель, ворота станут жёсткими.
+      REVIEW_GATE_HOURS: "${REVIEW_GATE_HOURS:-6}"
       DAILY_BUDGET_USD: "${DAILY_BUDGET_USD:-15}"
       DAILY_BUDGET_WARN_USD: "${DAILY_BUDGET_WARN_USD:-9}"
       # VK posting (session 21): оба пусты → VK-ветка отключена (draft-article не

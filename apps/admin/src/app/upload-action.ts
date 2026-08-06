@@ -15,7 +15,7 @@ export type UploadResult = { ok: true; url: string } | { ok: false; error: strin
 
 export async function uploadImage(form: FormData): Promise<UploadResult> {
   const base = process.env.X10_API_BASE_URL?.trim();
-  if (!base) return { ok: false, error: "X10_API_BASE_URL не задан" };
+  if (!base) return { ok: false, error: "Кабинет не подключён к серверу — сообщите в поддержку." };
 
   const token = await getSessionToken();
   if (!token) return { ok: false, error: "Сессия не установлена. Войдите через /login." };

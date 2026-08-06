@@ -141,26 +141,21 @@ function ActiveFilter({
   );
 }
 
+/**
+ * 🔴 Первый экран кабинета, и его видит клиент. Здесь была инструкция для
+ * разработчика — про `.env.local`, `X10_API_BASE_URL` и `pnpm wrangler dev`.
+ * Человеку, купившему продукт, это читается как поломка, которую он обязан
+ * чинить сам, и ни одного из названных файлов у него нет.
+ */
 function ApiUnreachable() {
   return (
     <div className="rounded-2xl border border-red/40 bg-red/5 p-6">
-      <h2 className="m-0 font-display text-lg font-extrabold text-red">apps/api недоступен</h2>
-      <p className="mt-2 text-[14px] text-mist">
-        Не задан <code className="font-mono text-paper">X10_API_BASE_URL</code> или worker не
-        отвечает. Проверь:
+      <h2 className="m-0 font-display text-lg font-extrabold text-red">Данные недоступны</h2>
+      <p className="mt-2 text-[14px] leading-[1.55] text-mist">
+        Сервер не отвечает или сессия истекла. Обновите страницу — если не поможет, войдите заново.
+        Если и это не помогло, напишите в поддержку: конвейер при этом продолжает работать,
+        публикации не теряются.
       </p>
-      <ol className="ml-5 mt-3 list-decimal text-[13px] text-mist">
-        <li className="mb-1">
-          В <code className="font-mono text-paper">apps/admin/.env.local</code> задана переменная
-          <br />
-          <code className="font-mono text-paper">X10_API_BASE_URL=http://localhost:8788</code>
-        </li>
-        <li className="mb-1">
-          Запущен api worker:
-          <br />
-          <code className="font-mono text-paper">cd apps/api && pnpm wrangler dev --port 8788</code>
-        </li>
-      </ol>
     </div>
   );
 }
@@ -185,12 +180,16 @@ function EmptyQueue({ filtered }: { filtered: boolean }) {
   return (
     <div className="rounded-2xl border border-fence bg-card p-10 text-center">
       <h2 className="m-0 font-display text-lg font-extrabold">Очередь пуста</h2>
-      <p className="mt-2 text-[13px] text-mist">
-        Pipeline не оставил статей со статусом ready. Запусти прогон:
+      <p className="mt-2 text-[13px] leading-[1.55] text-mist">
+        Готовых к публикации материалов сейчас нет. Конвейер читает источники каждые несколько минут
+        — как только появится подходящая новость, она придёт сюда сама.
       </p>
-      <code className="mt-3 inline-block rounded-lg bg-night px-3 py-2 font-mono text-[12px] text-mist">
-        POST {`{X10_API_BASE_URL}`}/v1/pipeline/run
-      </code>
+      <Link
+        href="/sources"
+        className="mt-4 inline-block rounded-pill border border-fence bg-night px-4 py-1.5 text-[12px] text-paper hover:border-gold/60"
+      >
+        Проверить источники
+      </Link>
     </div>
   );
 }

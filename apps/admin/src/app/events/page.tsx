@@ -50,7 +50,7 @@ async function EventsContent() {
         <header className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="m-0 font-display text-2xl font-extrabold">События</h1>
-            <p className="m-0 mt-1 text-[13px] text-mist">apps/api недоступен</p>
+            <p className="m-0 mt-1 text-[13px] text-mist">Данные недоступны</p>
           </div>
           <Link
             href="/events/new"
@@ -179,9 +179,8 @@ function EventRow({ event }: { event: AdminEvent }) {
 function ApiUnavailable() {
   return (
     <div className="rounded-xl border border-red/40 bg-red/[0.04] p-5 text-[13px]">
-      <strong className="text-red">apps/api недоступен.</strong> Задай{" "}
-      <code className="font-mono text-mist">X10_API_BASE_URL</code> в{" "}
-      <code className="font-mono text-mist">apps/admin/.env.local</code>.
+      <strong className="text-red">Данные недоступны.</strong> Сервер не отвечает или сессия истекла
+      — обновите страницу, а если не поможет, войдите заново.
     </div>
   );
 }

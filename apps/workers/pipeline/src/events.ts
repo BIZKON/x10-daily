@@ -229,3 +229,21 @@ export const reviewCardRequestedEvent = eventType("review/card.requested", {
   schema: reviewCardRequestedDataSchema,
 });
 export const REVIEW_CARD_REQUESTED = reviewCardRequestedEvent.event;
+
+/* ----------------------------------------------------------------
+ * article/rewrite.requested — переписать материал по правке редактора
+ * (Спека 4, шаг 5). Приходит из ответа в треде карточки ревью.
+ * ---------------------------------------------------------------- */
+export const articleRewriteRequestedDataSchema = z.object({
+  articleId: z.string().uuid(),
+  /** Правка редактора своими словами. */
+  instruction: z.string().min(1).max(500),
+  /** Карточка, из которой пришла правка — её пометим заменённой. */
+  cardId: z.string().uuid().optional(),
+});
+export type ArticleRewriteRequestedData = z.infer<typeof articleRewriteRequestedDataSchema>;
+
+export const articleRewriteRequestedEvent = eventType("article/rewrite.requested", {
+  schema: articleRewriteRequestedDataSchema,
+});
+export const ARTICLE_REWRITE_REQUESTED = articleRewriteRequestedEvent.event;

@@ -95,6 +95,33 @@ export async function loginWithTelegramWidgetAction(
   return { ok: true };
 }
 
+/**
+ * Вход из Mini App (Спека 4, шаг 6).
+ *
+ * Внутри Telegram нет Login Widget — там приходит `initData`, подписанная
+ * бот-токеном. Отдельный эндпоинт для этого не нужен: `/v1/auth/telegram`
+ * принимает initData и выдаёт тот же JWT, что и виджет. Роль он не выдаёт —
+ * её выдаёт только приглашение, поэтому чужой человек получит сессию читателя
+ * и упрётся в 403 на первом же разделе кабинета.
+ *
+ * ⚠️ Грабля s26, стоившая всего входа: при проверке подписи из строки
+ * исключается ТОЛЬКО `hash`, но не `signature`. Доковое «exclude hash and
+ * signature» относится к Ed25519-проверке третьими лицами. Это уже учтено в
+ * api (`lib/initdata.ts`) — здесь важно не «починить» повторно.
+ */
+export async function loginWithInitDataAction(initData: string): Promise<LoginResult> {
+  if (!getApiBaseUrl()) return { ok: false, reason: "no_backend" };
+  if (!initData) return { ok: false, reason: "tg_invalid" };
+  const { result, status } = await postAuth("/v1/auth/telegram", { initData });
+  if (!result) {
+    if (status === 403) return { ok: false, reason: "forbidden" };
+    if (status === 401) return { ok: false, reason: "tg_invalid" };
+    return { ok: false, reason: "network" };
+  }
+  await setSessionToken(result.token, result.expiresAt);
+  return { ok: true };
+}
+
 export async function devLoginAction(): Promise<LoginResult> {
   if (process.env.NODE_ENV === "production") {
     return { ok: false, reason: "disabled" };

@@ -32,6 +32,7 @@ export {
 export { NumbersAgent, type NumbersInput, type NumbersOutput } from "./agents/numbers";
 export { ToVAgent, type ToVInput, type ToVOutput } from "./agents/tov";
 export { BrevityAgent, type BrevityInput, type BrevityOutput } from "./agents/brevity";
+export { RewriteAgent, type RewriteInput, type RewriteOutput } from "./agents/rewrite";
 export {
   HookGenAgent,
   HOOK_PATTERNS,

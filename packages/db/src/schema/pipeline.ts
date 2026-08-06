@@ -23,6 +23,8 @@ export const agentKind = pgEnum("agent_kind", [
   "numbers",
   "factcheck",
   "tov",
+  /** Рерайт по правке редактора из Telegram (Спека 4). Миграция 0018. */
+  "rewrite",
   "brevity",
   "audio",
   "hookgen",

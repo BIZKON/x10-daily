@@ -31,6 +31,7 @@ import { answerCallback, editReplyMarkup, sendMessage } from "../lib/telegram-ca
 
 const POSTING_DRAIN_REQUESTED = "posting/drain.requested" as const;
 const ARTICLE_COVER_REQUESTED = "article/cover.requested" as const;
+const ARTICLE_REWRITE_REQUESTED = "article/rewrite.requested" as const;
 
 let cachedClient: Inngest | undefined;
 function getInngest(env: ReturnType<typeof getEnv>): Inngest {
@@ -67,8 +68,12 @@ export const telegramWebhookRoute = new Hono<AppEnv>().post("/webhook", async (c
 
   const cq = update.callback_query;
   if (!cq) {
-    // Прочие апдейты (в том числе ответы на «пришли правку») пока не
-    // обрабатываем — рерайт идёт отдельным шагом Спеки 4.
+    // Ответ в треде на «пришлите правку» — рерайт (Спека 4, шаг 5).
+    await handleRewriteReply(env, update).catch((e) => {
+      // Вебхук обязан вернуть 200 даже при сбое: иначе Telegram повторит
+      // апдейт, и правка применится дважды.
+      console.warn(`telegram-webhook: ответ с правкой не обработан — ${String(e)}`);
+    });
     return c.json({ ok: true });
   }
 
@@ -173,8 +178,8 @@ export const telegramWebhookRoute = new Hono<AppEnv>().post("/webhook", async (c
     });
     await answerCallback(tg, cq.id, "Рисую новую картинку — пришлю карточку заново.");
   } else {
-    // rewrite — просим правку ответом. Сам рерайт пока не реализован
-    // (следующий шаг Спеки 4), поэтому честно говорим об этом, а не молчим.
+    // rewrite — просим правку ответом; сам рерайт запустится, когда редактор
+    // ответит на это сообщение (см. handleRewriteReply).
     const prompt = await sendMessage(
       tg,
       card.chatId,
@@ -206,6 +211,13 @@ export const telegramWebhookRoute = new Hono<AppEnv>().post("/webhook", async (c
 });
 
 type TelegramUpdate = {
+  message?: {
+    message_id: number;
+    text?: string;
+    chat?: { id?: number };
+    from?: { id?: number | string };
+    reply_to_message?: { message_id?: number };
+  };
   callback_query?: {
     id: string;
     data?: string;
@@ -213,3 +225,60 @@ type TelegramUpdate = {
     message?: { message_id?: number; chat?: { id?: number } };
   };
 };
+
+/**
+ * Ответ редактора на «пришлите правку» (Спека 4, шаг 5).
+ *
+ * Карточку ищем по паре «чат + сообщение, на которое ответили»: prompt-сообщение
+ * бот отправил сам, и его id записан в карточке. Ответ на любое другое
+ * сообщение в группе нас не касается — обычная переписка не должна ничего
+ * запускать.
+ */
+async function handleRewriteReply(
+  env: ReturnType<typeof getEnv>,
+  update: TelegramUpdate,
+): Promise<void> {
+  const msg = update.message;
+  const replyTo = msg?.reply_to_message?.message_id;
+  const chatId = msg?.chat?.id;
+  const text = (msg?.text ?? "").trim();
+  if (!msg || !replyTo || !chatId || !text) return;
+
+  const token = env.TELEGRAM_BOT_TOKEN;
+  if (!token) return;
+  const tg = { token };
+  const db = getDb(env.DATABASE_URL);
+
+  const [card] = await db
+    .select({ id: reviewCards.id, articleId: reviewCards.articleId })
+    .from(reviewCards)
+    .where(and(eq(reviewCards.chatId, chatId), eq(reviewCards.promptMessageId, replyTo)))
+    .limit(1);
+  if (!card) return;
+
+  // Право проверяем и здесь: prompt-сообщение видно всей группе, ответить на
+  // него может кто угодно.
+  const [actor] = await db
+    .select({ id: users.id, role: users.role })
+    .from(users)
+    .where(
+      and(eq(users.platform, "telegram"), eq(users.platformUserId, String(msg.from?.id ?? ""))),
+    )
+    .limit(1);
+  const teamRole = teamRoleFromDbRole(actor?.role);
+  if (!actor || !teamRole || !can(teamRole, "content.edit")) {
+    await sendMessage(tg, chatId, "У вас нет прав править материалы.", msg.message_id);
+    return;
+  }
+
+  // Длинную инструкцию режем: агент принимает до 500 знаков, а редактор мог
+  // прислать простыню. Обрезать честнее, чем молча отказать.
+  const instruction = text.slice(0, 500);
+
+  await getInngest(env).send({
+    name: ARTICLE_REWRITE_REQUESTED,
+    data: { articleId: card.articleId, instruction, cardId: card.id },
+  });
+
+  await sendMessage(tg, chatId, "Переписываю — пришлю новую карточку.", msg.message_id);
+}

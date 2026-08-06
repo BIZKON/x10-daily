@@ -8,11 +8,14 @@
  * 2. Development: form с кнопкой "Dev login" если задан X10_ADMIN_USER_ID env.
  *    Создаёт сессию через /v1/auth/dev-login.
  *
- * Bot username должен быть прописан в NEXT_PUBLIC_TELEGRAM_BOT_USERNAME env
- * (например "proagent_ai_bot"). Без него Widget не рендерится — показываем подсказку.
+ * 3. Внутри Telegram (Mini App, Спека 4 шаг 6): Login Widget там не работает —
+ *    приходит initData, и вход происходит молча (TgMiniAppLogin).
+ *
+ * Bot username должен быть прописан в NEXT_PUBLIC_TELEGRAM_BOT_USERNAME env.
  */
 
 import { TgLoginWidget } from "@/components/tg-login-widget";
+import { TgMiniAppLogin } from "@/components/tg-miniapp-login";
 import { devLoginAction } from "@/lib/auth-actions";
 import { getSessionToken } from "@/lib/session";
 import { redirect } from "next/navigation";
@@ -66,16 +69,16 @@ async function LoginContent({
           </p>
         </div>
 
+        {/* Внутри Telegram (Mini App) входим молча по initData: человек уже
+            вошёл в Telegram, спрашивать второй раз нечего. Вне Telegram
+            компонент ничего не рисует и уступает место кнопке виджета. */}
+        <TgMiniAppLogin />
+
         {botUsername ? (
           <TgLoginWidget botUsername={botUsername} />
         ) : (
-          <div className="rounded-md border border-border bg-muted/40 p-4 text-sm">
-            <p className="font-medium">Telegram Login Widget не настроен</p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Задайте{" "}
-              <code className="rounded bg-background px-1">NEXT_PUBLIC_TELEGRAM_BOT_USERNAME</code>{" "}
-              и зарегистрируйте домен в @BotFather (см. DEPLOY.md §6.4).
-            </p>
+          <div className="rounded-lg border border-red/40 bg-red/[0.06] px-4 py-3 text-[13px] leading-[1.55] text-red">
+            Кабинет не настроен на вход через Telegram. Сообщите администратору.
           </div>
         )}
 

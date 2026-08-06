@@ -127,6 +127,13 @@
       "when": 1781270172448,
       "tag": "0017_review_cards",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1781356572448,
+      "tag": "0018_agent_kind_rewrite",
+      "breakpoints": true
     }
   ]
 }

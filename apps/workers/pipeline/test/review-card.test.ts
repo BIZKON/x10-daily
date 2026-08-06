@@ -31,12 +31,10 @@ describe("callback_data", () => {
 });
 
 describe("клавиатура", () => {
-  it("три действия, все с одним id карточки", () => {
-    // «Рерайт» намеренно не показан, пока не готов его обработчик: кнопка,
-    // которая просит правку и ничего с ней не делает, хуже отсутствующей.
+  it("четыре действия, все с одним id карточки", () => {
     const kb = reviewKeyboard(CARD);
     const all = kb.inline_keyboard.flat();
-    expect(all).toHaveLength(3);
+    expect(all).toHaveLength(4);
     for (const b of all) {
       expect(parseCallbackData(b.callback_data)?.cardId).toBe(CARD);
     }
@@ -48,5 +46,6 @@ describe("клавиатура", () => {
       .map((b) => b.text);
     expect(texts.join(" ")).toMatch(/Одобрить/);
     expect(texts.join(" ")).toMatch(/картинк/i);
+    expect(texts.join(" ")).toMatch(/Рерайт/);
   });
 });

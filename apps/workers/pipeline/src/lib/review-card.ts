@@ -44,14 +44,7 @@ export function parseCallbackData(
   return action ? { action, cardId } : null;
 }
 
-/**
- * Кнопки под карточкой, ждущей решения.
- *
- * ⚠️ «Рерайт» здесь ПОКА НЕТ намеренно. Разбор ответа с правкой и сам агент
- * переписывания — следующий шаг Спеки 4; кнопка, которая просит правку и
- * ничего с ней не делает, хуже отсутствующей. Формат её callback_data уже
- * поддержан с обеих сторон, поэтому включение — одна строка.
- */
+/** Кнопки под карточкой, ждущей решения. */
 export function reviewKeyboard(cardId: string) {
   return {
     inline_keyboard: [
@@ -59,7 +52,10 @@ export function reviewKeyboard(cardId: string) {
         { text: "✅ Одобрить", callback_data: buildCallbackData("approve", cardId) },
         { text: "🖼 Другая картинка", callback_data: buildCallbackData("regenerate", cardId) },
       ],
-      [{ text: "🚫 Без картинки", callback_data: buildCallbackData("reject", cardId) }],
+      [
+        { text: "✍️ Рерайт", callback_data: buildCallbackData("rewrite", cardId) },
+        { text: "🚫 Без картинки", callback_data: buildCallbackData("reject", cardId) },
+      ],
     ],
   };
 }

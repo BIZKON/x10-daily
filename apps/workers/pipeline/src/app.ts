@@ -11,6 +11,7 @@ import { createIngestRssFunction } from "./inngest/functions/ingest-rss";
 import { createPrimeSourceFunction } from "./inngest/functions/prime-source";
 import { createProcessSourceItemFunction } from "./inngest/functions/process-source-item";
 import { createRetryOpsAlertsFunction } from "./inngest/functions/retry-ops-alerts";
+import { createRewriteArticleFunction } from "./inngest/functions/rewrite-article";
 import { createRunWeeklyScoreFunction } from "./inngest/functions/run-weekly-score";
 import { createSendReviewCardFunction } from "./inngest/functions/send-review-card";
 
@@ -59,6 +60,7 @@ export function createApp() {
         createGenerateCoverFunction(client, c.env),
         createPrimeSourceFunction(client, c.env),
         createSendReviewCardFunction(client, c.env),
+        createRewriteArticleFunction(client, c.env),
       ],
     });
     // inngest/hono возвращает HTTP-handler (c) => Response. Просто проксируем.

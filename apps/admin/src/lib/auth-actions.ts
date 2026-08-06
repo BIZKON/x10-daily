@@ -13,7 +13,7 @@
  */
 
 import { redirect } from "next/navigation";
-import { setSessionToken, clearSessionToken } from "./session";
+import { clearSessionToken, setSessionToken } from "./session";
 
 const TIMEOUT_MS = 5000;
 

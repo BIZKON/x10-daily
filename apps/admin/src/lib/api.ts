@@ -508,6 +508,17 @@ export type PipelineRunStats = {
     todaySpendUsd: number;
     todayRuns: number;
     pct: number;
+    /** Сколько ещё можно потратить сегодня до потолка. */
+    remainingUsd: number;
+    /** Расход за календарный месяц по МСК — по нему клиент платит. */
+    monthSpendUsd: number;
+  };
+  /** Что получено за деньги: сумма без результата непонятна. */
+  result: {
+    publishedToday: number;
+    publishedMonth: number;
+    /** Считается по месяцу: дневная выборка слишком мала для честной цифры. */
+    costPerPublishedUsd: number | null;
   };
   byAgent: Array<{ agent: PipelineAgent; runs: number; spendUsd: number }>;
   series7d: Array<{ day: string; spendUsd: number; runs: number }>;

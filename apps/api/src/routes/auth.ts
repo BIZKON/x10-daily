@@ -9,18 +9,18 @@
  * Next.js домене, в API-запросах кладёт Authorization: Bearer <token>.
  */
 import { zValidator } from "@hono/zod-validator";
+import { and, eq, users } from "@x10/db";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { eq, and, users } from "@x10/db";
 import { z } from "zod";
 import type { AppEnv } from "../app";
+import { EDITOR_ROLES, type USER_ROLES, type UserRole } from "../auth";
 import { getDb } from "../db";
 import { getEnv } from "../env";
-import { verifyInitData, type TelegramInitDataUser } from "../lib/initdata";
-import { verifyTelegramWidget } from "../lib/telegram-widget";
+import { type TelegramInitDataUser, verifyInitData } from "../lib/initdata";
 import { signSession, verifySession } from "../lib/jwt";
+import { verifyTelegramWidget } from "../lib/telegram-widget";
 import { applyRateLimit } from "../rate-limit";
-import { USER_ROLES, EDITOR_ROLES, type UserRole } from "../auth";
 
 const telegramLoginSchema = z.object({
   initData: z.string().min(1).max(8192),
@@ -161,13 +161,13 @@ export const authRoute = new Hono<AppEnv>()
 
     if (!user) {
       throw new HTTPException(403, {
-        message: "Учётка не зарегистрирована. Обратитесь к администратору.",
+        message: "Этот Telegram-аккаунт не в команде. Попросите владельца прислать приглашение.",
       });
     }
     const role = user.role as UserRole;
     if (!EDITOR_ROLES.includes(role as (typeof EDITOR_ROLES)[number])) {
       throw new HTTPException(403, {
-        message: "Недостаточно прав для входа в админку.",
+        message: "У вашего аккаунта нет доступа в кабинет. Попросите владельца выдать роль.",
       });
     }
 

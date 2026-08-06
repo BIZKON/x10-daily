@@ -44,12 +44,12 @@ async function CostContent() {
     <>
       <header className="mb-6 border-b border-fence pb-5">
         <h1 className="m-0 flex items-center gap-2 font-display text-2xl font-extrabold">
-          <Wallet size={22} strokeWidth={1.75} /> Расходы конвейера
+          <Wallet size={22} strokeWidth={1.75} /> Расходы
         </h1>
-        <p className="mt-1.5 text-[13px] text-mist">
-          $-мониторинг автономного pipeline (session 20). Источник —{" "}
-          <code className="font-mono text-gold">pipeline_runs</code>. День считается по МСК (UTC+3),
-          как дневной потолок.
+        <p className="mt-1.5 text-[13px] leading-[1.55] text-mist">
+          Сколько стоит работа конвейера и что за эти деньги вышло. Дни и месяцы считаются по
+          Москве. Дневной потолок задаётся при подключении и защищает кошелёк: когда он достигнут,
+          конвейер останавливается до следующего дня.
         </p>
       </header>
 
@@ -74,6 +74,7 @@ function ApiUnavailable() {
 function Dashboard({ stats }: { stats: PipelineRunStats }) {
   return (
     <div className="space-y-5">
+      <ResultCard budget={stats.budget} result={stats.result} />
       <BudgetCard budget={stats.budget} alerts={stats.alertsToday} />
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
         <WeekChart
@@ -87,6 +88,59 @@ function Dashboard({ stats }: { stats: PipelineRunStats }) {
         </div>
       </div>
       <RecentRuns recent={stats.recent} />
+    </div>
+  );
+}
+
+/**
+ * 🔴 Деньги и результат в одной карточке. Голая сумма клиенту ничего не
+ * говорит: «$4 за сутки» — это дорого или дёшево? Ответ даёт только цена
+ * одной публикации, поэтому она стоит рядом и считается по месяцу — дневная
+ * выборка слишком мала (день без публикаций дал бы «бесконечно дорого»).
+ */
+function ResultCard({
+  budget,
+  result,
+}: {
+  budget: PipelineRunStats["budget"];
+  result: PipelineRunStats["result"];
+}) {
+  return (
+    <section className="grid gap-px overflow-hidden rounded-2xl border border-fence bg-fence sm:grid-cols-4">
+      <Metric
+        label="Вышло сегодня"
+        value={String(result.publishedToday)}
+        note={result.publishedToday === 0 ? "публикаций пока нет" : "публикаций"}
+      />
+      <Metric
+        label="Вышло за месяц"
+        value={String(result.publishedMonth)}
+        note="публикаций с 1-го числа"
+      />
+      <Metric
+        label="Цена публикации"
+        value={result.costPerPublishedUsd === null ? "—" : usd(result.costPerPublishedUsd)}
+        note={
+          result.costPerPublishedUsd === null ? "нет публикаций за месяц" : "в среднем за месяц"
+        }
+      />
+      <Metric
+        label="Потрачено за месяц"
+        value={usd(budget.monthSpendUsd)}
+        note="с 1-го числа по Москве"
+      />
+    </section>
+  );
+}
+
+function Metric({ label, value, note }: { label: string; value: string; note: string }) {
+  return (
+    <div className="bg-card px-5 py-4">
+      <div className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-haze">
+        {label}
+      </div>
+      <div className="x10-num mt-1 font-display text-2xl font-extrabold text-paper">{value}</div>
+      <div className="mt-0.5 text-[11.5px] text-haze">{note}</div>
     </div>
   );
 }
@@ -136,8 +190,8 @@ function BudgetCard({
           </div>
         </div>
         <div className="text-right">
-          <div className="font-mono text-[13px] text-mist">{budget.pct}%</div>
-          <div className="text-[11px] text-haze">{budget.todayRuns} ранов</div>
+          <div className="font-mono text-[13px] text-mist">осталось {usd(budget.remainingUsd)}</div>
+          <div className="text-[11px] text-haze">{budget.pct}% потолка израсходовано</div>
         </div>
       </div>
 

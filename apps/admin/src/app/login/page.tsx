@@ -60,8 +60,10 @@ async function LoginContent({
     <div className="flex min-h-dvh items-center justify-center bg-background px-6">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-8 shadow-sm">
         <div className="mb-6 text-center">
-          <h1 className="font-display text-2xl font-bold tracking-tight">ProAgent AI Admin</h1>
-          <p className="mt-2 text-sm text-muted-foreground">HumanGate · вход для редколлегии</p>
+          <h1 className="font-display text-2xl font-bold tracking-tight">Кабинет ProAgent AI</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Вход по Telegram — тому же аккаунту, которым вас пригласили в команду
+          </p>
         </div>
 
         {botUsername ? (

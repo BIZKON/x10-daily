@@ -1,118 +1,213 @@
-import React, { useState, useEffect } from 'react';
 import {
-  Bell, Search, Bookmark, Heart, MessageCircle, Play, Newspaper, Video,
-  Globe2, User, ChevronLeft, Share2, Headphones, Filter, BarChart3,
-  TrendingUp, Calendar, MapPin, Users, MessageSquare, ChevronRight,
-  Settings, Crown, Flame, BookOpen, Sparkles, Pause, Volume2, X, Zap
-} from 'lucide-react';
+  BarChart3,
+  Bell,
+  BookOpen,
+  Bookmark,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Crown,
+  Filter,
+  Flame,
+  Globe2,
+  Headphones,
+  Heart,
+  MapPin,
+  MessageCircle,
+  MessageSquare,
+  Newspaper,
+  Pause,
+  Play,
+  Search,
+  Settings,
+  Share2,
+  Sparkles,
+  TrendingUp,
+  User,
+  Users,
+  Video,
+  Volume2,
+  X,
+  Zap,
+} from "lucide-react";
+import React, { useState, useEffect } from "react";
 
 // ========= DESIGN TOKENS =========
 const C = {
-  bg: '#0B0B0E',
-  surface: '#16161B',
-  surface2: '#1C1C22',
-  red: '#E63946',
-  redDark: '#8E1B26',
-  gold: '#D4A24C',
-  steel: '#1F2937',
-  textPrimary: '#F2F2F2',
-  textSecondary: '#A0A0A8',
-  textMuted: '#6B6B73',
-  border: '#26262C',
-  success: '#3FB950',
+  bg: "#0B0B0E",
+  surface: "#16161B",
+  surface2: "#1C1C22",
+  red: "#E63946",
+  redDark: "#8E1B26",
+  gold: "#D4A24C",
+  steel: "#1F2937",
+  textPrimary: "#F2F2F2",
+  textSecondary: "#A0A0A8",
+  textMuted: "#6B6B73",
+  border: "#26262C",
+  success: "#3FB950",
 };
 
 // ========= MOCK DATA =========
 const digestToday = {
-  date: 'Понедельник, 25 мая',
-  title: 'Утренний разбор от Рыбакова',
+  date: "Понедельник, 25 мая",
+  title: "Утренний разбор от Рыбакова",
   videoMin: 8,
   bullets: [
-    { n: '01', text: 'ЦБ оставил ставку 17%. Рыбаков: «Кредитное окно для бизнеса закрыто, время своих денег».' },
-    { n: '02', text: 'Минфин предложил поднять порог УСН до 350 млн. Что делать малому бизнесу — внутри.' },
-    { n: '03', text: 'Wildberries купил три сервиса такси. Передел рынка логистики начался.' },
+    {
+      n: "01",
+      text: "ЦБ оставил ставку 17%. Рыбаков: «Кредитное окно для бизнеса закрыто, время своих денег».",
+    },
+    {
+      n: "02",
+      text: "Минфин предложил поднять порог УСН до 350 млн. Что делать малому бизнесу — внутри.",
+    },
+    { n: "03", text: "Wildberries купил три сервиса такси. Передел рынка логистики начался." },
   ],
 };
 
 const feed = [
   {
-    id: 1, cat: 'НАЛОГИ', title: 'Новый порог УСН 350 млн: кому грозит, кому выгодно',
-    excerpt: 'Разобрали с налоговым адвокатом, что меняется и какие три шага сделать прямо сейчас.',
-    img: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&q=80',
-    time: '12 мин', reactions: 142, comments: 38, badge: null, hot: true,
+    id: 1,
+    cat: "НАЛОГИ",
+    title: "Новый порог УСН 350 млн: кому грозит, кому выгодно",
+    excerpt: "Разобрали с налоговым адвокатом, что меняется и какие три шага сделать прямо сейчас.",
+    img: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&q=80",
+    time: "12 мин",
+    reactions: 142,
+    comments: 38,
+    badge: null,
+    hot: true,
   },
   {
-    id: 2, cat: 'РЫБАКОВ ГОВОРИТ', title: 'Почему я не верю в стартап-инвестиции в 2026',
-    excerpt: 'Игорь Рыбаков: «Хайп-экономика заканчивается. Что покупать вместо стартапов».',
-    img: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=800&q=80',
-    time: '7 мин', reactions: 891, comments: 214, badge: 'PREMIUM', hot: false,
+    id: 2,
+    cat: "РЫБАКОВ ГОВОРИТ",
+    title: "Почему я не верю в стартап-инвестиции в 2026",
+    excerpt: "Игорь Рыбаков: «Хайп-экономика заканчивается. Что покупать вместо стартапов».",
+    img: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=800&q=80",
+    time: "7 мин",
+    reactions: 891,
+    comments: 214,
+    badge: "PREMIUM",
+    hot: false,
   },
   {
-    id: 3, cat: 'ДЕНЬГИ', title: 'Рубль по 100: три сценария на лето',
-    excerpt: 'Что говорят валютные стратеги Сбера, Тинькоффа и независимые аналитики о рубле.',
-    img: 'https://images.unsplash.com/photo-1633158829585-23ba8f7c8caf?w=800&q=80',
-    time: '4 мин', reactions: 67, comments: 12, badge: null, hot: false,
+    id: 3,
+    cat: "ДЕНЬГИ",
+    title: "Рубль по 100: три сценария на лето",
+    excerpt: "Что говорят валютные стратеги Сбера, Тинькоффа и независимые аналитики о рубле.",
+    img: "https://images.unsplash.com/photo-1633158829585-23ba8f7c8caf?w=800&q=80",
+    time: "4 мин",
+    reactions: 67,
+    comments: 12,
+    badge: null,
+    hot: false,
   },
   {
-    id: 4, cat: 'БИЗНЕС', title: 'Wildberries купил три такси-сервиса. Что это значит',
-    excerpt: 'Маркетплейс собирает логистическую империю. Разбираем сделку и последствия.',
-    img: 'https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&q=80',
-    time: '6 мин', reactions: 234, comments: 56, badge: null, hot: false,
+    id: 4,
+    cat: "БИЗНЕС",
+    title: "Wildberries купил три такси-сервиса. Что это значит",
+    excerpt: "Маркетплейс собирает логистическую империю. Разбираем сделку и последствия.",
+    img: "https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&q=80",
+    time: "6 мин",
+    reactions: 234,
+    comments: 56,
+    badge: null,
+    hot: false,
   },
 ];
 
 const taxesItems = [
-  { tag: 'РАЗБОР', title: 'УСН 350 млн: 3 шага на этой неделе', mins: 8, hot: true },
-  { tag: 'ИНСТРУКЦИЯ', title: 'Как платить меньше дивидендного НДФЛ в 2026', mins: 12, hot: false },
-  { tag: 'НОВОСТЬ', title: 'ФНС начала рассылать требования по самозанятым', mins: 4, hot: false },
-  { tag: 'КЕЙС', title: 'Производство в Беларуси: реальные цифры после переезда', mins: 15, hot: true },
-  { tag: 'ГИД', title: 'Налоговый календарь 2026: 18 ключевых дат', mins: 6, hot: false },
+  { tag: "РАЗБОР", title: "УСН 350 млн: 3 шага на этой неделе", mins: 8, hot: true },
+  { tag: "ИНСТРУКЦИЯ", title: "Как платить меньше дивидендного НДФЛ в 2026", mins: 12, hot: false },
+  { tag: "НОВОСТЬ", title: "ФНС начала рассылать требования по самозанятым", mins: 4, hot: false },
+  {
+    tag: "КЕЙС",
+    title: "Производство в Беларуси: реальные цифры после переезда",
+    mins: 15,
+    hot: true,
+  },
+  { tag: "ГИД", title: "Налоговый календарь 2026: 18 ключевых дат", mins: 6, hot: false },
 ];
 
 const events = [
-  { city: 'МОСКВА', date: '4', month: 'апр', title: 'X10 Business Meet Up by Rybakov', attendees: 420, gradient: 'from-[#E63946] to-[#8E1B26]' },
-  { city: 'УФА', date: '12', month: 'апр', title: 'X10Talks: 7 историй о выходе из тени', attendees: 120, gradient: 'from-[#D4A24C] to-[#8E5E1B]' },
-  { city: 'ИРКУТСК', date: '18', month: 'апр', title: 'Кламперский бизнес-завтрак', attendees: 28, gradient: 'from-[#1F2937] to-[#0B0B0E]' },
+  {
+    city: "МОСКВА",
+    date: "4",
+    month: "апр",
+    title: "X10 Business Meet Up by Rybakov",
+    attendees: 420,
+    gradient: "from-[#E63946] to-[#8E1B26]",
+  },
+  {
+    city: "УФА",
+    date: "12",
+    month: "апр",
+    title: "X10Talks: 7 историй о выходе из тени",
+    attendees: 120,
+    gradient: "from-[#D4A24C] to-[#8E5E1B]",
+  },
+  {
+    city: "ИРКУТСК",
+    date: "18",
+    month: "апр",
+    title: "Кламперский бизнес-завтрак",
+    attendees: 28,
+    gradient: "from-[#1F2937] to-[#0B0B0E]",
+  },
 ];
 
 const myClamp = {
-  name: 'Кламп «Цифровой прорыв»', members: 8,
-  nextMeeting: 'Завтра, 19:00',
-  goal: 'Запустить совместный AI-сервис за 90 дней',
+  name: "Кламп «Цифровой прорыв»",
+  members: 8,
+  nextMeeting: "Завтра, 19:00",
+  goal: "Запустить совместный AI-сервис за 90 дней",
   progress: 67,
 };
 
 const me = {
-  name: 'Алексей Петров', city: 'Краснодар', role: 'Клампер',
-  ips: 1240, streak: 23, saved: 47, read: 312,
+  name: "Алексей Петров",
+  city: "Краснодар",
+  role: "Клампер",
+  ips: 1240,
+  streak: 23,
+  saved: 47,
+  read: 312,
 };
 
-const subs = ['Налоги', 'Деньги', 'Рыбаков говорит', 'Х10 Краснодар', 'Подкаст: Разбор недели'];
+const subs = ["Налоги", "Деньги", "Рыбаков говорит", "Х10 Краснодар", "Подкаст: Разбор недели"];
 
 // ========= SHARED COMPONENTS =========
 const TopBar = ({ title, showSearch = true, onBack = null }) => (
   <header
     className="sticky top-0 z-20 px-4 py-3 flex items-center justify-between border-b"
-    style={{ background: `${C.bg}E6`, backdropFilter: 'blur(12px)', borderColor: C.border }}
+    style={{ background: `${C.bg}E6`, backdropFilter: "blur(12px)", borderColor: C.border }}
   >
     <div className="flex items-center gap-2.5">
       {onBack ? (
-        <button onClick={onBack} className="active:scale-95 transition"><ChevronLeft className="w-6 h-6" /></button>
+        <button onClick={onBack} className="active:scale-95 transition">
+          <ChevronLeft className="w-6 h-6" />
+        </button>
       ) : (
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center font-extrabold text-white text-sm"
-          style={{ background: C.red, fontFamily: 'Manrope, system-ui' }}
+          style={{ background: C.red, fontFamily: "Manrope, system-ui" }}
         >
           X10
         </div>
       )}
-      <span className="font-extrabold text-[17px]" style={{ fontFamily: 'Manrope, system-ui' }}>{title}</span>
+      <span className="font-extrabold text-[17px]" style={{ fontFamily: "Manrope, system-ui" }}>
+        {title}
+      </span>
     </div>
     <div className="flex items-center gap-4">
       {showSearch && <Search className="w-5 h-5" style={{ color: C.textSecondary }} />}
       <div className="relative">
         <Bell className="w-5 h-5" style={{ color: C.textSecondary }} />
-        <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full" style={{ background: C.red }} />
+        <span
+          className="absolute -top-1 -right-1 w-2 h-2 rounded-full"
+          style={{ background: C.red }}
+        />
       </div>
     </div>
   </header>
@@ -120,16 +215,16 @@ const TopBar = ({ title, showSearch = true, onBack = null }) => (
 
 const BottomNav = ({ tab, setTab }) => {
   const items = [
-    { id: 'home', label: 'Лента', icon: Newspaper },
-    { id: 'taxes', label: 'Налоги', icon: TrendingUp },
-    { id: 'video', label: 'Видео', icon: Video },
-    { id: 'community', label: 'Х10', icon: Globe2 },
-    { id: 'profile', label: 'Я', icon: User },
+    { id: "home", label: "Лента", icon: Newspaper },
+    { id: "taxes", label: "Налоги", icon: TrendingUp },
+    { id: "video", label: "Видео", icon: Video },
+    { id: "community", label: "Х10", icon: Globe2 },
+    { id: "profile", label: "Я", icon: User },
   ];
   return (
     <nav
       className="fixed bottom-0 inset-x-0 max-w-[440px] mx-auto flex justify-around py-2 border-t z-30"
-      style={{ background: `${C.bg}F2`, backdropFilter: 'blur(12px)', borderColor: C.border }}
+      style={{ background: `${C.bg}F2`, backdropFilter: "blur(12px)", borderColor: C.border }}
     >
       {items.map((it) => {
         const Icon = it.icon;
@@ -140,8 +235,15 @@ const BottomNav = ({ tab, setTab }) => {
             onClick={() => setTab(it.id)}
             className="flex flex-col items-center gap-1 px-3 py-1.5 transition active:scale-95"
           >
-            <Icon className="w-[22px] h-[22px]" style={{ color: active ? C.red : C.textMuted }} strokeWidth={active ? 2.2 : 1.8} />
-            <span className="text-[10px] font-semibold" style={{ color: active ? C.textPrimary : C.textMuted }}>
+            <Icon
+              className="w-[22px] h-[22px]"
+              style={{ color: active ? C.red : C.textMuted }}
+              strokeWidth={active ? 2.2 : 1.8}
+            />
+            <span
+              className="text-[10px] font-semibold"
+              style={{ color: active ? C.textPrimary : C.textMuted }}
+            >
               {it.label}
             </span>
           </button>
@@ -154,14 +256,14 @@ const BottomNav = ({ tab, setTab }) => {
 // ========= SCREEN: HOME =========
 const HomeScreen = ({ onOpenArticle }) => {
   const [activeCat, setActiveCat] = useState(0);
-  const cats = ['Главное', 'Деньги', 'Налоги', 'Бизнес', 'Власть', 'Рыбаков говорит', 'Х10'];
+  const cats = ["Главное", "Деньги", "Налоги", "Бизнес", "Власть", "Рыбаков говорит", "Х10"];
 
   return (
     <>
       <TopBar title="Х10 Новости" />
 
       {/* Category chips */}
-      <div className="flex gap-2 px-4 py-3 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+      <div className="flex gap-2 px-4 py-3 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
         {cats.map((c, i) => (
           <button
             key={c}
@@ -169,8 +271,8 @@ const HomeScreen = ({ onOpenArticle }) => {
             className="whitespace-nowrap px-4 py-2 rounded-full text-[13px] font-semibold transition active:scale-95"
             style={{
               background: activeCat === i ? C.red : C.surface,
-              color: activeCat === i ? '#fff' : C.textSecondary,
-              border: activeCat === i ? 'none' : `1px solid ${C.border}`,
+              color: activeCat === i ? "#fff" : C.textSecondary,
+              border: activeCat === i ? "none" : `1px solid ${C.border}`,
             }}
           >
             {c}
@@ -183,8 +285,14 @@ const HomeScreen = ({ onOpenArticle }) => {
         className="mx-4 mb-5 rounded-2xl p-5 text-white relative overflow-hidden"
         style={{ background: `linear-gradient(135deg, ${C.red} 0%, ${C.redDark} 100%)` }}
       >
-        <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }} />
-        <div className="absolute -right-16 -bottom-16 w-48 h-48 rounded-full" style={{ background: 'rgba(255,255,255,0.04)' }} />
+        <div
+          className="absolute -right-8 -top-8 w-40 h-40 rounded-full"
+          style={{ background: "rgba(255,255,255,0.06)" }}
+        />
+        <div
+          className="absolute -right-16 -bottom-16 w-48 h-48 rounded-full"
+          style={{ background: "rgba(255,255,255,0.04)" }}
+        />
 
         <div className="relative flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -198,14 +306,22 @@ const HomeScreen = ({ onOpenArticle }) => {
           </button>
         </div>
 
-        <h2 className="font-extrabold text-[26px] leading-[1.1] mb-4 relative" style={{ fontFamily: 'Manrope, system-ui' }}>
+        <h2
+          className="font-extrabold text-[26px] leading-[1.1] mb-4 relative"
+          style={{ fontFamily: "Manrope, system-ui" }}
+        >
           {digestToday.title}
         </h2>
 
         <ul className="space-y-3 relative">
           {digestToday.bullets.map((b) => (
             <li key={b.n} className="flex gap-3 text-[13px] leading-[1.5]">
-              <span className="font-bold opacity-60 tabular-nums" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{b.n}</span>
+              <span
+                className="font-bold opacity-60 tabular-nums"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
+                {b.n}
+              </span>
               <span className="opacity-95">{b.text}</span>
             </li>
           ))}
@@ -213,7 +329,7 @@ const HomeScreen = ({ onOpenArticle }) => {
 
         <button
           className="mt-5 w-full bg-white font-semibold py-3 rounded-xl text-[14px] active:scale-[0.98] transition"
-          style={{ color: C.red, fontFamily: 'Manrope, system-ui' }}
+          style={{ color: C.red, fontFamily: "Manrope, system-ui" }}
         >
           Смотреть полный разбор →
         </button>
@@ -222,8 +338,12 @@ const HomeScreen = ({ onOpenArticle }) => {
       {/* Feed */}
       <section className="px-4 space-y-3.5">
         <div className="flex items-center justify-between">
-          <h3 className="font-extrabold text-[20px]" style={{ fontFamily: 'Manrope, system-ui' }}>Лента дня</h3>
-          <span className="text-[11px] font-semibold" style={{ color: C.textMuted }}>обновлено 2 мин назад</span>
+          <h3 className="font-extrabold text-[20px]" style={{ fontFamily: "Manrope, system-ui" }}>
+            Лента дня
+          </h3>
+          <span className="text-[11px] font-semibold" style={{ color: C.textMuted }}>
+            обновлено 2 мин назад
+          </span>
         </div>
 
         {feed.map((item) => (
@@ -237,12 +357,14 @@ const HomeScreen = ({ onOpenArticle }) => {
               <img src={item.img} alt="" className="w-full h-44 object-cover" />
               <div
                 className="absolute inset-0"
-                style={{ background: 'linear-gradient(to top, rgba(11,11,14,0.5) 0%, transparent 50%)' }}
+                style={{
+                  background: "linear-gradient(to top, rgba(11,11,14,0.5) 0%, transparent 50%)",
+                }}
               />
               {item.badge && (
                 <span
                   className="absolute top-3 left-3 text-[10px] font-extrabold px-2.5 py-1 rounded uppercase tracking-[0.1em]"
-                  style={{ background: C.gold, color: C.steel, fontFamily: 'Manrope, system-ui' }}
+                  style={{ background: C.gold, color: C.steel, fontFamily: "Manrope, system-ui" }}
                 >
                   ✦ {item.badge}
                 </span>
@@ -250,17 +372,23 @@ const HomeScreen = ({ onOpenArticle }) => {
               {item.hot && (
                 <span
                   className="absolute top-3 right-3 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1"
-                  style={{ background: 'rgba(230,57,70,0.95)', color: '#fff' }}
+                  style={{ background: "rgba(230,57,70,0.95)", color: "#fff" }}
                 >
                   <Flame className="w-3 h-3 fill-white" /> HOT
                 </span>
               )}
             </div>
             <div className="p-4">
-              <span className="text-[10px] font-extrabold tracking-[0.15em]" style={{ color: C.red }}>
+              <span
+                className="text-[10px] font-extrabold tracking-[0.15em]"
+                style={{ color: C.red }}
+              >
                 {item.cat}
               </span>
-              <h4 className="font-extrabold text-[17px] leading-snug mt-1.5" style={{ fontFamily: 'Manrope, system-ui', color: C.textPrimary }}>
+              <h4
+                className="font-extrabold text-[17px] leading-snug mt-1.5"
+                style={{ fontFamily: "Manrope, system-ui", color: C.textPrimary }}
+              >
                 {item.title}
               </h4>
               <p className="text-[13.5px] mt-2 leading-[1.5]" style={{ color: C.textSecondary }}>
@@ -272,8 +400,14 @@ const HomeScreen = ({ onOpenArticle }) => {
               >
                 <span className="font-medium">{item.time} чтения</span>
                 <div className="flex items-center gap-4">
-                  <span className="flex items-center gap-1.5"><Heart className="w-3.5 h-3.5" />{item.reactions}</span>
-                  <span className="flex items-center gap-1.5"><MessageCircle className="w-3.5 h-3.5" />{item.comments}</span>
+                  <span className="flex items-center gap-1.5">
+                    <Heart className="w-3.5 h-3.5" />
+                    {item.reactions}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    {item.comments}
+                  </span>
                   <Bookmark className="w-3.5 h-3.5" />
                 </div>
               </div>
@@ -294,9 +428,11 @@ const ArticleScreen = ({ article, onBack }) => {
     <>
       <header
         className="sticky top-0 z-20 px-4 py-3 flex items-center justify-between border-b"
-        style={{ background: `${C.bg}E6`, backdropFilter: 'blur(12px)', borderColor: C.border }}
+        style={{ background: `${C.bg}E6`, backdropFilter: "blur(12px)", borderColor: C.border }}
       >
-        <button onClick={onBack} className="active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
+        <button onClick={onBack} className="active:scale-95">
+          <ChevronLeft className="w-6 h-6" />
+        </button>
         <div className="flex items-center gap-4">
           <Headphones className="w-5 h-5" style={{ color: C.textSecondary }} />
           <Bookmark className="w-5 h-5" style={{ color: C.textSecondary }} />
@@ -308,7 +444,9 @@ const ArticleScreen = ({ article, onBack }) => {
         <img src={it.img} className="w-full h-72 object-cover" alt="" />
         <div
           className="absolute inset-0"
-          style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(11,11,14,0.85) 100%)' }}
+          style={{
+            background: "linear-gradient(to bottom, transparent 0%, rgba(11,11,14,0.85) 100%)",
+          }}
         />
         <button
           onClick={() => setPlaying(!playing)}
@@ -318,7 +456,11 @@ const ArticleScreen = ({ article, onBack }) => {
             className="w-16 h-16 rounded-full flex items-center justify-center shadow-2xl"
             style={{ background: `${C.red}E6`, boxShadow: `0 8px 32px ${C.red}66` }}
           >
-            {playing ? <Pause className="w-6 h-6 text-white fill-white" /> : <Play className="w-7 h-7 text-white fill-white ml-0.5" />}
+            {playing ? (
+              <Pause className="w-6 h-6 text-white fill-white" />
+            ) : (
+              <Play className="w-7 h-7 text-white fill-white ml-0.5" />
+            )}
           </span>
         </button>
         {playing && (
@@ -334,14 +476,23 @@ const ArticleScreen = ({ article, onBack }) => {
 
       <article className="px-5 py-6">
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-[10px] font-extrabold tracking-[0.15em]" style={{ color: C.red }}>{it.cat}</span>
-          <span className="text-[12px]" style={{ color: C.textMuted }}>· {it.time} чтения · 25 мая</span>
+          <span className="text-[10px] font-extrabold tracking-[0.15em]" style={{ color: C.red }}>
+            {it.cat}
+          </span>
+          <span className="text-[12px]" style={{ color: C.textMuted }}>
+            · {it.time} чтения · 25 мая
+          </span>
         </div>
-        <h1 className="font-extrabold text-[28px] leading-[1.15] mb-4" style={{ fontFamily: 'Manrope, system-ui' }}>
+        <h1
+          className="font-extrabold text-[28px] leading-[1.15] mb-4"
+          style={{ fontFamily: "Manrope, system-ui" }}
+        >
           {it.title}
         </h1>
         <p className="text-[14px] leading-[1.6] mb-6" style={{ color: C.textSecondary }}>
-          Минфин предложил поднять порог УСН с 265 до 350 млн ₽. Разобрали с налоговым адвокатом Дмитрием Костальгиным, что это значит для производства, услуг и e-commerce — и три шага, которые нужно сделать на этой неделе.
+          Минфин предложил поднять порог УСН с 265 до 350 млн ₽. Разобрали с налоговым адвокатом
+          Дмитрием Костальгиным, что это значит для производства, услуг и e-commerce — и три шага,
+          которые нужно сделать на этой неделе.
         </p>
 
         {/* Why it matters — Smart Brevity */}
@@ -356,25 +507,43 @@ const ArticleScreen = ({ article, onBack }) => {
             </span>
           </div>
           <p className="text-[15px] leading-[1.55]">
-            <b>250+ тыс. ИП и ООО</b> остались бы на УСН вместо вынужденного перехода на ОСН с НДС 22%. Сэкономили бы суммарно <b>~120 млрд ₽</b> за 2026 год.
+            <b>250+ тыс. ИП и ООО</b> остались бы на УСН вместо вынужденного перехода на ОСН с НДС
+            22%. Сэкономили бы суммарно <b>~120 млрд ₽</b> за 2026 год.
           </p>
         </div>
 
-        <h2 className="font-extrabold text-[20px] mt-7 mb-3" style={{ fontFamily: 'Manrope, system-ui' }}>
+        <h2
+          className="font-extrabold text-[20px] mt-7 mb-3"
+          style={{ fontFamily: "Manrope, system-ui" }}
+        >
           Что меняется по букве закона
         </h2>
         <p className="text-[16px] leading-[1.65]" style={{ color: C.textPrimary }}>
-          В пояснительной записке Минфина предлагается с 1 января 2026 года повысить базовый порог годового дохода для применения УСН с 265 до 350 млн ₽, а максимальный — с 450 до 600 млн ₽. Это первая существенная индексация за три года…
+          В пояснительной записке Минфина предлагается с 1 января 2026 года повысить базовый порог
+          годового дохода для применения УСН с 265 до 350 млн ₽, а максимальный — с 450 до 600 млн
+          ₽. Это первая существенная индексация за три года…
         </p>
 
         {/* Pull quote */}
         <blockquote className="my-7 pl-5 border-l-2" style={{ borderColor: C.gold }}>
-          <p className="text-[22px] leading-[1.3] italic font-light" style={{ fontFamily: 'Manrope, system-ui' }}>
-            «350 млн — это не подарок государства, а возвращение к тому, что было съедено инфляцией».
+          <p
+            className="text-[22px] leading-[1.3] italic font-light"
+            style={{ fontFamily: "Manrope, system-ui" }}
+          >
+            «350 млн — это не подарок государства, а возвращение к тому, что было съедено
+            инфляцией».
           </p>
-          <footer className="mt-3 text-[13px] flex items-center gap-2" style={{ color: C.textSecondary }}>
-            <div className="w-7 h-7 rounded-full" style={{ background: `linear-gradient(135deg, ${C.red}, ${C.gold})` }} />
-            <span><b style={{ color: C.textPrimary }}>Игорь Рыбаков</b> · сооснователь Технониколь</span>
+          <footer
+            className="mt-3 text-[13px] flex items-center gap-2"
+            style={{ color: C.textSecondary }}
+          >
+            <div
+              className="w-7 h-7 rounded-full"
+              style={{ background: `linear-gradient(135deg, ${C.red}, ${C.gold})` }}
+            />
+            <span>
+              <b style={{ color: C.textPrimary }}>Игорь Рыбаков</b> · сооснователь Технониколь
+            </span>
           </footer>
         </blockquote>
 
@@ -384,7 +553,7 @@ const ArticleScreen = ({ article, onBack }) => {
           style={{ borderColor: C.border }}
         >
           <div className="flex gap-2">
-            {['🔥', '💯', '🤔', '😱'].map((e) => (
+            {["🔥", "💯", "🤔", "😱"].map((e) => (
               <button
                 key={e}
                 className="px-3 py-1.5 rounded-full text-[15px] border active:scale-95 transition"
@@ -394,7 +563,10 @@ const ArticleScreen = ({ article, onBack }) => {
               </button>
             ))}
           </div>
-          <button className="flex items-center gap-1.5 text-[13px]" style={{ color: C.textSecondary }}>
+          <button
+            className="flex items-center gap-1.5 text-[13px]"
+            style={{ color: C.textSecondary }}
+          >
             <Heart className="w-4 h-4 fill-current" style={{ color: C.red }} /> 142
           </button>
         </div>
@@ -410,7 +582,10 @@ const ArticleScreen = ({ article, onBack }) => {
           <span className="text-[10px] font-extrabold tracking-[0.15em]" style={{ color: C.gold }}>
             ✦ Х10 СООБЩЕСТВО
           </span>
-          <h3 className="font-extrabold text-[18px] mt-2" style={{ fontFamily: 'Manrope, system-ui' }}>
+          <h3
+            className="font-extrabold text-[18px] mt-2"
+            style={{ fontFamily: "Manrope, system-ui" }}
+          >
             Обсудить в своём клампе
           </h3>
           <p className="text-[13px] mt-1.5" style={{ color: C.textSecondary }}>
@@ -418,7 +593,7 @@ const ArticleScreen = ({ article, onBack }) => {
           </p>
           <button
             className="mt-4 px-5 py-2.5 rounded-xl text-[13px] font-semibold active:scale-[0.98] transition"
-            style={{ background: C.red, color: '#fff' }}
+            style={{ background: C.red, color: "#fff" }}
           >
             Открыть в Х10 →
           </button>
@@ -431,7 +606,7 @@ const ArticleScreen = ({ article, onBack }) => {
 // ========= SCREEN: TAXES =========
 const TaxesScreen = () => {
   const [filter, setFilter] = useState(0);
-  const filters = ['Все', 'УСН', 'НДС', 'НДФЛ', 'Самозанятые', 'Релокация'];
+  const filters = ["Все", "УСН", "НДС", "НДФЛ", "Самозанятые", "Релокация"];
 
   return (
     <>
@@ -445,23 +620,35 @@ const TaxesScreen = () => {
           borderColor: C.border,
         }}
       >
-        <div className="absolute -right-12 -top-12 w-44 h-44 rounded-full" style={{ background: `${C.red}10` }} />
-        <span className="text-[10px] font-extrabold tracking-[0.15em] relative" style={{ color: C.red }}>
+        <div
+          className="absolute -right-12 -top-12 w-44 h-44 rounded-full"
+          style={{ background: `${C.red}10` }}
+        />
+        <span
+          className="text-[10px] font-extrabold tracking-[0.15em] relative"
+          style={{ color: C.red }}
+        >
           РУБРИКА
         </span>
-        <h1 className="font-extrabold text-[34px] mt-1.5 leading-tight relative" style={{ fontFamily: 'Manrope, system-ui' }}>
+        <h1
+          className="font-extrabold text-[34px] mt-1.5 leading-tight relative"
+          style={{ fontFamily: "Manrope, system-ui" }}
+        >
           Налоги
         </h1>
-        <p className="text-[13.5px] mt-2 max-w-md leading-[1.5] relative" style={{ color: C.textSecondary }}>
+        <p
+          className="text-[13.5px] mt-2 max-w-md leading-[1.5] relative"
+          style={{ color: C.textSecondary }}
+        >
           Что меняется в НК РФ, как платить меньше легально, как разговаривать с ФНС.
         </p>
 
         {/* Metrics */}
         <div className="grid grid-cols-3 gap-2.5 mt-5 relative">
           {[
-            { icon: BarChart3, k: '247', v: 'материалов' },
-            { icon: TrendingUp, k: '+18%', v: 'охват/мес' },
-            { icon: Calendar, k: '2/нед', v: 'разборов' },
+            { icon: BarChart3, k: "247", v: "материалов" },
+            { icon: TrendingUp, k: "+18%", v: "охват/мес" },
+            { icon: Calendar, k: "2/нед", v: "разборов" },
           ].map((m, i) => {
             const Icon = m.icon;
             return (
@@ -471,10 +658,15 @@ const TaxesScreen = () => {
                 style={{ background: C.surface, borderColor: C.border }}
               >
                 <Icon className="w-3.5 h-3.5 mb-1.5" style={{ color: C.gold }} />
-                <div className="font-extrabold text-[18px] tabular-nums" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                <div
+                  className="font-extrabold text-[18px] tabular-nums"
+                  style={{ fontFamily: "JetBrains Mono, monospace" }}
+                >
                   {m.k}
                 </div>
-                <div className="text-[10px] mt-0.5" style={{ color: C.textMuted }}>{m.v}</div>
+                <div className="text-[10px] mt-0.5" style={{ color: C.textMuted }}>
+                  {m.v}
+                </div>
               </div>
             );
           })}
@@ -482,7 +674,7 @@ const TaxesScreen = () => {
       </section>
 
       {/* Filters */}
-      <div className="px-5 py-4 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+      <div className="px-5 py-4 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
         <button
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium border whitespace-nowrap"
           style={{ background: C.surface, borderColor: C.border, color: C.textSecondary }}
@@ -496,8 +688,8 @@ const TaxesScreen = () => {
             className="whitespace-nowrap px-3 py-1.5 rounded-full text-[12px] font-semibold active:scale-95 transition"
             style={{
               background: filter === i ? C.red : C.surface,
-              color: filter === i ? '#fff' : C.textSecondary,
-              border: filter === i ? 'none' : `1px solid ${C.border}`,
+              color: filter === i ? "#fff" : C.textSecondary,
+              border: filter === i ? "none" : `1px solid ${C.border}`,
             }}
           >
             {t}
@@ -513,11 +705,20 @@ const TaxesScreen = () => {
           borderColor: `${C.gold}40`,
         }}
       >
-        <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full" style={{ background: `${C.gold}08` }} />
-        <span className="text-[10px] font-extrabold tracking-[0.15em] relative" style={{ color: C.gold }}>
+        <div
+          className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full"
+          style={{ background: `${C.gold}08` }}
+        />
+        <span
+          className="text-[10px] font-extrabold tracking-[0.15em] relative"
+          style={{ color: C.gold }}
+        >
           ✦ ГИД Х10
         </span>
-        <h3 className="font-extrabold text-[19px] mt-2 leading-tight relative" style={{ fontFamily: 'Manrope, system-ui' }}>
+        <h3
+          className="font-extrabold text-[19px] mt-2 leading-tight relative"
+          style={{ fontFamily: "Manrope, system-ui" }}
+        >
           Налоговый календарь 2026
         </h3>
         <p className="text-[12.5px] mt-2 relative" style={{ color: C.textSecondary }}>
@@ -525,7 +726,7 @@ const TaxesScreen = () => {
         </p>
         <button
           className="mt-4 px-4 py-2.5 rounded-xl text-[13px] font-bold active:scale-[0.98] transition relative"
-          style={{ background: C.gold, color: C.steel, fontFamily: 'Manrope, system-ui' }}
+          style={{ background: C.gold, color: C.steel, fontFamily: "Manrope, system-ui" }}
         >
           Открыть гид →
         </button>
@@ -542,14 +743,25 @@ const TaxesScreen = () => {
             <div className="w-1 rounded-full" style={{ background: it.hot ? C.red : C.border }} />
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-extrabold tracking-[0.15em]" style={{ color: C.red }}>{it.tag}</span>
+                <span
+                  className="text-[10px] font-extrabold tracking-[0.15em]"
+                  style={{ color: C.red }}
+                >
+                  {it.tag}
+                </span>
                 {it.hot && (
-                  <span className="text-[10px] font-bold flex items-center gap-0.5" style={{ color: C.gold }}>
+                  <span
+                    className="text-[10px] font-bold flex items-center gap-0.5"
+                    style={{ color: C.gold }}
+                  >
                     <Flame className="w-3 h-3" /> HOT
                   </span>
                 )}
               </div>
-              <h4 className="font-extrabold text-[15px] leading-snug mt-1" style={{ fontFamily: 'Manrope, system-ui' }}>
+              <h4
+                className="font-extrabold text-[15px] leading-snug mt-1"
+                style={{ fontFamily: "Manrope, system-ui" }}
+              >
                 {it.title}
               </h4>
               <span className="text-[11px] mt-1.5 block" style={{ color: C.textMuted }}>
@@ -567,25 +779,53 @@ const TaxesScreen = () => {
 // ========= SCREEN: VIDEO =========
 const VideoScreen = () => {
   const videos = [
-    { title: 'Россия 2026: катастрофа или прорыв?', views: '847K', time: '23 мая', dur: '14:22', img: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&q=80', live: false },
-    { title: 'Почему я не оставляю наследство детям', views: '1.2M', time: '21 мая', dur: '8:45', img: 'https://images.unsplash.com/photo-1511895426328-dc8714191300?w=800&q=80', live: false },
-    { title: 'ПРЯМОЙ ЭФИР: Разбор недели', views: '12K', time: 'сейчас', dur: 'LIVE', img: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&q=80', live: true },
-    { title: 'Налоговая реформа 2026: вся правда', views: '534K', time: '19 мая', dur: '21:08', img: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&q=80', live: false },
+    {
+      title: "Россия 2026: катастрофа или прорыв?",
+      views: "847K",
+      time: "23 мая",
+      dur: "14:22",
+      img: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&q=80",
+      live: false,
+    },
+    {
+      title: "Почему я не оставляю наследство детям",
+      views: "1.2M",
+      time: "21 мая",
+      dur: "8:45",
+      img: "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=800&q=80",
+      live: false,
+    },
+    {
+      title: "ПРЯМОЙ ЭФИР: Разбор недели",
+      views: "12K",
+      time: "сейчас",
+      dur: "LIVE",
+      img: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&q=80",
+      live: true,
+    },
+    {
+      title: "Налоговая реформа 2026: вся правда",
+      views: "534K",
+      time: "19 мая",
+      dur: "21:08",
+      img: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&q=80",
+      live: false,
+    },
   ];
 
   return (
     <>
       <TopBar title="Видео и подкасты" />
 
-      <div className="px-4 pt-3 pb-4 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-        {['Все', 'Утренний разбор', 'Подкасты', 'Shorts', 'Интервью', 'Эфиры'].map((t, i) => (
+      <div className="px-4 pt-3 pb-4 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+        {["Все", "Утренний разбор", "Подкасты", "Shorts", "Интервью", "Эфиры"].map((t, i) => (
           <button
             key={t}
             className="whitespace-nowrap px-4 py-2 rounded-full text-[13px] font-semibold"
             style={{
               background: i === 0 ? C.red : C.surface,
-              color: i === 0 ? '#fff' : C.textSecondary,
-              border: i === 0 ? 'none' : `1px solid ${C.border}`,
+              color: i === 0 ? "#fff" : C.textSecondary,
+              border: i === 0 ? "none" : `1px solid ${C.border}`,
             }}
           >
             {t}
@@ -606,7 +846,10 @@ const VideoScreen = () => {
             ✦ ПОДКАСТ НЕДЕЛИ
           </span>
         </div>
-        <h3 className="font-extrabold text-[20px] leading-tight" style={{ fontFamily: 'Manrope, system-ui' }}>
+        <h3
+          className="font-extrabold text-[20px] leading-tight"
+          style={{ fontFamily: "Manrope, system-ui" }}
+        >
           Разбор недели: что случилось в экономике
         </h3>
         <p className="text-[12.5px] mt-2" style={{ color: C.textSecondary }}>
@@ -633,8 +876,12 @@ const VideoScreen = () => {
                 />
               ))}
             </div>
-            <div className="flex justify-between mt-1.5 text-[10px] font-mono" style={{ color: C.textMuted }}>
-              <span>14:23</span><span>47:08</span>
+            <div
+              className="flex justify-between mt-1.5 text-[10px] font-mono"
+              style={{ color: C.textMuted }}
+            >
+              <span>14:23</span>
+              <span>47:08</span>
             </div>
           </div>
         </div>
@@ -653,7 +900,7 @@ const VideoScreen = () => {
               <div className="absolute inset-0 flex items-center justify-center">
                 <span
                   className="w-12 h-12 rounded-full flex items-center justify-center"
-                  style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}
+                  style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(8px)" }}
                 >
                   <Play className="w-5 h-5 text-white fill-white ml-0.5" />
                 </span>
@@ -661,8 +908,8 @@ const VideoScreen = () => {
               <span
                 className="absolute bottom-3 right-3 text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1"
                 style={{
-                  background: v.live ? C.red : 'rgba(0,0,0,0.75)',
-                  color: '#fff',
+                  background: v.live ? C.red : "rgba(0,0,0,0.75)",
+                  color: "#fff",
                 }}
               >
                 {v.live && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
@@ -670,10 +917,16 @@ const VideoScreen = () => {
               </span>
             </div>
             <div className="p-3.5">
-              <h4 className="font-extrabold text-[15px] leading-snug" style={{ fontFamily: 'Manrope, system-ui' }}>
+              <h4
+                className="font-extrabold text-[15px] leading-snug"
+                style={{ fontFamily: "Manrope, system-ui" }}
+              >
                 {v.title}
               </h4>
-              <div className="flex items-center gap-2 mt-1.5 text-[11px]" style={{ color: C.textMuted }}>
+              <div
+                className="flex items-center gap-2 mt-1.5 text-[11px]"
+                style={{ color: C.textMuted }}
+              >
                 <span>{v.views} просмотров</span>
                 <span>·</span>
                 <span>{v.time}</span>
@@ -698,15 +951,23 @@ const CommunityScreen = () => (
           <span className="text-[10px] font-extrabold tracking-[0.15em]" style={{ color: C.gold }}>
             ✦ ДВИЖЕНИЕ
           </span>
-          <h1 className="font-extrabold text-[32px] mt-1 leading-none" style={{ fontFamily: 'Manrope, system-ui' }}>
+          <h1
+            className="font-extrabold text-[32px] mt-1 leading-none"
+            style={{ fontFamily: "Manrope, system-ui" }}
+          >
             Х10
           </h1>
         </div>
         <div className="text-right">
-          <div className="font-extrabold text-[24px] tabular-nums" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+          <div
+            className="font-extrabold text-[24px] tabular-nums"
+            style={{ fontFamily: "JetBrains Mono, monospace" }}
+          >
             30 885
           </div>
-          <div className="text-[11px]" style={{ color: C.textMuted }}>в 124 городах · 11 стран</div>
+          <div className="text-[11px]" style={{ color: C.textMuted }}>
+            в 124 городах · 11 стран
+          </div>
         </div>
       </div>
     </section>
@@ -716,11 +977,20 @@ const CommunityScreen = () => (
       className="mx-5 mb-5 rounded-2xl p-5 border relative overflow-hidden"
       style={{ background: C.surface, borderColor: `${C.red}40` }}
     >
-      <div className="absolute -right-10 -top-10 w-32 h-32 rounded-full" style={{ background: `${C.red}10` }} />
-      <span className="text-[10px] font-extrabold tracking-[0.15em] relative" style={{ color: C.red }}>
+      <div
+        className="absolute -right-10 -top-10 w-32 h-32 rounded-full"
+        style={{ background: `${C.red}10` }}
+      />
+      <span
+        className="text-[10px] font-extrabold tracking-[0.15em] relative"
+        style={{ color: C.red }}
+      >
         МОЙ КЛАМП
       </span>
-      <h2 className="font-extrabold text-[20px] mt-2 relative" style={{ fontFamily: 'Manrope, system-ui' }}>
+      <h2
+        className="font-extrabold text-[20px] mt-2 relative"
+        style={{ fontFamily: "Manrope, system-ui" }}
+      >
         {myClamp.name}
       </h2>
       <p className="text-[12.5px] mt-1.5 relative" style={{ color: C.textSecondary }}>
@@ -735,10 +1005,10 @@ const CommunityScreen = () => (
               className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-[10px] font-bold text-white"
               style={{
                 borderColor: C.surface,
-                background: `linear-gradient(135deg, ${['#E63946', '#D4A24C', '#3FB950', '#1F2937', '#8E1B26'][n - 1]}, ${C.red})`,
+                background: `linear-gradient(135deg, ${["#E63946", "#D4A24C", "#3FB950", "#1F2937", "#8E1B26"][n - 1]}, ${C.red})`,
               }}
             >
-              {['А', 'М', 'К', 'И', 'П'][n - 1]}
+              {["А", "М", "К", "И", "П"][n - 1]}
             </div>
           ))}
         </div>
@@ -750,7 +1020,9 @@ const CommunityScreen = () => (
       <div className="mt-4 relative">
         <div className="flex justify-between text-[11px] mb-1.5" style={{ color: C.textSecondary }}>
           <span>Прогресс цели</span>
-          <span className="font-mono font-bold" style={{ color: C.gold }}>{myClamp.progress}%</span>
+          <span className="font-mono font-bold" style={{ color: C.gold }}>
+            {myClamp.progress}%
+          </span>
         </div>
         <div className="h-1.5 rounded-full overflow-hidden" style={{ background: C.border }}>
           <div
@@ -765,7 +1037,7 @@ const CommunityScreen = () => (
 
       <button
         className="w-full mt-5 font-semibold py-3 rounded-xl text-[13.5px] flex items-center justify-center gap-2 active:scale-[0.98] transition relative"
-        style={{ background: C.red, color: '#fff' }}
+        style={{ background: C.red, color: "#fff" }}
       >
         <MessageSquare className="w-4 h-4" /> Открыть чат · {myClamp.nextMeeting}
       </button>
@@ -774,7 +1046,7 @@ const CommunityScreen = () => (
     {/* Events */}
     <section className="px-5 mb-5">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-extrabold text-[19px]" style={{ fontFamily: 'Manrope, system-ui' }}>
+        <h3 className="font-extrabold text-[19px]" style={{ fontFamily: "Manrope, system-ui" }}>
           События рядом
         </h3>
         <span className="flex items-center text-[11px] gap-1" style={{ color: C.textSecondary }}>
@@ -791,17 +1063,33 @@ const CommunityScreen = () => (
             <div
               className={`w-14 h-14 rounded-xl flex flex-col items-center justify-center text-white bg-gradient-to-br ${e.gradient}`}
             >
-              <span className="text-[10px] uppercase opacity-70 leading-none mt-0.5">{e.month}</span>
-              <span className="font-extrabold text-[20px] leading-tight" style={{ fontFamily: 'Manrope, system-ui' }}>{e.date}</span>
+              <span className="text-[10px] uppercase opacity-70 leading-none mt-0.5">
+                {e.month}
+              </span>
+              <span
+                className="font-extrabold text-[20px] leading-tight"
+                style={{ fontFamily: "Manrope, system-ui" }}
+              >
+                {e.date}
+              </span>
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[10px] font-extrabold tracking-[0.15em]" style={{ color: C.gold }}>
+              <div
+                className="text-[10px] font-extrabold tracking-[0.15em]"
+                style={{ color: C.gold }}
+              >
                 {e.city}
               </div>
-              <h4 className="font-bold text-[14px] leading-tight mt-0.5 truncate" style={{ fontFamily: 'Manrope, system-ui' }}>
+              <h4
+                className="font-bold text-[14px] leading-tight mt-0.5 truncate"
+                style={{ fontFamily: "Manrope, system-ui" }}
+              >
                 {e.title}
               </h4>
-              <span className="text-[11px] flex items-center gap-1 mt-1" style={{ color: C.textMuted }}>
+              <span
+                className="text-[11px] flex items-center gap-1 mt-1"
+                style={{ color: C.textMuted }}
+              >
                 <Users className="w-3 h-3" /> {e.attendees} участников
               </span>
             </div>
@@ -813,15 +1101,15 @@ const CommunityScreen = () => (
 
     {/* Find clamp */}
     <section className="px-5">
-      <h3 className="font-extrabold text-[19px] mb-3" style={{ fontFamily: 'Manrope, system-ui' }}>
+      <h3 className="font-extrabold text-[19px] mb-3" style={{ fontFamily: "Manrope, system-ui" }}>
         Войти глубже
       </h3>
       <div className="grid grid-cols-2 gap-2.5">
         {[
-          { t: 'Создать свой кламп', d: 'Собрать команду 6-10 человек', i: '🚀' },
-          { t: 'Найти кламп рядом', d: 'По теме или городу', i: '🔍' },
-          { t: 'Стать кламперам', d: 'Лидер малой группы', i: '⚡' },
-          { t: 'Региональный лидер', d: 'Развивать Х10 в городе', i: '🌐' },
+          { t: "Создать свой кламп", d: "Собрать команду 6-10 человек", i: "🚀" },
+          { t: "Найти кламп рядом", d: "По теме или городу", i: "🔍" },
+          { t: "Стать кламперам", d: "Лидер малой группы", i: "⚡" },
+          { t: "Региональный лидер", d: "Развивать Х10 в городе", i: "🌐" },
         ].map((c, i) => (
           <button
             key={c.t}
@@ -829,7 +1117,10 @@ const CommunityScreen = () => (
             style={{ background: C.surface, borderColor: C.border }}
           >
             <div className="text-[20px] mb-2">{c.i}</div>
-            <div className="font-extrabold text-[13px] leading-tight" style={{ fontFamily: 'Manrope, system-ui' }}>
+            <div
+              className="font-extrabold text-[13px] leading-tight"
+              style={{ fontFamily: "Manrope, system-ui" }}
+            >
               {c.t}
             </div>
             <div className="text-[11px] mt-1 leading-tight" style={{ color: C.textMuted }}>
@@ -855,22 +1146,28 @@ const ProfileScreen = () => (
         borderColor: C.border,
       }}
     >
-      <div className="absolute -right-12 -top-12 w-36 h-36 rounded-full" style={{ background: `${C.red}08` }} />
+      <div
+        className="absolute -right-12 -top-12 w-36 h-36 rounded-full"
+        style={{ background: `${C.red}08` }}
+      />
       <div className="flex items-center gap-4 relative">
         <div
           className="w-16 h-16 rounded-full flex items-center justify-center font-extrabold text-[26px] text-white"
           style={{
             background: `linear-gradient(135deg, ${C.red}, ${C.gold})`,
-            fontFamily: 'Manrope, system-ui',
+            fontFamily: "Manrope, system-ui",
           }}
         >
           {me.name[0]}
         </div>
         <div>
-          <h2 className="font-extrabold text-[20px]" style={{ fontFamily: 'Manrope, system-ui' }}>
+          <h2 className="font-extrabold text-[20px]" style={{ fontFamily: "Manrope, system-ui" }}>
             {me.name}
           </h2>
-          <p className="text-[12.5px] mt-0.5 flex items-center gap-1.5" style={{ color: C.textSecondary }}>
+          <p
+            className="text-[12.5px] mt-0.5 flex items-center gap-1.5"
+            style={{ color: C.textSecondary }}
+          >
             <span
               className="px-2 py-0.5 rounded text-[10px] font-bold"
               style={{ background: `${C.red}20`, color: C.red }}
@@ -897,10 +1194,10 @@ const ProfileScreen = () => (
     {/* Stats */}
     <section className="px-4 mt-4 grid grid-cols-4 gap-2">
       {[
-        { i: Flame, k: me.streak, v: 'дней стрик', c: C.red },
-        { i: BookOpen, k: me.read, v: 'прочитано', c: C.gold },
-        { i: Bookmark, k: me.saved, v: 'сохранено', c: C.success },
-        { i: Crown, k: me.ips, v: 'IPS', c: C.gold },
+        { i: Flame, k: me.streak, v: "дней стрик", c: C.red },
+        { i: BookOpen, k: me.read, v: "прочитано", c: C.gold },
+        { i: Bookmark, k: me.saved, v: "сохранено", c: C.success },
+        { i: Crown, k: me.ips, v: "IPS", c: C.gold },
       ].map((s, i) => {
         const Icon = s.i;
         return (
@@ -910,23 +1207,33 @@ const ProfileScreen = () => (
             style={{ background: C.surface, borderColor: C.border }}
           >
             <Icon className="w-4 h-4 mx-auto mb-1.5" style={{ color: s.c }} />
-            <div className="font-extrabold text-[15px] tabular-nums" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+            <div
+              className="font-extrabold text-[15px] tabular-nums"
+              style={{ fontFamily: "JetBrains Mono, monospace" }}
+            >
               {s.k}
             </div>
-            <div className="text-[9px] mt-0.5" style={{ color: C.textMuted }}>{s.v}</div>
+            <div className="text-[9px] mt-0.5" style={{ color: C.textMuted }}>
+              {s.v}
+            </div>
           </div>
         );
       })}
     </section>
 
     {/* Streak progress */}
-    <section className="mx-4 mt-4 rounded-2xl p-4 border" style={{ background: C.surface, borderColor: C.border }}>
+    <section
+      className="mx-4 mt-4 rounded-2xl p-4 border"
+      style={{ background: C.surface, borderColor: C.border }}
+    >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Flame className="w-4 h-4" style={{ color: C.red }} />
           <span className="font-bold text-[13px]">Стрик чтения · 23 дня</span>
         </div>
-        <span className="text-[11px]" style={{ color: C.textSecondary }}>До ачивки: 7</span>
+        <span className="text-[11px]" style={{ color: C.textSecondary }}>
+          До ачивки: 7
+        </span>
       </div>
       <div className="grid grid-cols-7 gap-1.5">
         {[...Array(7)].map((_, i) => (
@@ -935,10 +1242,10 @@ const ProfileScreen = () => (
             className="aspect-square rounded-md flex items-center justify-center text-[10px] font-bold"
             style={{
               background: i < 5 ? C.red : C.border,
-              color: i < 5 ? '#fff' : C.textMuted,
+              color: i < 5 ? "#fff" : C.textMuted,
             }}
           >
-            {['П', 'В', 'С', 'Ч', 'П', 'С', 'В'][i]}
+            {["П", "В", "С", "Ч", "П", "С", "В"][i]}
           </div>
         ))}
       </div>
@@ -946,7 +1253,10 @@ const ProfileScreen = () => (
 
     {/* Subscriptions */}
     <section className="px-4 mt-6">
-      <h3 className="font-extrabold text-[15px] mb-2.5" style={{ fontFamily: 'Manrope, system-ui' }}>
+      <h3
+        className="font-extrabold text-[15px] mb-2.5"
+        style={{ fontFamily: "Manrope, system-ui" }}
+      >
         Мои подписки
       </h3>
       <div className="space-y-2">
@@ -967,22 +1277,30 @@ const ProfileScreen = () => (
 
     {/* Schedule */}
     <section className="px-4 mt-6">
-      <h3 className="font-extrabold text-[15px] mb-2.5 flex items-center gap-2" style={{ fontFamily: 'Manrope, system-ui' }}>
+      <h3
+        className="font-extrabold text-[15px] mb-2.5 flex items-center gap-2"
+        style={{ fontFamily: "Manrope, system-ui" }}
+      >
         <Bell className="w-4 h-4" /> Дайджест-расписание
       </h3>
-      <div className="rounded-xl border overflow-hidden" style={{ background: C.surface, borderColor: C.border }}>
+      <div
+        className="rounded-xl border overflow-hidden"
+        style={{ background: C.surface, borderColor: C.border }}
+      >
         {[
-          { t: '07:00', n: 'Утренний разбор Рыбакова', on: true },
-          { t: '13:00', n: 'Smart-карусель за обедом', on: true },
-          { t: '19:00', n: 'Что обсуждают в Х10', on: false },
+          { t: "07:00", n: "Утренний разбор Рыбакова", on: true },
+          { t: "13:00", n: "Smart-карусель за обедом", on: true },
+          { t: "19:00", n: "Что обсуждают в Х10", on: false },
         ].map((r, i) => (
           <div
             key={i}
             className="flex items-center justify-between px-4 py-3"
-            style={{ borderTop: i > 0 ? `1px solid ${C.border}` : 'none' }}
+            style={{ borderTop: i > 0 ? `1px solid ${C.border}` : "none" }}
           >
             <div>
-              <span className="font-mono font-bold text-[13px]" style={{ color: C.gold }}>{r.t}</span>
+              <span className="font-mono font-bold text-[13px]" style={{ color: C.gold }}>
+                {r.t}
+              </span>
               <span className="ml-3 text-[13px]">{r.n}</span>
             </div>
             <div
@@ -991,7 +1309,7 @@ const ProfileScreen = () => (
             >
               <span
                 className="absolute top-0.5 w-5 h-5 bg-white rounded-full transition-all"
-                style={{ left: r.on ? 'calc(100% - 22px)' : '2px' }}
+                style={{ left: r.on ? "calc(100% - 22px)" : "2px" }}
               />
             </div>
           </div>
@@ -1002,11 +1320,11 @@ const ProfileScreen = () => (
     {/* Menu */}
     <section className="px-4 mt-6 space-y-2 pb-4">
       {[
-        { t: 'Сохранённое', i: Bookmark },
-        { t: 'История чтения', i: BookOpen },
-        { t: 'Скачанные подкасты', i: Headphones },
-        { t: 'Х10 Premium', i: Crown },
-        { t: 'Настройки', i: Settings },
+        { t: "Сохранённое", i: Bookmark },
+        { t: "История чтения", i: BookOpen },
+        { t: "Скачанные подкасты", i: Headphones },
+        { t: "Х10 Premium", i: Crown },
+        { t: "Настройки", i: Settings },
       ].map((it) => {
         const Icon = it.i;
         return (
@@ -1029,22 +1347,26 @@ const ProfileScreen = () => (
 
 // ========= MAIN APP =========
 export default function App() {
-  const [tab, setTab] = useState('home');
+  const [tab, setTab] = useState("home");
   const [article, setArticle] = useState(null);
 
   // Inject fonts
   useEffect(() => {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap';
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href =
+      "https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap";
     document.head.appendChild(link);
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.textContent = `
       *::-webkit-scrollbar { display: none; }
       body { font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
     `;
     document.head.appendChild(style);
-    return () => { document.head.removeChild(link); document.head.removeChild(style); };
+    return () => {
+      document.head.removeChild(link);
+      document.head.removeChild(style);
+    };
   }, []);
 
   const handleOpenArticle = (a) => setArticle(a);
@@ -1055,7 +1377,7 @@ export default function App() {
       className="min-h-screen w-full flex items-start justify-center py-0 sm:py-6"
       style={{
         background: `radial-gradient(ellipse at top, #1a1a22 0%, #050507 100%)`,
-        fontFamily: 'Inter, system-ui, sans-serif',
+        fontFamily: "Inter, system-ui, sans-serif",
       }}
     >
       <div
@@ -1063,22 +1385,19 @@ export default function App() {
         style={{
           background: C.bg,
           color: C.textPrimary,
-          boxShadow: '0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04)',
+          boxShadow: "0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04)",
         }}
       >
-        <div
-          className="absolute inset-0 overflow-y-auto pb-20"
-          style={{ scrollbarWidth: 'none' }}
-        >
+        <div className="absolute inset-0 overflow-y-auto pb-20" style={{ scrollbarWidth: "none" }}>
           {article ? (
             <ArticleScreen article={article} onBack={handleBackFromArticle} />
-          ) : tab === 'home' ? (
+          ) : tab === "home" ? (
             <HomeScreen onOpenArticle={handleOpenArticle} />
-          ) : tab === 'taxes' ? (
+          ) : tab === "taxes" ? (
             <TaxesScreen />
-          ) : tab === 'video' ? (
+          ) : tab === "video" ? (
             <VideoScreen />
-          ) : tab === 'community' ? (
+          ) : tab === "community" ? (
             <CommunityScreen />
           ) : (
             <ProfileScreen />

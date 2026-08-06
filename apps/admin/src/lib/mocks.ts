@@ -477,7 +477,16 @@ export const MOCK_PIPELINE_CONFIGS: AdminPipelineConfig[] = [
  * чтобы не запекать время в prerender (см. api.ts NEXT_PHASE guard).
  * ---------------------------------------------------------------- */
 export const MOCK_PIPELINE_RUN_STATS: PipelineRunStats = {
-  budget: { capUsd: 15, warnUsd: 9, todaySpendUsd: 4.21, todayRuns: 38, pct: 28 },
+  budget: {
+    capUsd: 15,
+    warnUsd: 9,
+    todaySpendUsd: 4.21,
+    todayRuns: 38,
+    pct: 28,
+    remainingUsd: 10.79,
+    monthSpendUsd: 96.4,
+  },
+  result: { publishedToday: 3, publishedMonth: 74, costPerPublishedUsd: 1.3 },
   byAgent: [
     { agent: "ingest", runs: 34, spendUsd: 0.39 },
     { agent: "draft", runs: 8, spendUsd: 3.82 },

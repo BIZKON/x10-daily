@@ -132,7 +132,20 @@ export const adminRoute = new Hono<AppEnv>()
     const msk7dStart = sql`(date_trunc('day', now() AT TIME ZONE 'Europe/Moscow') - interval '6 days') AT TIME ZONE 'Europe/Moscow'`;
     const dayExpr = sql<string>`to_char(date_trunc('day', ${pipelineRuns.createdAt} AT TIME ZONE 'Europe/Moscow'), 'YYYY-MM-DD')`;
 
-    const [todayAgg, byAgentRows, seriesRows, gateRows, recentRows, alertRows] = await Promise.all([
+    // Границы месяца по МСК — тот же принцип, что у дня: клиент живёт в МСК, и
+    // «за месяц» обязано совпадать с тем, что он видит в календаре.
+    const mskMonth = sql`date_trunc('month', now() AT TIME ZONE 'Europe/Moscow') AT TIME ZONE 'Europe/Moscow'`;
+
+    const [
+      todayAgg,
+      byAgentRows,
+      seriesRows,
+      gateRows,
+      recentRows,
+      alertRows,
+      monthAgg,
+      publishedAgg,
+    ] = await Promise.all([
       db
         .select({
           spend: sql<string>`coalesce(sum(${pipelineRuns.costUsd}), 0)`,
@@ -190,11 +203,29 @@ export const adminRoute = new Hono<AppEnv>()
           sql`${costAlerts.alertDate} = to_char(now() AT TIME ZONE 'Europe/Moscow', 'YYYY-MM-DD')`,
         )
         .orderBy(desc(costAlerts.createdAt)),
+      // Расход за календарный месяц — вторая цифра, без которой дневная сумма
+      // ни о чём не говорит: клиент платит по месяцу, а не по дню.
+      db
+        .select({ spend: sql<string>`coalesce(sum(${pipelineRuns.costUsd}), 0)` })
+        .from(pipelineRuns)
+        .where(sql`${pipelineRuns.createdAt} >= ${mskMonth}`),
+      // 🔴 Результат рядом с тратой. Сумма без числа публикаций непонятна: «$4
+      // за сутки» — это дорого или дёшево? Ответ даёт только цена одного поста.
+      db
+        .select({
+          today: sql<number>`count(*) filter (where ${articles.publishedAt} >= ${mskToday})::int`,
+          month: sql<number>`count(*) filter (where ${articles.publishedAt} >= ${mskMonth})::int`,
+        })
+        .from(articles)
+        .where(sql`${articles.publishedAt} is not null`),
     ]);
 
     const capUsd = env.DAILY_BUDGET_USD;
     const warnUsd = env.DAILY_BUDGET_WARN_USD;
     const todaySpendUsd = Number(todayAgg[0]?.spend ?? 0);
+    const monthSpendUsd = Number(monthAgg[0]?.spend ?? 0);
+    const publishedToday = publishedAgg[0]?.today ?? 0;
+    const publishedMonth = publishedAgg[0]?.month ?? 0;
     const iso = (v: unknown) => (v instanceof Date ? v.toISOString() : String(v));
 
     return c.json({
@@ -204,6 +235,18 @@ export const adminRoute = new Hono<AppEnv>()
         todaySpendUsd,
         todayRuns: todayAgg[0]?.runs ?? 0,
         pct: capUsd > 0 ? Math.min(100, Math.round((todaySpendUsd / capUsd) * 100)) : 0,
+        remainingUsd: Math.max(0, capUsd - todaySpendUsd),
+        monthSpendUsd,
+      },
+      /**
+       * Что получено за деньги. Цена поста считается ПО МЕСЯЦУ, а не по дню:
+       * дневная выборка слишком мала — один день без публикаций дал бы
+       * «бесконечно дорого», а день с одной статьёй — случайное число.
+       */
+      result: {
+        publishedToday,
+        publishedMonth,
+        costPerPublishedUsd: publishedMonth > 0 ? monthSpendUsd / publishedMonth : null,
       },
       byAgent: byAgentRows.map((r) => ({
         agent: r.agent,

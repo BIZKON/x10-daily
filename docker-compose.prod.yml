@@ -79,6 +79,9 @@ services:
       AI_GATEWAY_BASE_URL: "${AI_GATEWAY_BASE_URL:-https://api.timeweb.ai/v1}"
       AI_GATEWAY_API_KEY: "${AI_GATEWAY_API_KEY}"
       TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"
+      # Секрет вебхука Telegram (Спека 4). Пусто → вебхук закрыт (503):
+      # открытый вебхук хуже отсутствующего.
+      TELEGRAM_WEBHOOK_SECRET: "${TELEGRAM_WEBHOOK_SECRET:-}"
       X10_JWT_SECRET: "${X10_JWT_SECRET}"
       X10_ALLOWED_ORIGINS: "https://app.${X10_BASE_DOMAIN:-pro-agent-ai.ru},https://admin.${X10_BASE_DOMAIN:-pro-agent-ai.ru}"
       S3_ENDPOINT: "${S3_ENDPOINT:-}"
@@ -141,6 +144,9 @@ services:
       # Дефолты дублируют схему @x10/config (15/9) — настраиваются из .env без
       # правки кода. TG_OPS_CHAT_ID пуст → алерты в логи.
       TG_OPS_CHAT_ID: "${TG_OPS_CHAT_ID:-}"
+      # Закрытая группа «Редакция» — карточки ревью с кнопками (Спека 4).
+      # Пусто → карточки не шлём, HumanGate остаётся в кабинете.
+      TG_REVIEW_CHAT_ID: "${TG_REVIEW_CHAT_ID:-}"
       DAILY_BUDGET_USD: "${DAILY_BUDGET_USD:-15}"
       DAILY_BUDGET_WARN_USD: "${DAILY_BUDGET_WARN_USD:-9}"
       # VK posting (session 21): оба пусты → VK-ветка отключена (draft-article не

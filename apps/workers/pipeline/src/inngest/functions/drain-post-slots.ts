@@ -49,6 +49,21 @@ const STALE_HOURS = 24;
  * VK guid-дедуп) — принятый риск, детали в lib/post-channel.ts. posting-control
  * (пауза/тихие часы) проверяется один раз на слот.
  */
+/**
+ * Статья, названная в событии (Спека 4), либо null.
+ *
+ * ⚠️ Приведение типа осознанное: у функции ДВА триггера, и `event.data` —
+ * объединение крона (`CronEventData`, без полей) и нашего события. Сузить его
+ * штатно нельзя, поэтому проверяем поле руками и приводим только после
+ * проверки типа значения. Мусор в событии даёт null, а не падение.
+ */
+function targetArticleId(event: unknown): string | null {
+  const data = (event as { data?: unknown } | undefined)?.data;
+  if (!data || typeof data !== "object") return null;
+  const id = (data as { articleId?: unknown }).articleId;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+
 export function createDrainPostSlotsFunction(
   inngest: PipelineInngest,
   bindings: PipelineBindings,
@@ -70,7 +85,7 @@ export function createDrainPostSlotsFunction(
       // Один слот за раз — корректность выбора/маркировки (нет гонок на channels).
       concurrency: { limit: 1 },
     },
-    async ({ step }) => {
+    async ({ event, step }) => {
       const env = loadPipelineEnv(bindings);
 
       // Стоп-кран (session 20): ручная пауза или тихие часы (МСК) → пропускаем
@@ -87,6 +102,12 @@ export function createDrainPostSlotsFunction(
       }
 
       // Выбираем одну следующую непостнутую tg-статью: FIFO среди свежих.
+      // Прицельная публикация (Спека 4): событие может назвать статью. Кнопка
+      // «Одобрить» в Telegram одобряет КОНКРЕТНУЮ карточку, и опубликоваться
+      // должна именно она — иначе ушла бы голова FIFO, то есть чужая статья, а
+      // одобренная осталась бы ждать. Гарды при этом те же.
+      const wantedArticleId = targetArticleId(event);
+
       const selected = await step.run("select", async () => {
         const db = createDb(env.DATABASE_URL);
         const staleBefore = new Date(gate.nowMs - STALE_HOURS * 3_600_000);
@@ -98,6 +119,9 @@ export function createDrainPostSlotsFunction(
               eq(channels.channel, "tg"),
               isNull(channels.postedAt),
               gte(channels.createdAt, staleBefore),
+              // Окно свежести намеренно сохраняется и для прицельного случая:
+              // одобрить статью суточной давности — это опубликовать вчерашнее.
+              ...(wantedArticleId ? [eq(channels.articleId, wantedArticleId)] : []),
             ),
           )
           .orderBy(asc(channels.createdAt))
@@ -106,7 +130,10 @@ export function createDrainPostSlotsFunction(
       });
 
       if (!selected) {
-        return { posted: 0 as const, reason: "queue-empty" as const };
+        return {
+          posted: 0 as const,
+          reason: wantedArticleId ? ("target-not-postable" as const) : ("queue-empty" as const),
+        };
       }
       const articleId = selected.articleId;
 

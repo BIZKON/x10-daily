@@ -110,6 +110,7 @@ function readBindings(): AppBindings {
     INNGEST_EVENT_KEY: process.env.INNGEST_EVENT_KEY,
 
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    TELEGRAM_WEBHOOK_SECRET: process.env.TELEGRAM_WEBHOOK_SECRET,
     X10_JWT_SECRET: process.env.X10_JWT_SECRET,
     X10_JWT_TTL_SECONDS: process.env.X10_JWT_TTL_SECONDS,
 

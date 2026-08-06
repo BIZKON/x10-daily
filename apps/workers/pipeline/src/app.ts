@@ -12,6 +12,7 @@ import { createPrimeSourceFunction } from "./inngest/functions/prime-source";
 import { createProcessSourceItemFunction } from "./inngest/functions/process-source-item";
 import { createRetryOpsAlertsFunction } from "./inngest/functions/retry-ops-alerts";
 import { createRunWeeklyScoreFunction } from "./inngest/functions/run-weekly-score";
+import { createSendReviewCardFunction } from "./inngest/functions/send-review-card";
 
 export type AppEnv = {
   Bindings: PipelineBindings;
@@ -57,6 +58,7 @@ export function createApp() {
         createRetryOpsAlertsFunction(client, c.env),
         createGenerateCoverFunction(client, c.env),
         createPrimeSourceFunction(client, c.env),
+        createSendReviewCardFunction(client, c.env),
       ],
     });
     // inngest/hono возвращает HTTP-handler (c) => Response. Просто проксируем.

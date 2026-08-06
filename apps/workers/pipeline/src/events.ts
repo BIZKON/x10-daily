@@ -173,6 +173,17 @@ export const ARTICLE_COVER_REQUESTED = articleCoverRequestedEvent.event;
 export const postingDrainRequestedDataSchema = z.object({
   /** Свободная пометка, зачем дёрнули (попадает в логи). Не влияет на выбор. */
   reason: z.string().optional(),
+  /**
+   * 🔴 Опубликовать КОНКРЕТНУЮ статью, а не голову очереди.
+   *
+   * Нужно для кнопки «Одобрить» в Telegram (Спека 4): редактор одобряет
+   * определённую карточку, и опубликоваться должна именно она. Без этого поля
+   * событие публикует oldest-fresh-first — то есть, скорее всего, чужую
+   * статью, а одобренная осталась бы ждать.
+   *
+   * Все гарды сохраняются: пауза, тихие часы, окно свежести, «не постнуто».
+   */
+  articleId: z.string().uuid().optional(),
 });
 export type PostingDrainRequestedData = z.infer<typeof postingDrainRequestedDataSchema>;
 
@@ -203,3 +214,18 @@ export const sourcePrimeRequestedEvent = eventType("source/prime.requested", {
   schema: sourcePrimeRequestedDataSchema,
 });
 export const SOURCE_PRIME_REQUESTED = sourcePrimeRequestedEvent.event;
+
+/* ----------------------------------------------------------------
+ * review/card.requested — показать статью редактору карточкой в группе
+ * «Редакция» (Спека 4). Кнопки под карточкой заменяют заход в кабинет, но НЕ
+ * отменяют HumanGate: карточка ничего не публикует сама.
+ * ---------------------------------------------------------------- */
+export const reviewCardRequestedDataSchema = z.object({
+  articleId: z.string().uuid(),
+});
+export type ReviewCardRequestedData = z.infer<typeof reviewCardRequestedDataSchema>;
+
+export const reviewCardRequestedEvent = eventType("review/card.requested", {
+  schema: reviewCardRequestedDataSchema,
+});
+export const REVIEW_CARD_REQUESTED = reviewCardRequestedEvent.event;

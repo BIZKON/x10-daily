@@ -8,7 +8,7 @@ import {
 import { articles, createDb, eq } from "@x10/db";
 import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
-import { ARTICLE_COVER_REQUESTED } from "../../events";
+import { ARTICLE_COVER_REQUESTED, REVIEW_CARD_REQUESTED } from "../../events";
 import { modelsFromEnv } from "../../lib/agent-context";
 import { recordRun } from "../../lib/cost-ledger";
 import { coversEnabled, saveCover } from "../../lib/cover-storage";
@@ -203,6 +203,15 @@ export function createGenerateCoverFunction(
           })
           .where(eq(articles.id, articleId));
         return { marked: true };
+      });
+
+      // Карточка ревью в группу «Редакция» (Спека 4). Отдельным событием, а не
+      // прямой отправкой: генерация обложки не должна падать из-за того, что
+      // Telegram недоступен или группа не настроена. Не настроена → функция
+      // карточки тихо выйдет, и ревью останется в кабинете.
+      await step.sendEvent("request-review-card", {
+        name: REVIEW_CARD_REQUESTED,
+        data: { articleId },
       });
 
       // $-ledger. ДВЕ строки, а не одна: у крафта промпта и у генерации картинки

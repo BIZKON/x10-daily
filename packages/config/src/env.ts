@@ -118,6 +118,17 @@ const baseSchema = z
      * не попадал в публикации. См. apps/workers/pipeline/src/lib/ops-alert.ts.
      */
     TG_OPS_CHAT_ID: z.string().optional(),
+    /**
+     * Закрытая группа «Редакция» — карточки ревью с кнопками (Спека 4).
+     * Пусто → карточки не шлём, HumanGate остаётся в кабинете.
+     */
+    TG_REVIEW_CHAT_ID: z.string().optional(),
+    /**
+     * Секрет вебхука Telegram (Спека 4). Задаётся при `setWebhook` и приходит
+     * заголовком X-Telegram-Bot-Api-Secret-Token. Пусто → вебхук закрыт: без
+     * секрета любой, узнавший адрес, публиковал бы что угодно.
+     */
+    TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
 
     /**
      * VK posting (session 21): автопостинг на стену VK-сообщества. Оба пусты →

@@ -45,6 +45,11 @@ export interface PipelineBindings {
   // ---- $-мониторинг автономного конвейера (session 20 hardening) ----
   /** Чат для $-алертов (отдельный от контент-канала). Пуст → алерты в логи. */
   TG_OPS_CHAT_ID?: string;
+  /**
+   * Закрытая группа «Редакция» — туда уходят карточки ревью с кнопками
+   * (Спека 4). Пусто → карточки не шлём, HumanGate живёт только в кабинете.
+   */
+  TG_REVIEW_CHAT_ID?: string;
   /** Жёсткий дневной потолок $-расхода. Строка (coerce.number в @x10/config). */
   DAILY_BUDGET_USD?: string;
   /** Warn-порог $-расхода (< DAILY_BUDGET_USD). */
@@ -128,6 +133,7 @@ export function readBindingsFromEnv(): PipelineBindings {
     TELEGRAM_PROXY_URL: process.env.TELEGRAM_PROXY_URL,
 
     TG_OPS_CHAT_ID: process.env.TG_OPS_CHAT_ID,
+    TG_REVIEW_CHAT_ID: process.env.TG_REVIEW_CHAT_ID,
     DAILY_BUDGET_USD: process.env.DAILY_BUDGET_USD,
     DAILY_BUDGET_WARN_USD: process.env.DAILY_BUDGET_WARN_USD,
 

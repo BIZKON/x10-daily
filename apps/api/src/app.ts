@@ -19,6 +19,7 @@ import { feedRoute } from "./routes/feed";
 import { healthRoute } from "./routes/health";
 import { pipelineRoute } from "./routes/pipeline";
 import { profileRoute } from "./routes/profile";
+import { telegramWebhookRoute } from "./routes/telegram-webhook";
 import { uploadRoute } from "./routes/upload";
 
 export type AppEnv = {
@@ -120,6 +121,7 @@ export function createApp() {
   app.route("/v1/admin", adminVisualRoute);
   app.route("/v1/admin", adminSourcesRoute);
   app.route("/v1/admin", adminTeamRoute);
+  app.route("/v1/telegram", telegramWebhookRoute);
   app.route("/v1/admin/upload", uploadRoute);
   app.route("/v1/events", eventsRoute);
   app.route("/v1/authors", authorsRoute);

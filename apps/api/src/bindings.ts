@@ -62,6 +62,8 @@ export interface AppBindings {
 
   // ---- Telegram session auth (HIGH-2) ----
   TELEGRAM_BOT_TOKEN?: string;
+  /** Секрет вебхука Telegram (Спека 4). Пусто → вебхук закрыт. */
+  TELEGRAM_WEBHOOK_SECRET?: string;
   X10_JWT_SECRET?: string;
   X10_JWT_TTL_SECONDS?: string;
 

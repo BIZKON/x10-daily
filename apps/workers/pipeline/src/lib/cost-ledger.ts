@@ -1,3 +1,4 @@
+import { usdToRub } from "@x10/config";
 import {
   type Database,
   type NewPipelineRun,
@@ -80,6 +81,9 @@ export async function recordRun(db: Database, entry: LedgerEntry): Promise<void>
     outputTokens: entry.outputTokens ?? 0,
     cachedInputTokens: entry.cachedInputTokens ?? 0,
     costUsd: entry.costUsd.toFixed(6),
+    // Рубли фиксируем здесь, а не считаем при показе: курс в коде зашит, и
+    // счёт клиенту не должен меняться задним числом при его правке.
+    costRub: usdToRub(entry.costUsd).toFixed(4),
     durationMs: entry.durationMs ?? null,
     output: entry.output ?? null,
     error: entry.error ?? null,

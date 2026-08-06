@@ -36,6 +36,35 @@ export const COST_PER_MTOK = {
  * Claude-id значения совпадают с COST_PER_MTOK[tier], для DeepSeek — отдельные
  * тарифы Timeweb. Неизвестная модель → fallback на COST_PER_MTOK[tier] + warn.
  */
+/**
+ * Курс, по которому рублёвые тарифы Timeweb переведены в доллары этой таблицы.
+ *
+ * 🔴 Тариф шлюза объявлен В РУБЛЯХ, а таблица считает в долларах — курс здесь
+ * зашит и за ЦБ не следит. Поэтому рублёвая сумма прогона фиксируется в
+ * `pipeline_runs.cost_rub` В МОМЕНТ прогона: счёт клиенту не должен меняться
+ * задним числом, когда курс поедет.
+ */
+export const RUB_PER_USD = 71.73;
+
+/**
+ * Во сколько раз клиенту выставляется больше себестоимости (решение владельца
+ * 06.08.2026: «платим мы, клиент платит нам по нашему тарифу»).
+ *
+ * ⚠️ Это отменяет более раннее решение того же дня про «свой кошелёк AI Gateway
+ * у каждого клиента»: ключ наш, счёт наш.
+ */
+export const CLIENT_PRICE_MULTIPLIER = 3;
+
+/** Себестоимость прогона в рублях по зафиксированному курсу. */
+export function usdToRub(usd: number): number {
+  return usd * RUB_PER_USD;
+}
+
+/** Цена для клиента: себестоимость × наценка. */
+export function clientPriceRub(costRub: number): number {
+  return costRub * CLIENT_PRICE_MULTIPLIER;
+}
+
 export const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   [MODELS.OPUS]: { ...COST_PER_MTOK.OPUS },
   [MODELS.SONNET]: { ...COST_PER_MTOK.SONNET },

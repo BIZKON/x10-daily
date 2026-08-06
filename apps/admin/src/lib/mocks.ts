@@ -477,6 +477,8 @@ export const MOCK_PIPELINE_CONFIGS: AdminPipelineConfig[] = [
  * чтобы не запекать время в prerender (см. api.ts NEXT_PHASE guard).
  * ---------------------------------------------------------------- */
 export const MOCK_PIPELINE_RUN_STATS: PipelineRunStats = {
+  multiplier: 3,
+  currency: "RUB",
   budget: {
     capUsd: 15,
     warnUsd: 9,
@@ -485,8 +487,22 @@ export const MOCK_PIPELINE_RUN_STATS: PipelineRunStats = {
     pct: 28,
     remainingUsd: 10.79,
     monthSpendUsd: 96.4,
+    // Рубли по тому же курсу, что и в проде (71.73) — иначе демо-режим
+    // показывал бы суммы, не сходящиеся с реальным экраном.
+    capRub: 1075.95,
+    todaySpendRub: 301.98,
+    remainingRub: 773.97,
+    monthSpendRub: 6914.77,
+    todayPriceRub: 905.94,
+    monthPriceRub: 20744.31,
   },
-  result: { publishedToday: 3, publishedMonth: 74, costPerPublishedUsd: 1.3 },
+  result: {
+    publishedToday: 3,
+    publishedMonth: 74,
+    costPerPublishedUsd: 1.3,
+    costPerPublishedRub: 93.25,
+    pricePerPublishedRub: 279.75,
+  },
   byAgent: [
     { agent: "ingest", runs: 34, spendUsd: 0.39 },
     { agent: "draft", runs: 8, spendUsd: 3.82 },

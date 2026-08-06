@@ -55,6 +55,12 @@ export const pipelineRuns = pgTable(
     outputTokens: integer("output_tokens").notNull().default(0),
     cachedInputTokens: integer("cached_input_tokens").notNull().default(0),
     costUsd: numeric("cost_usd", { precision: 10, scale: 6 }).notNull().default("0"),
+    /**
+     * Себестоимость в рублях, зафиксированная В МОМЕНТ прогона (миграция 0019).
+     * Тариф шлюза рублёвый, курс в коде зашит — без этой колонки счёт клиенту
+     * менялся бы задним числом при правке курса. NULL — строки до 06.08.2026.
+     */
+    costRub: numeric("cost_rub", { precision: 12, scale: 4 }),
     durationMs: integer("duration_ms"),
     input: jsonb("input").$type<Record<string, unknown>>(),
     output: jsonb("output").$type<Record<string, unknown>>(),

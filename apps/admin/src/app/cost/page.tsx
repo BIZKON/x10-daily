@@ -111,7 +111,7 @@ function ResultOnly({ result }: { result: PipelineRunStatsNoMoney["result"] }) {
 function Dashboard({ stats }: { stats: PipelineRunStats }) {
   return (
     <div className="space-y-5">
-      <ResultCard budget={stats.budget} result={stats.result} />
+      <ResultCard budget={stats.budget} result={stats.result} multiplier={stats.multiplier} />
       <BudgetCard budget={stats.budget} alerts={stats.alertsToday} />
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
         <WeekChart
@@ -138,12 +138,14 @@ function Dashboard({ stats }: { stats: PipelineRunStats }) {
 function ResultCard({
   budget,
   result,
+  multiplier,
 }: {
   budget: PipelineRunStats["budget"];
   result: PipelineRunStats["result"];
+  multiplier: number;
 }) {
   return (
-    <section className="grid gap-px overflow-hidden rounded-2xl border border-fence bg-fence sm:grid-cols-4">
+    <section className="grid gap-px overflow-hidden rounded-2xl border border-fence bg-fence sm:grid-cols-2 lg:grid-cols-5">
       <Metric
         label="Вышло сегодня"
         value={String(result.publishedToday)}
@@ -156,15 +158,25 @@ function ResultCard({
       />
       <Metric
         label="Цена публикации"
-        value={result.costPerPublishedUsd === null ? "—" : usd(result.costPerPublishedUsd)}
+        value={result.costPerPublishedRub === null ? "—" : rub(result.costPerPublishedRub)}
         note={
-          result.costPerPublishedUsd === null ? "нет публикаций за месяц" : "в среднем за месяц"
+          result.pricePerPublishedRub === null
+            ? "нет публикаций за месяц"
+            : `клиенту ${rub(result.pricePerPublishedRub)}`
         }
       />
       <Metric
         label="Потрачено за месяц"
-        value={usd(budget.monthSpendUsd)}
-        note="с 1-го числа по Москве"
+        value={rub(budget.monthSpendRub)}
+        note="себестоимость, с 1-го числа по Москве"
+      />
+      {/* 🔴 Цена клиенту рядом с себестоимостью: маржа должна быть видна без
+          калькулятора. Множитель приходит с сервера, а не зашит в вёрстке —
+          иначе экран и счёт разъедутся при его смене. */}
+      <Metric
+        label={`Выставить клиенту ×${multiplier}`}
+        value={rub(budget.monthPriceRub)}
+        note={`за месяц · сегодня ${rub(budget.todayPriceRub)}`}
       />
     </section>
   );
@@ -184,6 +196,16 @@ function Metric({ label, value, note }: { label: string; value: string; note: st
 
 function usd(n: number): string {
   return `$${n.toFixed(n !== 0 && Math.abs(n) < 0.1 ? 4 : 2)}`;
+}
+
+/**
+ * Рубли — основная валюта экрана: тариф шлюза рублёвый, и счёт клиенту
+ * выставляется в рублях. Копейки показываем только на мелких суммах, иначе
+ * «1 470,00 ₽» читается хуже, чем «1 470 ₽».
+ */
+function rub(n: number): string {
+  const fractionDigits = Math.abs(n) < 10 ? 2 : 0;
+  return `${n.toLocaleString("ru-RU", { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits })} ₽`;
 }
 
 /** success < warn ≤ gold < cap ≤ red. */
@@ -221,9 +243,9 @@ function BudgetCard({
                 tone === "red" ? "text-red" : tone === "gold" ? "text-gold" : "text-paper"
               }`}
             >
-              {usd(budget.todaySpendUsd)}
+              {rub(budget.todaySpendRub)}
             </span>
-            <span className="font-mono text-[13px] text-haze">/ {usd(budget.capUsd)} потолок</span>
+            <span className="font-mono text-[13px] text-haze">/ {rub(budget.capRub)} потолок</span>
           </div>
         </div>
         <div className="text-right">
@@ -241,13 +263,13 @@ function BudgetCard({
         <div
           className="absolute top-0 h-full w-px bg-paper/50"
           style={{ left: `${warnPct}%` }}
-          title={`warn ${usd(budget.warnUsd)}`}
+          title={`предупреждение ${rub(budget.warnUsd * (budget.capRub / (budget.capUsd || 1)))}`}
         />
       </div>
       <div className="mt-1.5 flex justify-between font-mono text-[10px] text-haze">
         <span>0</span>
         <span>warn {usd(budget.warnUsd)}</span>
-        <span>cap {usd(budget.capUsd)}</span>
+        <span>потолок {rub(budget.capRub)}</span>
       </div>
 
       {alerts.length > 0 && (

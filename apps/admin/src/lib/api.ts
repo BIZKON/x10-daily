@@ -561,7 +561,17 @@ export type PipelineRunStatsNoMoney = {
 
 export type PipelineRunStats = {
   money?: true;
+  /** Валюта экрана. Тариф шлюза рублёвый, счёт клиенту тоже. */
+  currency?: "RUB";
+  /** Во сколько раз клиенту выставляется больше себестоимости. */
+  multiplier: number;
   budget: {
+    capRub: number;
+    todaySpendRub: number;
+    remainingRub: number;
+    monthSpendRub: number;
+    todayPriceRub: number;
+    monthPriceRub: number;
     capUsd: number;
     warnUsd: number;
     todaySpendUsd: number;
@@ -578,6 +588,8 @@ export type PipelineRunStats = {
     publishedMonth: number;
     /** Считается по месяцу: дневная выборка слишком мала для честной цифры. */
     costPerPublishedUsd: number | null;
+    costPerPublishedRub: number | null;
+    pricePerPublishedRub: number | null;
   };
   byAgent: Array<{ agent: PipelineAgent; runs: number; spendUsd: number }>;
   series7d: Array<{ day: string; spendUsd: number; runs: number }>;

@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { can } from "@x10/config";
+import { CLIENT_PRICE_MULTIPLIER, can, usdToRub } from "@x10/config";
 import {
   and,
   articles,
@@ -251,8 +251,17 @@ export const adminRoute = new Hono<AppEnv>()
       });
     }
 
+    // 🔴 Считаем в рублях: тариф шлюза рублёвый, и клиент платит рублями.
+    // Доллары остаются внутри — на них работает дневной потолок бюджета.
+    //
+    // Цена клиенту = себестоимость × наценка (решение владельца 06.08.2026:
+    // «платим мы, клиент платит нам по нашему тарифу»).
+    const rub = (usd: number) => Math.round(usdToRub(usd) * 100) / 100;
+
     return c.json({
       money: true as const,
+      currency: "RUB" as const,
+      multiplier: CLIENT_PRICE_MULTIPLIER,
       budget: {
         capUsd,
         warnUsd,
@@ -261,6 +270,14 @@ export const adminRoute = new Hono<AppEnv>()
         pct: capUsd > 0 ? Math.min(100, Math.round((todaySpendUsd / capUsd) * 100)) : 0,
         remainingUsd: Math.max(0, capUsd - todaySpendUsd),
         monthSpendUsd,
+        // Рублёвые эквиваленты того же самого — считать в уме курс не должен
+        // никто, а счёт клиенту выставляется именно в рублях.
+        capRub: rub(capUsd),
+        todaySpendRub: rub(todaySpendUsd),
+        remainingRub: rub(Math.max(0, capUsd - todaySpendUsd)),
+        monthSpendRub: rub(monthSpendUsd),
+        todayPriceRub: rub(todaySpendUsd) * CLIENT_PRICE_MULTIPLIER,
+        monthPriceRub: rub(monthSpendUsd) * CLIENT_PRICE_MULTIPLIER,
       },
       /**
        * Что получено за деньги. Цена поста считается ПО МЕСЯЦУ, а не по дню:
@@ -271,6 +288,9 @@ export const adminRoute = new Hono<AppEnv>()
         publishedToday,
         publishedMonth,
         costPerPublishedUsd: publishedMonth > 0 ? monthSpendUsd / publishedMonth : null,
+        costPerPublishedRub: publishedMonth > 0 ? rub(monthSpendUsd / publishedMonth) : null,
+        pricePerPublishedRub:
+          publishedMonth > 0 ? rub(monthSpendUsd / publishedMonth) * CLIENT_PRICE_MULTIPLIER : null,
       },
       byAgent: byAgentRows.map((r) => ({
         agent: r.agent,

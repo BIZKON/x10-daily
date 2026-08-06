@@ -134,6 +134,13 @@
       "when": 1781356572448,
       "tag": "0018_agent_kind_rewrite",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1781442972448,
+      "tag": "0019_pipeline_runs_cost_rub",
+      "breakpoints": true
     }
   ]
 }

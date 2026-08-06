@@ -202,6 +202,10 @@ services:
       X10_API_BASE_URL: "http://api:8080"
       NEXT_PUBLIC_API_URL: "https://api.${X10_BASE_DOMAIN:-pro-agent-ai.ru}"
       NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: "${NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:-}"
+      # Публичный адрес кабинета — из него строится пригласительная ссылка
+      # (Спека 5). Без него приглашение создастся, но вести будет некуда, и
+      # форма честно об этом скажет вместо битой ссылки.
+      X10_ADMIN_PUBLIC_URL: "${X10_ADMIN_PUBLIC_URL:-https://admin.${X10_BASE_DOMAIN:-pro-agent-ai.ru}}"
       SENTRY_DSN: "${SENTRY_DSN:-}"
     expose:
       - "3001"

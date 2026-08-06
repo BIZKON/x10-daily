@@ -25,7 +25,10 @@ function getApiBaseUrl(): string | null {
 
 export type LoginResult =
   | { ok: true }
-  | { ok: false; reason: "no_backend" | "tg_invalid" | "forbidden" | "network" | "disabled" };
+  | {
+      ok: false;
+      reason: "no_backend" | "tg_invalid" | "forbidden" | "network" | "disabled" | "invite_invalid";
+    };
 
 export interface TelegramWidgetUser {
   id: number;
@@ -69,12 +72,23 @@ async function postAuth(
 
 export async function loginWithTelegramWidgetAction(
   widgetUser: TelegramWidgetUser,
+  /**
+   * Секрет пригласительной ссылки (Спека 5). С ним войдёт и тот, кого ещё нет
+   * в команде: подпись Telegram доказывает, КТО человек, приглашение — что его
+   * позвали.
+   */
+  inviteToken?: string,
 ): Promise<LoginResult> {
   if (!getApiBaseUrl()) return { ok: false, reason: "no_backend" };
-  const { result, status } = await postAuth("/v1/auth/telegram-widget", widgetUser);
+  const { result, status } = await postAuth("/v1/auth/telegram-widget", {
+    ...widgetUser,
+    ...(inviteToken ? { inviteToken } : {}),
+  });
   if (!result) {
     if (status === 403) return { ok: false, reason: "forbidden" };
     if (status === 401) return { ok: false, reason: "tg_invalid" };
+    // 404/409 приходят только от приглашения: ссылки нет либо она отработала.
+    if (status === 404 || status === 409) return { ok: false, reason: "invite_invalid" };
     return { ok: false, reason: "network" };
   }
   await setSessionToken(result.token, result.expiresAt);

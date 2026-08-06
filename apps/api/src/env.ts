@@ -1,4 +1,4 @@
-import { loadEnv, type Env as BaseEnv } from "@x10/config";
+import { type Env as BaseEnv, loadEnv } from "@x10/config";
 import type { AppBindings, ObjectStorage } from "./bindings";
 
 /**

@@ -1,12 +1,4 @@
-import {
-  index,
-  integer,
-  pgEnum,
-  pgTable,
-  timestamp,
-  uuid,
-  varchar,
-} from "drizzle-orm/pg-core";
+import { index, integer, pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { id, timestamps } from "./_shared";
 import { users } from "./users";
 

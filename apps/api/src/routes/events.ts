@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, asc, eq, events, gte, sql } from "@x10/db";
+import { events, and, asc, eq, gte, sql } from "@x10/db";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../app";
@@ -16,9 +16,7 @@ import { getEnv } from "../env";
 const listQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(30),
   city: z.string().optional(),
-  type: z
-    .enum(["kod-x10", "meet-up", "breakfast", "festival", "webinar"])
-    .optional(),
+  type: z.enum(["kod-x10", "meet-up", "breakfast", "festival", "webinar"]).optional(),
   online: z
     .enum(["true", "false"])
     .optional()

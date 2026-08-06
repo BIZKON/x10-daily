@@ -30,7 +30,14 @@ type Status =
   | { kind: "error"; message: string }
   | { kind: "ok" };
 
-export function TgLoginWidget({ botUsername }: { botUsername: string }) {
+export function TgLoginWidget({
+  botUsername,
+  inviteToken,
+}: {
+  botUsername: string;
+  /** Секрет пригласительной ссылки — со страницы /join. */
+  inviteToken?: string;
+}) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
   const search = useSearchParams();
@@ -43,7 +50,7 @@ export function TgLoginWidget({ botUsername }: { botUsername: string }) {
     window.__x10_tg_auth = (user: TelegramWidgetUser) => {
       startTransition(async () => {
         setStatus({ kind: "submitting" });
-        const result = await loginWithTelegramWidgetAction(user);
+        const result = await loginWithTelegramWidgetAction(user, inviteToken);
         if (result.ok) {
           setStatus({ kind: "ok" });
           const next = search.get("next") || "/";
@@ -53,12 +60,14 @@ export function TgLoginWidget({ botUsername }: { botUsername: string }) {
         }
         const message =
           result.reason === "forbidden"
-            ? "Недостаточно прав. Доступ к админке открыт только редакторам."
-            : result.reason === "tg_invalid"
-              ? "Telegram-подпись не прошла верификацию. Перезагрузите страницу."
-              : result.reason === "no_backend"
-                ? "Backend не доступен (X10_API_BASE_URL не задан)."
-                : "Ошибка сети. Попробуйте ещё раз.";
+            ? "Этот Telegram-аккаунт не в команде. Попросите владельца прислать приглашение."
+            : result.reason === "invite_invalid"
+              ? "Ссылка-приглашение не действует: истекла, отозвана или уже использована. Попросите новую."
+              : result.reason === "tg_invalid"
+                ? "Telegram не подтвердил вход. Перезагрузите страницу и попробуйте снова."
+                : result.reason === "no_backend"
+                  ? "Кабинет не подключён к серверу — сообщите администратору."
+                  : "Не удалось связаться с сервером. Попробуйте ещё раз.";
         setStatus({ kind: "error", message });
       });
     };

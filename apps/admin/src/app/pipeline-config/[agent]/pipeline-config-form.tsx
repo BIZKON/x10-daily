@@ -1,9 +1,4 @@
-import {
-  CheckboxInput,
-  Field,
-  SelectInput,
-  TextInput,
-} from "@/components/form/field";
+import { CheckboxInput, Field, SelectInput, TextInput } from "@/components/form/field";
 import { SubmitButton } from "@/components/form/submit-button";
 import type { AdminPipelineConfig } from "@/lib/api";
 
@@ -42,7 +37,7 @@ export function PipelineConfigForm({
       <Field
         label="Model override"
         htmlFor="modelOverride"
-        hint='«По умолчанию» = модель из кода (см. packages/agents/src/agents/). Override — для эксперимента или экономии.'
+        hint="«По умолчанию» = модель из кода (см. packages/agents/src/agents/). Override — для эксперимента или экономии."
       >
         <SelectInput
           id="modelOverride"
@@ -61,7 +56,7 @@ export function PipelineConfigForm({
           id="confidenceThreshold"
           name="confidenceThreshold"
           type="number"
-          defaultValue={parseFloat(defaults.confidenceThreshold).toFixed(3)}
+          defaultValue={Number.parseFloat(defaults.confidenceThreshold).toFixed(3)}
         />
       </Field>
 

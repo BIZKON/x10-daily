@@ -1,8 +1,8 @@
+import { type ArticleDetail, fetchArticleDetail } from "@/lib/api";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { fetchArticleDetail, type ArticleDetail } from "@/lib/api";
 import { publishAction } from "./publish-action";
 
 // Cache Components (Next 16): async data (params/searchParams/fetch) ДОЛЖНА
@@ -140,7 +140,8 @@ function DraftPanel({ article }: { article: ArticleDetail }) {
       )}
 
       <div className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.15em] text-mist">
-        Body ({article.body.length} блоков · {article.wordCount} слов · {Math.round(article.readSeconds / 60)} мин)
+        Body ({article.body.length} блоков · {article.wordCount} слов ·{" "}
+        {Math.round(article.readSeconds / 60)} мин)
       </div>
       <div className="space-y-4">
         {article.body.map((block, i) => (
@@ -211,7 +212,9 @@ function BodyBlock({ block }: { block: ArticleDetail["body"][number] }) {
       );
     case "list":
       return (
-        <ul className={`ml-5 space-y-1 text-[14px] ${block.ordered ? "list-decimal" : "list-disc"}`}>
+        <ul
+          className={`ml-5 space-y-1 text-[14px] ${block.ordered ? "list-decimal" : "list-disc"}`}
+        >
           {block.items.map((it, i) => (
             <li key={i}>{it}</li>
           ))}
@@ -241,12 +244,7 @@ function ScorePanel({ metadata }: { metadata: ArticleDetail["metadata"] }) {
     { k: "Structure", v: score.breakdown.structureFormat },
     { k: "Ready", v: score.breakdown.publishReadiness },
   ];
-  const cls =
-    score.total >= 40
-      ? "text-success"
-      : score.total >= 30
-        ? "text-gold"
-        : "text-red";
+  const cls = score.total >= 40 ? "text-success" : score.total >= 30 ? "text-gold" : "text-red";
   return (
     <Card title="PreviewScore">
       <div className="mb-3 flex items-baseline gap-2">
@@ -302,7 +300,9 @@ function FactCheckPanel({ metadata }: { metadata: ArticleDetail["metadata"] }) {
           <li key={i} className="rounded-lg border border-fence bg-night p-2.5">
             <div className="flex items-center gap-2">
               <span className="font-mono text-[10px] text-gold">{c.location}</span>
-              <span className={`font-mono text-[10px] ${c.verdict === "supported" ? "text-success" : c.verdict === "contradicted" ? "text-red" : "text-gold"}`}>
+              <span
+                className={`font-mono text-[10px] ${c.verdict === "supported" ? "text-success" : c.verdict === "contradicted" ? "text-red" : "text-gold"}`}
+              >
                 {c.verdict}
               </span>
               <span className="font-mono text-[10px] text-haze">{c.confidence}</span>
@@ -327,7 +327,11 @@ function PublishPanel({ id, status }: { id: string; status: string }) {
           disabled={!canPublish}
           className="w-full rounded-xl bg-red px-5 py-3 font-display text-[14px] font-extrabold text-white transition-colors hover:bg-red-deep disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {canPublish ? "Publish →" : status === "published" ? "Уже опубликовано" : `Статус: ${status}`}
+          {canPublish
+            ? "Publish →"
+            : status === "published"
+              ? "Уже опубликовано"
+              : `Статус: ${status}`}
         </button>
       </form>
       <p className="m-0 mt-2 text-[11px] text-haze">

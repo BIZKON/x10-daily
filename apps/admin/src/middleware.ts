@@ -13,18 +13,20 @@
  *
  * matcher исключает _next/static, _next/image и favicon — иначе перфоманс.
  */
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "./lib/session";
 
-const PUBLIC_PATHS = new Set(["/login"]);
+// 🔴 /join обязан быть публичным: по пригласительной ссылке приходит человек
+// БЕЗ сессии, и редирект на /login оставил бы его без единственного способа
+// войти — приглашение туда не передаётся.
+const PUBLIC_PATHS = new Set(["/login", "/join"]);
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Demo mode bypass — без X10_API_BASE_URL admin рендерит mocks.
   // NODE_ENV check защищает от bypass в prod (если ENV неправильно собран).
-  const isDemoMode =
-    !process.env.X10_API_BASE_URL?.trim() && process.env.NODE_ENV !== "production";
+  const isDemoMode = !process.env.X10_API_BASE_URL?.trim() && process.env.NODE_ENV !== "production";
   if (isDemoMode) return NextResponse.next();
 
   if (PUBLIC_PATHS.has(pathname)) return NextResponse.next();

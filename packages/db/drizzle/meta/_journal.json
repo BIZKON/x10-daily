@@ -113,6 +113,13 @@
       "when": 1781097372448,
       "tag": "0015_channel_post_mode",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1781183772448,
+      "tag": "0016_team_invites",
+      "breakpoints": true
     }
   ]
 }

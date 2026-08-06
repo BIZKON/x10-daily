@@ -10,6 +10,7 @@ import {
   Power,
   Rss,
   Users,
+  UsersRound,
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
@@ -44,6 +45,7 @@ export function Sidebar() {
         <NavItem href="/visuals" label="Обложки" icon={ImageIcon} active={isActive("/visuals")} />
 
         <NavSection label="Настройки" />
+        <NavItem href="/team" label="Команда" icon={UsersRound} active={isActive("/team")} />
         <NavItem href="/sources" label="Источники" icon={Rss} active={isActive("/sources")} />
         <NavItem href="/rubrics" label="Рубрики" icon={Layers} active={isActive("/rubrics")} />
         <NavItem

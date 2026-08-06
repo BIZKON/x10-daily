@@ -1,4 +1,4 @@
-import { createDb, type Database } from "@x10/db";
+import { type Database, createDb } from "@x10/db";
 
 let cached: { url: string; db: Database } | undefined;
 

@@ -1,13 +1,7 @@
 import { index, pgEnum, pgTable, text, varchar } from "drizzle-orm/pg-core";
 import { id, timestamps } from "./_shared";
 
-export const userRole = pgEnum("user_role", [
-  "reader",
-  "subscriber",
-  "author",
-  "editor",
-  "admin",
-]);
+export const userRole = pgEnum("user_role", ["reader", "subscriber", "author", "editor", "admin"]);
 
 export const userPlatform = pgEnum("user_platform", ["telegram", "max", "web"]);
 

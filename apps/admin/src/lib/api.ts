@@ -1,3 +1,4 @@
+import type { TeamRole } from "@x10/config";
 /**
  * HTTP-клиент к admin API (apps/api). Server-side only.
  *
@@ -347,6 +348,37 @@ async function getJson<T>(path: string): Promise<T | null> {
   } catch {
     return null;
   }
+}
+
+export type TeamMember = {
+  id: string;
+  username: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  role: TeamRole | null;
+  createdAt: string;
+  isMe: boolean;
+};
+
+export type TeamInvite = {
+  id: string;
+  role: TeamRole;
+  createdAt: string;
+  expiresAt: string;
+  maxUses: number;
+  usedCount: number;
+  acceptedAt: string | null;
+};
+
+export async function fetchTeam(): Promise<{
+  me: { id: string; role: TeamRole | null };
+  items: TeamMember[];
+} | null> {
+  return getJson("/v1/admin/team");
+}
+
+export async function fetchTeamInvites(): Promise<{ items: TeamInvite[] } | null> {
+  return getJson("/v1/admin/team/invites");
 }
 
 export async function fetchAdminSources(): Promise<{ items: AdminSource[] } | null> {

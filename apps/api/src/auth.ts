@@ -1,9 +1,16 @@
-import type { Context } from "hono";
-import { HTTPException } from "hono/http-exception";
+import {
+  type Permission,
+  TEAM_ROLE_LABEL,
+  type TeamRole,
+  can,
+  teamRoleFromDbRole,
+} from "@x10/config";
 import { eq, users } from "@x10/db";
 import type { Database } from "@x10/db";
+import type { Context } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { getEnv } from "./env";
-import { verifySession, type SessionClaims } from "./lib/jwt";
+import { type SessionClaims, verifySession } from "./lib/jwt";
 
 /**
  * Session auth — Authorization: Bearer <JWT> (HIGH-2).
@@ -109,4 +116,43 @@ export async function requireRole(
     });
   }
   return { userId: claims.userId, role };
+}
+
+/**
+ * Auth + проверка ПРАВА (Спека 5). Предпочтительнее `requireRole`: решение
+ * принимает единая карта `@x10/config`, а не список ролей, продублированный в
+ * каждом маршруте.
+ *
+ * Такой же DB-roundtrip за свежей ролью: понижение роли отзывает старый JWT
+ * при следующем запросе.
+ *
+ * 403 говорит, ЧЕГО не хватает и что делать — сообщение видит живой человек в
+ * кабинете клиента, а не только лог.
+ */
+export async function requirePermission(
+  c: Context,
+  db: Database,
+  permission: Permission,
+): Promise<{ userId: string; role: UserRole; teamRole: TeamRole }> {
+  const claims = await extractSession(c);
+  const [row] = await db
+    .select({ role: users.role })
+    .from(users)
+    .where(eq(users.id, claims.userId))
+    .limit(1);
+  if (!row) {
+    throw new HTTPException(401, {
+      message: "User не найден — токен ссылается на удалённую запись",
+    });
+  }
+  const role = row.role as UserRole;
+  const teamRole = teamRoleFromDbRole(role);
+  if (!teamRole || !can(teamRole, permission)) {
+    throw new HTTPException(403, {
+      message: teamRole
+        ? `Роль «${TEAM_ROLE_LABEL[teamRole]}» не может выполнить это действие. Попросите владельца изменить вашу роль.`
+        : "Ваш аккаунт не входит в команду. Попросите владельца прислать приглашение.",
+    });
+  }
+  return { userId: claims.userId, role, teamRole };
 }

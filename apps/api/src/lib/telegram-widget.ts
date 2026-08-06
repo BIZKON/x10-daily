@@ -150,7 +150,10 @@ export async function verifyTelegramWidget(
   };
 }
 
-function stringOrUndef(payload: Record<string, unknown> | TelegramWidgetPayload, key: string): string | undefined {
+function stringOrUndef(
+  payload: Record<string, unknown> | TelegramWidgetPayload,
+  key: string,
+): string | undefined {
   const v = (payload as Record<string, unknown>)[key];
   return typeof v === "string" && v.length > 0 ? v : undefined;
 }

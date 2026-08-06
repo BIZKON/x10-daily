@@ -1,8 +1,8 @@
 "use server";
 
+import { publishArticle } from "@/lib/api";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { publishArticle } from "@/lib/api";
 
 export async function publishAction(formData: FormData) {
   const id = formData.get("id");

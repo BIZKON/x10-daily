@@ -9,6 +9,7 @@
  * Next.js домене, в API-запросах кладёт Authorization: Bearer <token>.
  */
 import { zValidator } from "@hono/zod-validator";
+import { teamRoleFromDbRole } from "@x10/config";
 import { and, eq, users } from "@x10/db";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
@@ -19,6 +20,7 @@ import { getDb } from "../db";
 import { getEnv } from "../env";
 import { type TelegramInitDataUser, verifyInitData } from "../lib/initdata";
 import { signSession, verifySession } from "../lib/jwt";
+import { redeemInvite } from "../lib/redeem-invite";
 import { verifyTelegramWidget } from "../lib/telegram-widget";
 import { applyRateLimit } from "../rate-limit";
 
@@ -38,6 +40,12 @@ const widgetLoginSchema = z.object({
   photo_url: z.string().max(512).optional(),
   auth_date: z.union([z.number(), z.string()]),
   hash: z.string().regex(/^[a-f0-9]{64}$/i, "hash must be 64-char hex"),
+  /**
+   * Секрет пригласительной ссылки (Спека 5). Позволяет войти тому, кого ещё
+   * нет в команде: подпись Telegram доказывает, КТО человек, а приглашение —
+   * что его позвали.
+   */
+  inviteToken: z.string().min(16).max(64).optional(),
 });
 
 function requireBotToken(env: { TELEGRAM_BOT_TOKEN?: string }): string {
@@ -159,20 +167,41 @@ export const authRoute = new Hono<AppEnv>()
       .where(and(eq(users.platform, "telegram"), eq(users.platformUserId, platformUserId)))
       .limit(1);
 
-    if (!user) {
+    // Вход по приглашению (Спека 5): подпись Telegram доказывает, КТО человек,
+    // а приглашение — что его позвали. Погашение атомарно, гонку «двое открыли
+    // одну ссылку» разрешает база, а не порядок запросов (см. redeemInvite).
+    let member = user;
+    if (payload.inviteToken) {
+      const granted = await redeemInvite(db, {
+        token: payload.inviteToken,
+        platformUserId,
+        existingUserId: user?.id ?? null,
+        username: verified.username ?? null,
+        displayName: [verified.first_name, verified.last_name].filter(Boolean).join(" ") || null,
+        avatarUrl: verified.photo_url ?? null,
+      });
+      if (!granted.ok) {
+        throw new HTTPException(granted.status, { message: granted.message });
+      }
+      member = granted.user;
+    }
+
+    if (!member) {
       throw new HTTPException(403, {
         message: "Этот Telegram-аккаунт не в команде. Попросите владельца прислать приглашение.",
       });
     }
-    const role = user.role as UserRole;
-    if (!EDITOR_ROLES.includes(role as (typeof EDITOR_ROLES)[number])) {
+    const role = member.role as UserRole;
+    // Членство в команде = любая роль, кроме читателя мини-аппа. Раньше здесь
+    // стоял EDITOR_ROLES, из-за чего Автор и Наблюдатель войти не могли.
+    if (!teamRoleFromDbRole(role)) {
       throw new HTTPException(403, {
         message: "У вашего аккаунта нет доступа в кабинет. Попросите владельца выдать роль.",
       });
     }
 
     const token = await signSession(
-      { userId: user.id, role },
+      { userId: member.id, role },
       { secret: jwtSecret, ttlSeconds: ttl },
     );
     const expiresAt = Math.floor(Date.now() / 1000) + ttl;
@@ -181,12 +210,12 @@ export const authRoute = new Hono<AppEnv>()
       token,
       expiresAt,
       user: {
-        id: user.id,
+        id: member.id,
         role,
-        displayName: user.displayName,
-        username: user.username,
-        avatarUrl: user.avatarUrl,
-        locale: user.locale,
+        displayName: member.displayName,
+        username: member.username,
+        avatarUrl: member.avatarUrl,
+        locale: member.locale,
       },
     });
   })

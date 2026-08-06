@@ -20,17 +20,23 @@ export default function RootLayout({
   return (
     <html lang="ru" className={`${fontSans.variable} ${fontDisplay.variable} ${fontMono.variable}`}>
       <body className="min-h-dvh">
-        <div className="flex min-h-dvh">
+        {/* На телефоне меню становится шапкой сверху, поэтому колонка → строка
+            только с md. Без этого колонка в 240 px съедала две трети экрана. */}
+        <div className="flex min-h-dvh flex-col md:flex-row">
           {/* Cache Components (Next 16): Sidebar — 'use client' + usePathname()
               → dynamic URL-access → ДОЛЖЕН быть в <Suspense>, иначе prerender
               падает «Uncached data outside of Suspense». Placeholder того же
               размера (w-60), чтобы не было layout shift. Покрывает все страницы. */}
-          <Suspense fallback={<aside className="w-60 shrink-0 border-r border-fence bg-card" />}>
+          <Suspense
+            fallback={
+              <aside className="hidden w-60 shrink-0 border-r border-fence bg-card md:block" />
+            }
+          >
             <SidebarWithRole />
           </Suspense>
           <main className="flex-1 overflow-x-hidden">
             <DemoBanner />
-            <div className="mx-auto max-w-[1280px] px-8 py-6">{children}</div>
+            <div className="mx-auto max-w-[1280px] px-4 py-4 md:px-8 md:py-6">{children}</div>
           </main>
         </div>
       </body>

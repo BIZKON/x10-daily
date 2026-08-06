@@ -7,16 +7,19 @@ import {
   FileCheck2,
   Image as ImageIcon,
   Layers,
+  Menu,
   Mic,
   Power,
   Rss,
   Users,
   UsersRound,
   Wallet,
+  X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 /**
  * Admin sidebar — boсковая навигация с активной подсветкой.
@@ -71,46 +74,107 @@ const SECTIONS: Array<{
   },
 ];
 
+/**
+ * Экраны ДО входа: там меню не нужно и вредно. На телефоне колонка в 240 px
+ * съедала две трети ширины, карточка входа сжималась до ~135 px, и кнопка
+ * Telegram уезжала за край — нажать её было физически нельзя.
+ */
+const PRE_AUTH = new Set(["/login", "/join"]);
+
 export function Sidebar({ role }: { role: TeamRole | null }) {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
+  // Навигация закрывает выдвижную панель: без этого после перехода она остаётся
+  // висеть поверх новой страницы.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: закрываем именно на смену маршрута
+  useEffect(() => setOpen(false), [pathname]);
+
+  if (PRE_AUTH.has(pathname)) return null;
+
+  const nav = (
+    <nav className="flex-1 px-3 py-4">
+      {SECTIONS.map((section) => {
+        const visible = section.items.filter((i) => can(role, i.permission));
+        if (visible.length === 0) return null;
+        return (
+          <div key={section.label ?? "root"}>
+            {section.label && <NavSection label={section.label} />}
+            {visible.map((i) => (
+              <NavItem
+                key={i.href}
+                href={i.href}
+                label={i.label}
+                icon={i.icon}
+                active={isActive(i.href)}
+              />
+            ))}
+          </div>
+        );
+      })}
+    </nav>
+  );
+
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-fence bg-card">
-      <div className="border-b border-fence px-5 py-5">
-        <Link href="/" className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-red font-display text-[13px] font-extrabold text-white">
-            PA
-          </span>
-          <span className="font-display text-[15px] font-extrabold">ProAgent AI Admin</span>
-        </Link>
+    <>
+      {/* Телефон: шапка с кнопкой меню. Колонка на такой ширине не помещается. */}
+      <div className="sticky top-0 z-40 flex items-center gap-3 border-b border-fence bg-card px-4 py-3 md:hidden">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="Открыть меню"
+          className="grid h-9 w-9 place-items-center rounded-lg border border-fence text-mist"
+        >
+          <Menu size={18} strokeWidth={2} />
+        </button>
+        <Logo />
       </div>
 
-      <nav className="flex-1 px-3 py-4">
-        {SECTIONS.map((section) => {
-          const visible = section.items.filter((i) => can(role, i.permission));
-          if (visible.length === 0) return null;
-          return (
-            <div key={section.label ?? "root"}>
-              {section.label && <NavSection label={section.label} />}
-              {visible.map((i) => (
-                <NavItem
-                  key={i.href}
-                  href={i.href}
-                  label={i.label}
-                  icon={i.icon}
-                  active={isActive(i.href)}
-                />
-              ))}
+      {open && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <button
+            type="button"
+            aria-label="Закрыть меню"
+            onClick={() => setOpen(false)}
+            className="absolute inset-0 bg-night/70"
+          />
+          <aside className="absolute inset-y-0 left-0 flex w-64 max-w-[85vw] flex-col overflow-y-auto border-r border-fence bg-card">
+            <div className="flex items-center justify-between border-b border-fence px-5 py-4">
+              <Logo />
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Закрыть меню"
+                className="grid h-8 w-8 place-items-center rounded-lg border border-fence text-mist"
+              >
+                <X size={16} strokeWidth={2} />
+              </button>
             </div>
-          );
-        })}
-      </nav>
+            {nav}
+          </aside>
+        </div>
+      )}
 
-      <div className="border-t border-fence px-5 py-4 text-[11px] text-haze">
-        MVP. Auth не подключён.
-      </div>
-    </aside>
+      {/* Десктоп: постоянная колонка, как было. */}
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-fence bg-card md:flex">
+        <div className="border-b border-fence px-5 py-5">
+          <Logo />
+        </div>
+        {nav}
+      </aside>
+    </>
+  );
+}
+
+function Logo() {
+  return (
+    <Link href="/" className="flex items-center gap-2.5">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red font-display text-[13px] font-extrabold text-white">
+        PA
+      </span>
+      <span className="font-display text-[15px] font-extrabold">Кабинет ProAgent AI</span>
+    </Link>
   );
 }
 

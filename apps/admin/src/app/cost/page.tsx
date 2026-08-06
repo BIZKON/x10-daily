@@ -1,4 +1,8 @@
-import { type PipelineRunStats, fetchPipelineRunStats } from "@/lib/api";
+import {
+  type PipelineRunStats,
+  type PipelineRunStatsNoMoney,
+  fetchPipelineRunStats,
+} from "@/lib/api";
 import { AlertTriangle, Ban, CircleCheck, Wallet } from "lucide-react";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -53,7 +57,13 @@ async function CostContent() {
         </p>
       </header>
 
-      {!stats ? <ApiUnavailable /> : <Dashboard stats={stats} />}
+      {!stats ? (
+        <ApiUnavailable />
+      ) : stats.money === false ? (
+        <ResultOnly result={stats.result} />
+      ) : (
+        <Dashboard stats={stats} />
+      )}
     </>
   );
 }
@@ -66,6 +76,33 @@ function ApiUnavailable() {
         Не задан <code className="font-mono text-paper">X10_API_BASE_URL</code>, api не отвечает,
         или сессия не установлена (войди через <code className="font-mono text-paper">/login</code>{" "}
         — эндпоинт требует роль editor/admin).
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Вид для роли без права на суммы (Наблюдатель). Денежных полей здесь нет не
+ * потому, что они спрятаны, — api их не прислал вовсе.
+ */
+function ResultOnly({ result }: { result: PipelineRunStatsNoMoney["result"] }) {
+  return (
+    <div className="space-y-5">
+      <section className="grid gap-px overflow-hidden rounded-2xl border border-fence bg-fence sm:grid-cols-2">
+        <Metric
+          label="Вышло сегодня"
+          value={String(result.publishedToday)}
+          note={result.publishedToday === 0 ? "публикаций пока нет" : "публикаций"}
+        />
+        <Metric
+          label="Вышло за месяц"
+          value={String(result.publishedMonth)}
+          note="публикаций с 1-го числа"
+        />
+      </section>
+      <p className="m-0 text-[12.5px] leading-[1.55] text-haze">
+        Суммы расходов доступны владельцу и редакторам. Если они вам нужны, попросите владельца
+        изменить вашу роль.
       </p>
     </div>
   );

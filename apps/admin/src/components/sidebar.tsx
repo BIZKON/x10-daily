@@ -1,5 +1,6 @@
 "use client";
 
+import { type Permission, type TeamRole, can } from "@x10/config";
 import {
   Calendar,
   Cpu,
@@ -13,6 +14,7 @@ import {
   UsersRound,
   Wallet,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -20,7 +22,56 @@ import { usePathname } from "next/navigation";
  * Admin sidebar — boсковая навигация с активной подсветкой.
  * Client component, потому что usePathname нужен для active state.
  */
-export function Sidebar() {
+/**
+ * Меню описано данными: у каждого пункта своё право. Разметка вразнобой
+ * («если роль editor…») неизбежно разъедется с картой прав — а разъехавшееся
+ * меню показывает клиенту раздел, который тут же отдаст ему отказ.
+ *
+ * ⚠️ Скрытый пункт — НЕ защита. Право проверяет api на каждом запросе; здесь
+ * мы лишь не предлагаем то, что заведомо не сработает.
+ */
+const SECTIONS: Array<{
+  label: string | null;
+  items: Array<{
+    href: string;
+    label: string;
+    icon: LucideIcon;
+    permission: Permission;
+  }>;
+}> = [
+  {
+    label: null,
+    items: [{ href: "/", label: "Очередь", icon: FileCheck2, permission: "content.view" }],
+  },
+  {
+    label: "Контент",
+    items: [
+      { href: "/authors", label: "Авторы", icon: Users, permission: "catalog.manage" },
+      { href: "/events", label: "События", icon: Calendar, permission: "catalog.manage" },
+      { href: "/digests", label: "Дайджесты", icon: Mic, permission: "catalog.manage" },
+      // Обложки — часть выпуска наружу, поэтому право на публикацию.
+      { href: "/visuals", label: "Обложки", icon: ImageIcon, permission: "content.publish" },
+    ],
+  },
+  {
+    label: "Настройки",
+    items: [
+      { href: "/team", label: "Команда", icon: UsersRound, permission: "team.manage" },
+      { href: "/sources", label: "Источники", icon: Rss, permission: "catalog.manage" },
+      { href: "/rubrics", label: "Рубрики", icon: Layers, permission: "catalog.manage" },
+      {
+        href: "/pipeline-config",
+        label: "Конвейер",
+        icon: Cpu,
+        permission: "settings.manage",
+      },
+      { href: "/cost", label: "Расходы", icon: Wallet, permission: "content.view" },
+      { href: "/posting", label: "Постинг", icon: Power, permission: "settings.manage" },
+    ],
+  },
+];
+
+export function Sidebar({ role }: { role: TeamRole | null }) {
   const pathname = usePathname();
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
@@ -36,26 +87,24 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-4">
-        <NavItem href="/" label="Очередь" icon={FileCheck2} active={isActive("/")} />
-
-        <NavSection label="Контент" />
-        <NavItem href="/authors" label="Авторы" icon={Users} active={isActive("/authors")} />
-        <NavItem href="/events" label="События" icon={Calendar} active={isActive("/events")} />
-        <NavItem href="/digests" label="Дайджесты" icon={Mic} active={isActive("/digests")} />
-        <NavItem href="/visuals" label="Обложки" icon={ImageIcon} active={isActive("/visuals")} />
-
-        <NavSection label="Настройки" />
-        <NavItem href="/team" label="Команда" icon={UsersRound} active={isActive("/team")} />
-        <NavItem href="/sources" label="Источники" icon={Rss} active={isActive("/sources")} />
-        <NavItem href="/rubrics" label="Рубрики" icon={Layers} active={isActive("/rubrics")} />
-        <NavItem
-          href="/pipeline-config"
-          label="Pipeline config"
-          icon={Cpu}
-          active={isActive("/pipeline-config")}
-        />
-        <NavItem href="/cost" label="Расходы" icon={Wallet} active={isActive("/cost")} />
-        <NavItem href="/posting" label="Постинг" icon={Power} active={isActive("/posting")} />
+        {SECTIONS.map((section) => {
+          const visible = section.items.filter((i) => can(role, i.permission));
+          if (visible.length === 0) return null;
+          return (
+            <div key={section.label ?? "root"}>
+              {section.label && <NavSection label={section.label} />}
+              {visible.map((i) => (
+                <NavItem
+                  key={i.href}
+                  href={i.href}
+                  label={i.label}
+                  icon={i.icon}
+                  active={isActive(i.href)}
+                />
+              ))}
+            </div>
+          );
+        })}
       </nav>
 
       <div className="border-t border-fence px-5 py-4 text-[11px] text-haze">

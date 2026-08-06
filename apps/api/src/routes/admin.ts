@@ -1,4 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
+import { can } from "@x10/config";
 import {
   and,
   articles,
@@ -15,7 +16,7 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../app";
-import { EDITOR_ROLES, requireRole } from "../auth";
+import { EDITOR_ROLES, requirePermission, requireRole } from "../auth";
 import { getDb } from "../db";
 import { getEnv } from "../env";
 
@@ -126,7 +127,11 @@ export const adminRoute = new Hono<AppEnv>()
   .get("/pipeline-runs/stats", async (c) => {
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
-    await requireRole(c, db, EDITOR_ROLES);
+    // Смотреть результат работы конвейера может вся команда; СУММЫ — только те,
+    // кому дано `cost.view`. Наблюдателю (заказчик, агентство) себестоимость не
+    // показываем: см. карту прав в @x10/config.
+    const me = await requirePermission(c, db, "content.view");
+    const showMoney = can(me.teamRole, "cost.view");
 
     const mskToday = sql`date_trunc('day', now() AT TIME ZONE 'Europe/Moscow') AT TIME ZONE 'Europe/Moscow'`;
     const msk7dStart = sql`(date_trunc('day', now() AT TIME ZONE 'Europe/Moscow') - interval '6 days') AT TIME ZONE 'Europe/Moscow'`;
@@ -228,7 +233,21 @@ export const adminRoute = new Hono<AppEnv>()
     const publishedMonth = publishedAgg[0]?.month ?? 0;
     const iso = (v: unknown) => (v instanceof Date ? v.toISOString() : String(v));
 
+    // 🔴 Суммы вырезаются НА СЕРВЕРЕ, а не прячутся в вёрстке: спрятанное поле
+    // всё равно уходит по сети и видно в ответе api.
+    if (!showMoney) {
+      return c.json({
+        money: false as const,
+        result: {
+          publishedToday,
+          publishedMonth,
+          costPerPublishedUsd: null,
+        },
+      });
+    }
+
     return c.json({
+      money: true as const,
       budget: {
         capUsd,
         warnUsd,

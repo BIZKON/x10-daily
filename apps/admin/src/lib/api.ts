@@ -1,4 +1,4 @@
-import type { TeamRole } from "@x10/config";
+import { type TeamRole, teamRoleFromDbRole } from "@x10/config";
 /**
  * HTTP-клиент к admin API (apps/api). Server-side only.
  *
@@ -370,6 +370,19 @@ export type TeamInvite = {
   acceptedAt: string | null;
 };
 
+/**
+ * Кто я и какая у меня роль в команде. Нужен раскладке, чтобы показывать в меню
+ * только доступные разделы.
+ *
+ * Роль берём у api, а не разбираем JWT сами: у админки нет ключа подписи, и
+ * «прочитать токен без проверки» — ровно тот приём, из-за которого доверяют
+ * подделанным данным.
+ */
+export async function fetchMyRole(): Promise<TeamRole | null> {
+  const me = await getJson<{ user?: { role?: string } }>("/v1/auth/me");
+  return teamRoleFromDbRole(me?.user?.role);
+}
+
 export async function fetchTeam(): Promise<{
   me: { id: string; role: TeamRole | null };
   items: TeamMember[];
@@ -533,7 +546,21 @@ export async function fetchAdminPipelineConfigByAgent(
  * Endpoint role-gated (EDITOR_ROLES) → форвардим session-токен (как adminMutate).
  * ---------------------------------------------------------------- */
 
+/**
+ * Статистика конвейера. `money: false` — у роли нет права видеть суммы, и api
+ * их НЕ ПРИСЛАЛ вовсе: денежных полей в ответе физически нет, а не спрятаны.
+ */
+export type PipelineRunStatsNoMoney = {
+  money: false;
+  result: {
+    publishedToday: number;
+    publishedMonth: number;
+    costPerPublishedUsd: null;
+  };
+};
+
 export type PipelineRunStats = {
+  money?: true;
   budget: {
     capUsd: number;
     warnUsd: number;
@@ -602,21 +629,24 @@ export async function fetchPostingControl(): Promise<PostingControl | null> {
   }
 }
 
-export async function fetchPipelineRunStats(): Promise<PipelineRunStats | null> {
+export async function fetchPipelineRunStats(): Promise<
+  PipelineRunStats | PipelineRunStatsNoMoney | null
+> {
   const base = getBaseUrl();
   if (!base) {
     if (!isDemoMode()) return null;
     const { MOCK_PIPELINE_RUN_STATS } = await import("./mocks");
     return MOCK_PIPELINE_RUN_STATS;
   }
-  // Endpoint требует EDITOR_ROLES → форвардим session cookie как Bearer.
+  // Эндпоинт под правом content.view → форвардим session cookie как Bearer.
+  // Суммы api пришлёт только тем, у кого есть cost.view (см. money-флаг).
   const token = await getSessionToken();
   try {
     const res = await fetchWithTimeout(`${base}/v1/admin/pipeline-runs/stats`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (!res.ok) return null;
-    return (await res.json()) as PipelineRunStats;
+    return (await res.json()) as PipelineRunStats | PipelineRunStatsNoMoney;
   } catch {
     return null;
   }

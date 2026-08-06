@@ -1,3 +1,4 @@
+import { AuthorAvatar } from "@/components/author-avatar";
 import { DeleteButton } from "@/components/form/delete-button";
 import { fetchAdminAuthorBySlug } from "@/lib/api";
 import { ChevronLeft } from "lucide-react";
@@ -47,11 +48,19 @@ async function EditAuthorContent({
           <ChevronLeft size={14} strokeWidth={1.75} /> К авторам
         </Link>
         <div className="flex items-end justify-between gap-4">
-          <div>
-            <h1 className="m-0 font-display text-2xl font-extrabold">{author.name}</h1>
-            <p className="m-0 mt-1 text-[13px] text-mist">
-              {author.role} · <span className="font-mono text-gold">/{author.slug}</span>
-            </p>
+          <div className="flex items-center gap-3.5">
+            <AuthorAvatar
+              name={author.name}
+              avatarUrl={author.avatarUrl}
+              bylineColor={author.bylineColor}
+              size={56}
+            />
+            <div>
+              <h1 className="m-0 font-display text-2xl font-extrabold">{author.name}</h1>
+              <p className="m-0 mt-1 text-[13px] text-mist">
+                {author.role} · <span className="font-mono text-gold">/{author.slug}</span>
+              </p>
+            </div>
           </div>
           <form action={deleteBound}>
             <DeleteButton confirmMessage={`Удалить автора "${author.name}" навсегда?`} />

@@ -1,3 +1,4 @@
+import { AuthorAvatar } from "@/components/author-avatar";
 import { fetchAdminAuthors } from "@/lib/api";
 import { Plus, Star } from "lucide-react";
 import Link from "next/link";
@@ -56,16 +57,7 @@ async function AuthorsContent() {
               className="rounded-xl border border-fence bg-card p-4 transition hover:border-gold/40"
             >
               <div className="flex items-start gap-3">
-                <span
-                  className="grid h-12 w-12 shrink-0 place-items-center rounded-full font-display text-base font-extrabold text-night"
-                  style={{
-                    background:
-                      a.bylineColor ??
-                      "linear-gradient(135deg, var(--color-red), var(--color-gold))",
-                  }}
-                >
-                  {a.name.charAt(0)}
-                </span>
+                <AuthorAvatar name={a.name} avatarUrl={a.avatarUrl} bylineColor={a.bylineColor} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <h3 className="m-0 truncate font-display text-[15px] font-extrabold">

@@ -212,18 +212,22 @@ function MemberRow({
           )}
         </div>
 
-        <select
-          value={member.role ?? "viewer"}
-          disabled={pending}
-          onChange={(e) => run(() => onSetRole(member.id, e.target.value as TeamRole))}
-          className="rounded-lg border border-fence bg-night px-2.5 py-1.5 text-[13px] text-paper outline-none focus:border-gold/60 disabled:opacity-50"
-        >
-          {TEAM_ROLES.map((r) => (
-            <option key={r} value={r}>
-              {TEAM_ROLE_LABEL[r]}
-            </option>
-          ))}
-        </select>
+        <label className="flex items-center gap-2 text-[11px] font-semibold text-haze">
+          Роль в команде
+          <select
+            aria-label="Роль в команде"
+            value={member.role ?? "viewer"}
+            disabled={pending}
+            onChange={(e) => run(() => onSetRole(member.id, e.target.value as TeamRole))}
+            className="rounded-lg border border-fence bg-night px-2.5 py-1.5 text-[13px] text-paper outline-none focus:border-gold/60 disabled:opacity-50"
+          >
+            {TEAM_ROLES.map((r) => (
+              <option key={r} value={r}>
+                {TEAM_ROLE_LABEL[r]}
+              </option>
+            ))}
+          </select>
+        </label>
 
         {!member.isMe && (
           <button
@@ -303,7 +307,9 @@ function Invites({
 function RoleLegend() {
   return (
     <section className="rounded-xl border border-fence bg-card p-5">
-      <h2 className="m-0 mb-3 font-display text-[14px] font-extrabold">Что может каждая роль</h2>
+      <h2 className="m-0 mb-3 font-display text-[14px] font-extrabold">
+        Что может каждая роль в команде
+      </h2>
       <dl className="m-0 grid gap-2.5">
         {TEAM_ROLES.map((r) => (
           <div key={r} className="flex flex-wrap gap-x-2 text-[12.5px]">

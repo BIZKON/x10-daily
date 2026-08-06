@@ -18,18 +18,36 @@ export function DigestForm({
 }) {
   return (
     <form action={action} className="space-y-4">
-      <Field label="Дата выпуска (YYYY-MM-DD)" required hint="Уникальная — один digest на дату.">
+      <Field
+        label="Дата выпуска"
+        required
+        hint="Один выпуск на дату"
+        help="За какой день этот выпуск. Дата — его уникальный номер: два выпуска за одно число завести нельзя."
+      >
         <TextInput name="issueDate" type="date" defaultValue={defaults?.issueDate ?? ""} required />
       </Field>
 
-      <Field label="Intro" required hint="Приветствие + дата. 1-2 предложения.">
+      <Field
+        label="Вступление"
+        required
+        hint="1–2 предложения"
+        help="Первое, что читают в выпуске: приветствие и о чём сегодня. Коротко и по делу — длинное вступление пролистывают."
+      >
         <TextArea name="intro" defaultValue={defaults?.intro ?? ""} rows={3} required />
       </Field>
 
       <Field
-        label="Top article IDs"
+        label="Статьи выпуска"
         required
-        hint="UUIDs через перевод строки или запятую. Порядок важен — это очерёдность в дайджесте. Min 1, max 10."
+        hint="По одному коду в строке, от 1 до 10"
+        help={
+          <>
+            Какие статьи войдут в выпуск. Указываются <b>кодами</b>, а не заголовками: откройте
+            статью в разделе «Очередь» и скопируйте код из адресной строки. <b>Порядок важен</b> — в
+            каком порядке впишете, в таком читатель их и увидит. Первая строка — главный материал
+            дня.
+          </>
+        }
       >
         <TextArea
           name="topArticleIds"
@@ -42,8 +60,16 @@ export function DigestForm({
 
       {/* Имя поля rybakovTake — API-контракт (jsonb-колонка digests.rybakov_take), не переименовываем. */}
       <Field
-        label="Разбор от основателя (JSON)"
-        hint='Опционально: {"quote": "...", "context": "..."}'
+        label="Разбор от основателя"
+        hint='Формат: {"quote": "сама мысль", "context": "к чему она"}'
+        help={
+          <>
+            Личный комментарий основателя к событию дня — то, чего нет в новостях. <b>quote</b> —
+            сама мысль, <b>context</b> — к какой ситуации она относится. Заполняется в техническом
+            формате: скопируйте образец из подсказки и замените текст в кавычках. Можно оставить
+            пустым — выпуск выйдет без этого блока.
+          </>
+        }
       >
         <TextArea
           name="rybakovTake"
@@ -53,8 +79,16 @@ export function DigestForm({
       </Field>
 
       <Field
-        label="Premium teaser (JSON)"
-        hint='Опционально: {"title": "...", "articleId": "uuid"}'
+        label="Анонс платного материала"
+        hint='Формат: {"title": "заголовок", "articleId": "код статьи"}'
+        help={
+          <>
+            Врезка со ссылкой на материал, ради которого стоит подписаться. <b>title</b> — как
+            назвать его в выпуске, <b>articleId</b> — код самой статьи. Заполняется в техническом
+            формате: скопируйте образец и замените текст в кавычках. Нет платных материалов —
+            оставьте пустым.
+          </>
+        }
       >
         <TextArea
           name="premiumTeaser"
@@ -65,7 +99,11 @@ export function DigestForm({
         />
       </Field>
 
-      <Field label="Tomorrow" hint="Анонс завтрашнего выпуска (1 фраза)">
+      <Field
+        label="Что завтра"
+        hint="Одна фраза"
+        help="Крючок на следующий выпуск: о чём будет завтра. Читается последним и удерживает читателя. Можно оставить пустым."
+      >
         <TextInput name="tomorrow" defaultValue={defaults?.tomorrow ?? ""} />
       </Field>
 

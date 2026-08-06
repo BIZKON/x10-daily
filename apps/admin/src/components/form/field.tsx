@@ -3,29 +3,71 @@ import type { ReactNode } from "react";
 const FIELD_BASE =
   "w-full rounded-lg border border-fence bg-night px-3 py-2 text-[14px] text-paper outline-none placeholder:text-haze focus:border-gold/60 focus:bg-card";
 
-/** Обёртка с label + помощник под error/hint. */
+/**
+ * Обёртка поля: label + короткая подсказка + раскрывающееся объяснение.
+ *
+ * 🔴 `help` — требование владельца от 06.08.2026 (см. память
+ * project-content-factory-product). Админка едет клиенту вместе с продуктом, и
+ * человек, который её откроет, не будет читать наши доки и не сможет спросить
+ * разработчика. Каждое поле обязано объяснять себя само: что это, зачем и что
+ * будет, если оставить пустым.
+ *
+ * `<details>` вместо тултипа намеренно: работает без клиентского JS (Field —
+ * серверный компонент), не ломается на телефоне и не перекрывает соседние поля.
+ *
+ * Объяснение стоит ПОД контролом, а не внутри `<label>`: клик по нему не должен
+ * перехватывать фокус ввода, а сам label обязан остаться кликабельным.
+ */
 export function Field({
   label,
   htmlFor,
   hint,
+  help,
   required,
   children,
 }: {
   label: string;
   htmlFor?: string;
+  /** Короткая строка под полем — видна всегда. Для формата и единиц измерения. */
   hint?: string;
+  /** Развёрнутое объяснение: что это за поле и как им пользоваться. */
+  help?: ReactNode;
   required?: boolean;
   children: ReactNode;
 }) {
   return (
-    <label className="block" htmlFor={htmlFor}>
-      <span className="mb-1.5 flex items-center gap-1 text-[12px] font-semibold text-mist">
-        {label}
-        {required && <span className="text-red">*</span>}
-      </span>
-      {children}
+    <div className="block">
+      <label className="block" htmlFor={htmlFor}>
+        <span className="mb-1.5 flex items-center gap-1 text-[12px] font-semibold text-mist">
+          {label}
+          {required && <span className="text-red">*</span>}
+        </span>
+        {children}
+      </label>
       {hint && <span className="mt-1 block text-[11px] text-haze">{hint}</span>}
-    </label>
+      {help && <FieldHelp>{help}</FieldHelp>}
+    </div>
+  );
+}
+
+/** Раскрывающееся «зачем это поле» — мини-онбординг прямо в форме. */
+function FieldHelp({ children }: { children: ReactNode }) {
+  return (
+    <details className="group mt-1.5">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-[11px] text-haze transition hover:text-mist [&::-webkit-details-marker]:hidden">
+        <span
+          aria-hidden
+          className="grid h-3.5 w-3.5 place-items-center rounded-full border border-current text-[9px] font-bold leading-none"
+        >
+          ?
+        </span>
+        <span className="group-open:hidden">Зачем это поле</span>
+        <span className="hidden group-open:inline">Свернуть</span>
+      </summary>
+      <div className="mt-1.5 rounded-lg border border-fence bg-night/60 px-3 py-2 text-[12px] leading-[1.55] text-mist">
+        {children}
+      </div>
+    </details>
   );
 }
 

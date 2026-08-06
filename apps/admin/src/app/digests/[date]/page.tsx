@@ -1,9 +1,9 @@
+import { DeleteButton } from "@/components/form/delete-button";
+import { fetchAdminDigestByDate } from "@/lib/api";
 import { CheckCircle2, ChevronLeft, Send } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { DeleteButton } from "@/components/form/delete-button";
-import { fetchAdminDigestByDate } from "@/lib/api";
 import { deleteDigest, markDigestSent, updateDigest } from "../actions";
 import { DigestForm } from "../digest-form";
 
@@ -49,7 +49,8 @@ async function EditDigestContent({
         <div className="flex items-end justify-between gap-4">
           <div>
             <h1 className="m-0 font-display text-2xl font-extrabold">
-              Выпуск {new Date(digest.issueDate).toLocaleDateString("ru-RU", {
+              Выпуск{" "}
+              {new Date(digest.issueDate).toLocaleDateString("ru-RU", {
                 day: "numeric",
                 month: "long",
                 year: "numeric",

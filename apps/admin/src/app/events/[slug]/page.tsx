@@ -1,9 +1,9 @@
+import { DeleteButton } from "@/components/form/delete-button";
+import { fetchAdminEventBySlug } from "@/lib/api";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { DeleteButton } from "@/components/form/delete-button";
-import { fetchAdminEventBySlug } from "@/lib/api";
 import { deleteEvent, updateEvent } from "../actions";
 import { EventForm } from "../event-form";
 

@@ -1,8 +1,8 @@
 "use server";
 
+import { type AdminDigest, adminMutate } from "@/lib/api";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { adminMutate, type AdminDigest } from "@/lib/api";
 
 function parseLines(s: string): string[] {
   return s

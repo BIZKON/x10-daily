@@ -30,7 +30,12 @@ export function AuthorForm({
   return (
     <form action={formAction} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Slug (URL)" required hint="Латиница, дефисы. Используется в /author/...">
+        <Field
+          label="Адрес страницы (slug)"
+          required
+          hint="Только латиница и дефисы"
+          help="Кусок ссылки, по которому открывается страница автора: при значении founder адрес будет /author/founder. Менять после публикации не стоит — старая ссылка перестанет работать."
+        >
           <TextInput
             name="slug"
             defaultValue={defaults?.slug}
@@ -39,7 +44,11 @@ export function AuthorForm({
             placeholder="founder"
           />
         </Field>
-        <Field label="Имя" required>
+        <Field
+          label="Имя"
+          required
+          help="Как автор подписан под статьями. Пишите так, как должно быть видно читателю: «Константин Сыров», а не логин."
+        >
           <TextInput
             name="name"
             defaultValue={defaults?.name}
@@ -50,11 +59,19 @@ export function AuthorForm({
         </Field>
       </div>
 
-      <Field label="Роль" required hint='"Главный редактор", "Гость", "Основатель"'>
+      <Field
+        label="Роль"
+        required
+        hint="Например: Основатель, Главный редактор, Приглашённый эксперт"
+        help="Подпись под именем — она объясняет читателю, почему этому человеку стоит верить. Это НЕ права доступа: что человек может делать в системе, задаётся отдельно."
+      >
         <TextInput name="role" defaultValue={defaults?.role} required maxLength={80} />
       </Field>
 
-      <Field label="Bio">
+      <Field
+        label="Описание"
+        help="Пара предложений о человеке: чем занимается и почему разбирается в теме. Показывается на его странице. Можно оставить пустым — тогда будет только имя и роль."
+      >
         <TextArea
           name="bio"
           defaultValue={defaults?.bio ?? ""}
@@ -63,11 +80,19 @@ export function AuthorForm({
         />
       </Field>
 
-      <Field label="Avatar" hint="Ссылка или загрузка файла — файл ляжет на наш сервер">
+      <Field
+        label="Фото"
+        hint="Ссылка на картинку или загрузка файла"
+        help="Фото автора: показывается в списке авторов и на его странице. Загруженный файл ляжет на наш сервер и получит постоянную ссылку. Оставите пустым — вместо фото будет кружок с первой буквой имени."
+      >
         <ImageUrlField name="avatarUrl" defaultValue={defaults?.avatarUrl ?? ""} />
       </Field>
 
-      <Field label="Byline color" hint="Hex или CSS-цвет. По умолчанию red→gold градиент.">
+      <Field
+        label="Цвет подписи"
+        hint="Например #E63946"
+        help="Цвет кружка с буквой, когда фото не загружено. Пустое поле — фирменный переход от красного к золотому. Трогайте, только если у автора есть свой цвет."
+      >
         <TextInput
           name="bylineColor"
           defaultValue={defaults?.bylineColor ?? ""}
@@ -76,17 +101,27 @@ export function AuthorForm({
         />
       </Field>
 
-      <div className="flex flex-wrap gap-6 border-t border-fence pt-4">
-        <CheckboxInput
-          name="isStaff"
-          label="Сотрудник редакции"
-          defaultChecked={defaults?.isStaff ?? false}
-        />
-        <CheckboxInput
-          name="isFlagship"
-          label="Flagship (главный голос — основатель)"
-          defaultChecked={defaults?.isFlagship ?? false}
-        />
+      <div className="space-y-3 border-t border-fence pt-4">
+        <div>
+          <CheckboxInput
+            name="isStaff"
+            label="Штатный автор"
+            defaultChecked={defaults?.isStaff ?? false}
+          />
+          <p className="m-0 mt-1 pl-6 text-[11.5px] leading-[1.5] text-haze">
+            Человек из вашей команды, а не приглашённый гость. Штатные авторы идут выше в списке.
+          </p>
+        </div>
+        <div>
+          <CheckboxInput
+            name="isFlagship"
+            label="Главный голос"
+            defaultChecked={defaults?.isFlagship ?? false}
+          />
+          <p className="m-0 mt-1 pl-6 text-[11.5px] leading-[1.5] text-haze">
+            Основной автор издания — от его лица идут личные разборы. Обычно он один.
+          </p>
+        </div>
       </div>
 
       {state.status === "error" && (

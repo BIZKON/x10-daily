@@ -28,4 +28,10 @@ export {
   type DbUserRole,
   type Permission,
 } from "./permissions";
-export { MERCHANT, RECEIPT, VAT_NOTE } from "./legal";
+export {
+  MERCHANT,
+  RECEIPT,
+  VAT_NOTE,
+  TOPUP_AMOUNTS_RUB,
+  MIN_TOPUP_RUB,
+} from "./legal";

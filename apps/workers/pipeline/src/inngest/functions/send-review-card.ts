@@ -1,4 +1,4 @@
-import { articles, createDb, eq, reviewCards } from "@x10/db";
+import { and, articles, channels, createDb, eq, reviewCards } from "@x10/db";
 import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
 import { REVIEW_CARD_REQUESTED } from "../../events";
@@ -54,9 +54,11 @@ export function createSendReviewCardFunction(
             slug: articles.slug,
             coverImageUrl: articles.coverImageUrl,
             visualStatus: articles.visualStatus,
-            status: articles.status,
+            // 🔴 Признак «уже вышло» берём у КАНАЛА, а не у статьи. Разбор ниже.
+            postedAt: channels.postedAt,
           })
           .from(articles)
+          .leftJoin(channels, and(eq(channels.articleId, articles.id), eq(channels.channel, "tg")))
           .where(eq(articles.id, articleId))
           .limit(1);
         return a ?? null;
@@ -65,10 +67,26 @@ export function createSendReviewCardFunction(
       if (!article) {
         return { skipped: true as const, reason: "article-not-found" as const };
       }
-      // Уже опубликована — карточка бессмысленна и опасна: кнопка «Одобрить»
-      // предложила бы опубликовать второй раз.
-      if (article.status === "published") {
-        return { skipped: true as const, reason: "already-published" as const };
+      /**
+       * Пост уже ушёл в канал — карточка бессмысленна и опасна: кнопка
+       * «Одобрить» предложила бы выпустить его второй раз.
+       *
+       * 🔴 Смотрим на `channels.posted_at`, а НЕ на `articles.status`.
+       * Разбор 07.08.2026: раньше здесь стояло `status === 'published'`, и
+       * карточка не отправлялась НИ РАЗУ за всё время жизни Спеки 4. В 24-й
+       * сессии `persistArticle` перевели на `status: 'published'` при создании,
+       * чтобы лента мини-аппа наполнялась сразу, — и с тех пор `created_at`
+       * совпадал с `published_at` до секунды, а карточка запрашивается на 30
+       * секунд позже. Гард срабатывал всегда.
+       *
+       * Оказалось, одно поле означало две разные вещи: «видно в ленте» и
+       * «вышло в канал». Карточка — про канал, поэтому и спрашивать надо у
+       * канала. Строки канала нет → статья в очередь не попала, но показать её
+       * редактору всё равно правильно: кнопки «Перерисовать» и «Переписать»
+       * работают и без очереди.
+       */
+      if (article.postedAt) {
+        return { skipped: true as const, reason: "already-posted-to-channel" as const };
       }
 
       const tgOpts = { token, proxyUrl: env.TELEGRAM_PROXY_URL || undefined, ...opts };

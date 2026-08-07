@@ -210,6 +210,7 @@ x10-daily/                  ← техническое имя репо (исто
 | Источники парсинга (список, adapter_type, правила, pending) | `docs/parsing-sources.md` (канон) + `scripts/seed-sources.sql` |
 | Dev-фикстуры | `scripts/seed.ts` (id совпадают с `apps/admin/src/lib/mocks.ts`) |
 | Деплой prod | `./deploy.sh`, `docker-compose.prod.yml`, `caddy/Caddyfile.prod` |
+| **Состояние на конец последней сессии** | **`docs/handoffs/handoff-session-31.md`** |
 | Исторические handoffs сессий | `docs/handoffs/` |
 | Архив стратегии X10-эпохи | `docs/strategy/` (НЕ канон нового бренда) |
 | Старый CF/Neon deploy-гайд | `docs/DEPLOY.md` (архив, не применять) |

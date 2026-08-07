@@ -1,3 +1,4 @@
+import { CLIENT_PRICE_MULTIPLIER } from "@x10/config";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PipelineBindings } from "../src/bindings";
 
@@ -13,6 +14,8 @@ const { dbState } = vi.hoisted(() => ({
     selectResults: [] as Array<Array<Record<string, unknown>>>,
     updates: [] as Array<Record<string, unknown>>,
     inserts: [] as Array<Record<string, unknown>>,
+    /** Движения по балансу клиента (Спека 6): списания за прогоны обложки. */
+    charges: [] as Array<Record<string, unknown>>,
   },
 }));
 
@@ -27,9 +30,35 @@ vi.mock("@x10/db", async () => {
     };
     return chain;
   };
-  return {
-    ...actual,
-    createDb: vi.fn(() => ({
+  /**
+   * insert-цепочка знает о таблице: recordRun с шага 1 Спеки 6 пишет в одной
+   * транзакции строку прогона, остаток и движение по балансу. Раскладываем их
+   * по разным спискам, чтобы существующие проверки $-ledger не считали деньги
+   * прогонами.
+   */
+  type InsertNode = Promise<undefined> & {
+    returning: () => Promise<Array<Record<string, unknown>>>;
+    onConflictDoUpdate: () => InsertNode;
+  };
+  const makeInsert = (table: unknown) => ({
+    values: (v: Record<string, unknown>) => {
+      if (table === actual.pipelineRuns) dbState.inserts.push(v);
+      else if (table === actual.balanceEntries) dbState.charges.push(v);
+      const rows =
+        table === actual.pipelineRuns
+          ? [{ id: `run-${dbState.inserts.length}` }]
+          : [{ after: "0.0000" }];
+      // Настоящий промис с довешенными звеньями цепочки: recordRun то ждёт
+      // результат напрямую, то дотягивается до .returning().
+      const node: InsertNode = Object.assign(Promise.resolve(undefined), {
+        returning: async () => rows,
+        onConflictDoUpdate: () => node,
+      });
+      return node;
+    },
+  });
+  const makeDb = () => {
+    const db: Record<string, unknown> = {
       select: () => makeChain(),
       update: () => ({
         set: (v: Record<string, unknown>) => ({
@@ -38,13 +67,12 @@ vi.mock("@x10/db", async () => {
           },
         }),
       }),
-      insert: () => ({
-        values: async (v: Record<string, unknown>) => {
-          dbState.inserts.push(v);
-        },
-      }),
-    })),
+      insert: makeInsert,
+      transaction: async (fn: (tx: unknown) => Promise<void>) => fn(db),
+    };
+    return db;
   };
+  return { ...actual, createDb: vi.fn(makeDb) };
 });
 
 const { agentState } = vi.hoisted(() => ({
@@ -150,6 +178,7 @@ describe("generate-cover", () => {
     dbState.selectResults = [];
     dbState.updates = [];
     dbState.inserts = [];
+    dbState.charges = [];
     agentState.shouldThrow = false;
     vi.clearAllMocks();
   });
@@ -208,6 +237,30 @@ describe("generate-cover", () => {
     });
     expect(dbState.inserts[0]?.agent).toBe("visual");
     expect(dbState.inserts[0]?.status).toBe("succeeded");
+  });
+
+  it("🔴 каждый платный прогон списывается с баланса клиента (Спека 6, шаг 1)", async () => {
+    dbState.selectResults = [[ARTICLE_ROW]];
+    const bindings = await baseBindings();
+    await makeHandler(
+      bindings,
+      gatewayFetch(),
+    )({
+      event: { data: { articleId: ARTICLE_ID } },
+      step: makeStep(),
+    });
+
+    // Обложка — два прогона (промпт + картинка), значит и два списания:
+    // счёт клиенту не должен «терять» половину работы.
+    expect(dbState.charges).toHaveLength(2);
+    for (const [i, charge] of dbState.charges.entries()) {
+      expect(charge.kind).toBe("charge");
+      // Списание — со знаком минус, и ровно себестоимость × наценка.
+      const costRub = Number(dbState.inserts[i]?.costRub);
+      expect(Number(charge.amountRub)).toBeCloseTo(-costRub * CLIENT_PRICE_MULTIPLIER, 4);
+      // Движение привязано к своей причине — иначе спор с клиентом неразрешим.
+      expect(charge.runId).toBe(`run-${i + 1}`);
+    }
   });
 
   it("🔴 расход на КАРТИНКУ попадает в ledger отдельной строкой", async () => {
@@ -412,6 +465,7 @@ describe("ретрай на отказ фильтра", () => {
     dbState.selectResults = [];
     dbState.updates = [];
     dbState.inserts = [];
+    dbState.charges = [];
     agentState.shouldThrow = false;
     vi.clearAllMocks();
   });

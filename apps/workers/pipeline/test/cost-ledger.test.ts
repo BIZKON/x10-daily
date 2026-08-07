@@ -1,6 +1,8 @@
-import type { Database } from "@x10/db";
+import { CLIENT_PRICE_MULTIPLIER, usdToRub } from "@x10/config";
+import { type Database, balanceEntries, clientBalance, pipelineRuns } from "@x10/db";
 import { describe, expect, it, vi } from "vitest";
 import {
+  chargeForRun,
   claimAlert,
   getTodaySpendUsd,
   listPendingAlerts,
@@ -54,17 +56,69 @@ describe("getTodaySpendUsd", () => {
   });
 });
 
+describe("chargeForRun (Спека 6, шаг 1)", () => {
+  it("платные статусы → себестоимость × наценка", () => {
+    // ×3 по CLIENT_PRICE_MULTIPLIER.
+    expect(chargeForRun("succeeded", 12.3456)).toBeCloseTo(37.0368, 4);
+    expect(chargeForRun("skipped", 0.5)).toBeCloseTo(1.5, 4);
+    expect(chargeForRun("halted", 4)).toBeCloseTo(12, 4);
+  });
+
+  it("failed НЕ выставляется клиенту — это наша авария, не его расход", () => {
+    expect(chargeForRun("failed", 12.3456)).toBeNull();
+  });
+
+  it("незавершённые прогоны не списываются", () => {
+    expect(chargeForRun("queued", 5)).toBeNull();
+    expect(chargeForRun("running", 5)).toBeNull();
+  });
+
+  it("бесплатный прогон не создаёт движение на 0 ₽", () => {
+    expect(chargeForRun("succeeded", 0)).toBeNull();
+  });
+});
+
 describe("recordRun", () => {
-  it("пишет строку, numeric cost → строка с 6 знаками", async () => {
-    let captured: Record<string, unknown> | undefined;
-    const db = {
-      insert: () => ({
-        values: (v: Record<string, unknown>) => {
-          captured = v;
-          return Promise.resolve();
+  type Call = { table: unknown; values: Record<string, unknown>; conflict?: unknown };
+  type InsertNode = Promise<undefined> & {
+    returning: () => Promise<Array<Record<string, unknown>>>;
+    onConflictDoUpdate: (cfg: unknown) => InsertNode;
+  };
+
+  /**
+   * Фейковая транзакция: повторяет ровно те цепочки drizzle, которые вызывает
+   * recordRun — `.values().returning()`, `.values().onConflictDoUpdate().returning()`
+   * и голый await на `.values()`.
+   */
+  function fakeDb(balanceAfter = "-37.0368") {
+    const calls: Call[] = [];
+    const tx = {
+      insert: (table: unknown) => ({
+        values: (values: Record<string, unknown>) => {
+          const call: Call = { table, values };
+          calls.push(call);
+          const rows = table === pipelineRuns ? [{ id: "run-1" }] : [{ after: balanceAfter }];
+          // Настоящий промис с довешенными звеньями цепочки: recordRun то
+          // ждёт результат напрямую, то дотягивается до .returning().
+          const node: InsertNode = Object.assign(Promise.resolve(undefined), {
+            returning: async () => rows,
+            onConflictDoUpdate: (cfg: unknown) => {
+              call.conflict = cfg;
+              return node;
+            },
+          });
+          return node;
         },
       }),
+    };
+    const db = {
+      transaction: async (fn: (t: typeof tx) => Promise<void>) => fn(tx),
     } as unknown as Database;
+    return { db, calls, of: (t: unknown) => calls.find((c) => c.table === t) };
+  }
+
+  it("пишет строку прогона: numeric cost → строка с 6 знаками, рубли зафиксированы", async () => {
+    const { db, of } = fakeDb();
 
     await recordRun(db, {
       articleId: "art-1",
@@ -76,12 +130,59 @@ describe("recordRun", () => {
       outputTokens: 600,
     });
 
-    expect(captured).toBeDefined();
-    expect(captured!.agent).toBe("draft");
-    expect(captured!.status).toBe("succeeded");
-    expect(captured!.costUsd).toBe("0.450000");
-    expect(captured!.inputTokens).toBe(1200);
-    expect(captured!.cachedInputTokens).toBe(0); // дефолт
+    const run = of(pipelineRuns)!.values;
+    expect(run.agent).toBe("draft");
+    expect(run.status).toBe("succeeded");
+    expect(run.costUsd).toBe("0.450000");
+    expect(run.inputTokens).toBe(1200);
+    expect(run.cachedInputTokens).toBe(0); // дефолт
+    expect(run.costRub).toBe(usdToRub(0.45).toFixed(4));
+  });
+
+  it("списывает с баланса и пишет движение, привязанное к прогону", async () => {
+    const { db, of } = fakeDb("-37.0368");
+    const costUsd = 0.45;
+
+    await recordRun(db, { agent: "visual", status: "succeeded", costUsd });
+
+    const expected = chargeForRun("succeeded", Number(usdToRub(costUsd).toFixed(4)))!;
+
+    // Остаток двигается арифметикой в базе (upsert), а не чтением-в-код.
+    const balance = of(clientBalance)!;
+    expect(balance.conflict).toBeDefined();
+    expect(balance.values.id).toBe(true);
+
+    const entry = of(balanceEntries)!.values;
+    expect(entry.kind).toBe("charge");
+    expect(entry.amountRub).toBe((-expected).toFixed(4)); // списание — со знаком минус
+    expect(entry.balanceAfterRub).toBe("-37.0368");
+    expect(entry.runId).toBe("run-1"); // движение указывает на свою причину
+  });
+
+  it("списание = ровно себестоимость × наценка из той же строки", async () => {
+    const { db, of } = fakeDb();
+    await recordRun(db, { agent: "draft", status: "succeeded", costUsd: 0.45 });
+
+    const costRub = Number(of(pipelineRuns)!.values.costRub);
+    const charged = -Number(of(balanceEntries)!.values.amountRub);
+    expect(charged).toBeCloseTo(costRub * CLIENT_PRICE_MULTIPLIER, 4);
+  });
+
+  it("failed: строка прогона есть, списания нет", async () => {
+    const { db, of, calls } = fakeDb();
+
+    await recordRun(db, { agent: "draft", status: "failed", costUsd: 0.45, error: "boom" });
+
+    expect(of(pipelineRuns)).toBeDefined();
+    expect(of(clientBalance)).toBeUndefined();
+    expect(of(balanceEntries)).toBeUndefined();
+    expect(calls).toHaveLength(1);
+  });
+
+  it("нулевая стоимость: ни списания, ни движения", async () => {
+    const { db, calls } = fakeDb();
+    await recordRun(db, { agent: "ingest", status: "skipped", costUsd: 0 });
+    expect(calls).toHaveLength(1);
   });
 });
 

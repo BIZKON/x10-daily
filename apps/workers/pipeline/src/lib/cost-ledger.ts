@@ -1,9 +1,11 @@
-import { usdToRub } from "@x10/config";
+import { CLIENT_PRICE_MULTIPLIER, usdToRub } from "@x10/config";
 import {
   type Database,
   type NewPipelineRun,
   and,
   asc,
+  balanceEntries,
+  clientBalance,
   costAlerts,
   eq,
   gte,
@@ -70,23 +72,109 @@ export type LedgerEntry = {
   error?: string | null;
 };
 
-/** Записать строку в $-ledger. numeric → строка (toFixed) для drizzle. */
+/**
+ * Статусы, за которые клиент платит (Спека 6, шаг 1).
+ *
+ * Правило: **берём деньги за работу, которая отработала как задумано, и сами
+ * оплачиваем собственные поломки.**
+ *
+ *  - `succeeded` — материал готов, вопросов нет;
+ *  - `skipped` — гейт отбраковал сырьё. Это не брак, а работа фильтра: отделить
+ *    подходящее от неподходящего можно только прочитав всё, и токены на это
+ *    потрачены по-настоящему;
+ *  - `halted` — FactCheck остановил материал из-за расхождения источников. Тоже
+ *    услуга: клиента уберегли от публикации непроверенного.
+ *
+ * `failed` — наша авария: код упал, клиент не получил ничего. Выставлять счёт
+ * за это нельзя, тем более что ретраи умножили бы сумму. Себестоимость таких
+ * прогонов остаётся на нас и видна в `pipeline_runs` как расход без списания.
+ *
+ * ⚠️ Это решение стоит денег в обе стороны и при желании владельца меняется
+ * ровно здесь — одним списком.
+ */
+const BILLABLE_STATUSES: ReadonlySet<NewPipelineRun["status"]> = new Set([
+  "succeeded",
+  "skipped",
+  "halted",
+]);
+
+/**
+ * Сколько выставить клиенту за прогон, рубли. `null` — списывать нечего.
+ *
+ * Считает от УЖЕ округлённой себестоимости (той самой, что легла в
+ * `pipeline_runs.cost_rub`), чтобы в журнале выполнялось буквальное
+ * «списание = себестоимость × наценка», а не «почти равно».
+ */
+export function chargeForRun(status: NewPipelineRun["status"], costRub: number): number | null {
+  if (!BILLABLE_STATUSES.has(status)) return null;
+  const charge = Number((costRub * CLIENT_PRICE_MULTIPLIER).toFixed(4));
+  // Бесплатный прогон (кэш, ранний выход) — движение на 0 ₽ только зашумит журнал.
+  return charge > 0 ? charge : null;
+}
+
+/**
+ * Записать прогон в ledger и списать его стоимость с баланса клиента.
+ *
+ * Одна транзакция на оба действия: списание без причины и причина без списания
+ * одинаково плохи — первое неоспоримо, второе тихо теряет деньги.
+ *
+ * ⚠️ Обратная сторона: сбой в денежной части откатит и строку прогона. Пошли на
+ * это сознательно — рассогласованная бухгалтерия дороже потерянной строки, а
+ * `deploy.sh` применяет миграции до подъёма контейнеров, поэтому «таблицы ещё
+ * нет» в нормальном цикле деплоя не случается.
+ */
 export async function recordRun(db: Database, entry: LedgerEntry): Promise<void> {
-  await db.insert(pipelineRuns).values({
-    articleId: entry.articleId ?? null,
-    agent: entry.agent,
-    status: entry.status,
-    modelUsed: entry.modelUsed ?? null,
-    inputTokens: entry.inputTokens ?? 0,
-    outputTokens: entry.outputTokens ?? 0,
-    cachedInputTokens: entry.cachedInputTokens ?? 0,
-    costUsd: entry.costUsd.toFixed(6),
-    // Рубли фиксируем здесь, а не считаем при показе: курс в коде зашит, и
-    // счёт клиенту не должен меняться задним числом при его правке.
-    costRub: usdToRub(entry.costUsd).toFixed(4),
-    durationMs: entry.durationMs ?? null,
-    output: entry.output ?? null,
-    error: entry.error ?? null,
+  // Рубли фиксируем здесь, а не считаем при показе: курс в коде зашит, и счёт
+  // клиенту не должен меняться задним числом при его правке.
+  const costRub = usdToRub(entry.costUsd).toFixed(4);
+  const charge = chargeForRun(entry.status, Number(costRub));
+
+  await db.transaction(async (tx) => {
+    const [run] = await tx
+      .insert(pipelineRuns)
+      .values({
+        articleId: entry.articleId ?? null,
+        agent: entry.agent,
+        status: entry.status,
+        modelUsed: entry.modelUsed ?? null,
+        inputTokens: entry.inputTokens ?? 0,
+        outputTokens: entry.outputTokens ?? 0,
+        cachedInputTokens: entry.cachedInputTokens ?? 0,
+        costUsd: entry.costUsd.toFixed(6),
+        costRub,
+        durationMs: entry.durationMs ?? null,
+        output: entry.output ?? null,
+        error: entry.error ?? null,
+      })
+      .returning({ id: pipelineRuns.id });
+
+    if (charge === null || !run) return;
+
+    // Остаток двигаем ТОЛЬКО арифметикой в самой базе. Прочитать в код,
+    // вычесть и записать нельзя: между чтением и записью успевает второй
+    // прогон, и остаток разойдётся с реальностью — на деньгах недопустимо.
+    // upsert, а не update: если строки баланса почему-то нет, она создаётся
+    // здесь же, и списание не теряется молча.
+    const [balance] = await tx
+      .insert(clientBalance)
+      .values({ id: true, balanceRub: (-charge).toFixed(4) })
+      .onConflictDoUpdate({
+        target: clientBalance.id,
+        set: {
+          balanceRub: sql`${clientBalance.balanceRub} - ${charge.toFixed(4)}::numeric`,
+          updatedAt: new Date(),
+        },
+      })
+      .returning({ after: clientBalance.balanceRub });
+
+    if (!balance) return;
+
+    await tx.insert(balanceEntries).values({
+      kind: "charge",
+      amountRub: (-charge).toFixed(4),
+      balanceAfterRub: balance.after,
+      runId: run.id,
+    });
   });
 }
 

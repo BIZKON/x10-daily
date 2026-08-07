@@ -19,6 +19,7 @@ const { deliverOpsAlert } = vi.hoisted(() => ({
 vi.mock("../src/lib/ops-alert", () => ({ deliverOpsAlert }));
 
 import {
+  avgDailyChargeRub,
   daysLeftPhrase,
   decideBillingState,
   emptyBalanceMessage,
@@ -133,6 +134,36 @@ describe("тексты для клиента", () => {
   });
 });
 
+describe("avgDailyChargeRub — делим на наблюдённый срок, а не на окно", () => {
+  function fakeDb(total: string, oldest: string | null) {
+    return {
+      select: () => ({ from: () => ({ where: async () => [{ total, oldest }] }) }),
+    } as unknown as Database;
+  }
+  const now = new Date("2026-08-07T12:00:00Z");
+
+  it("🔴 меньше суток наблюдений → оценки нет", async () => {
+    // Найдено репетицией на проде: за два часа работы деление на полные 7 дней
+    // давало «хватит на 3080 дней». У нового клиента так было бы всю неделю.
+    const twoHoursAgo = "2026-08-07T10:00:00Z";
+    expect(await avgDailyChargeRub(fakeDb("0.68", twoHoursAgo), now)).toBe(0);
+  });
+
+  it("трое суток наблюдений → делим на три, а не на семь", async () => {
+    const threeDaysAgo = "2026-08-04T12:00:00Z";
+    expect(await avgDailyChargeRub(fakeDb("300", threeDaysAgo), now)).toBeCloseTo(100, 2);
+  });
+
+  it("история длиннее окна → делим на окно", async () => {
+    const monthAgo = "2026-07-07T12:00:00Z";
+    expect(await avgDailyChargeRub(fakeDb("700", monthAgo), now)).toBeCloseTo(100, 2);
+  });
+
+  it("списаний нет → оценки нет", async () => {
+    expect(await avgDailyChargeRub(fakeDb("0", null), now)).toBe(0);
+  });
+});
+
 describe("guardBilling", () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -141,7 +172,7 @@ describe("guardBilling", () => {
       select: () => ({
         from: () => ({
           limit: async () => (row ? [row] : []),
-          where: async () => [{ total: charges }],
+          where: async () => [{ total: charges, oldest: "2026-08-01T10:00:00Z" }],
         }),
       }),
     } as unknown as Database;

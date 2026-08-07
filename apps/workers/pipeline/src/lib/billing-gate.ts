@@ -73,20 +73,46 @@ export async function readBillingState(db: Database): Promise<BillingState> {
   });
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** Окно наблюдения за расходом. */
+const SPEND_WINDOW_DAYS = 7;
 /**
- * Средний расход клиента в сутки за последние 7 дней, рубли.
+ * Меньше суток наблюдений — оценку не даём.
+ *
+ * 🔴 Найдено репетицией на проде 07.08.2026. Делили сумму на ПОЛНЫЕ 7 дней окна
+ * независимо от того, сколько данных реально накопилось: за два часа работы
+ * вышло «хватит на 3080 дней». У нового клиента, где истории всегда мало,
+ * первая же неделя выглядела бы так — и остановка стала бы для него полной
+ * неожиданностью. Молчание честнее выдуманного числа.
+ */
+const MIN_OBSERVED_DAYS = 1;
+
+/**
+ * Средний расход клиента в сутки, рубли.
  *
  * Считается по ЕГО списаниям, а не по нашему ритму: клиент, публикующий вдвое
- * реже, растянет ту же сумму вдвое дольше, и «хватит на N дней» обязано это
- * учитывать. 0 — данных ещё нет, оценку не показываем (выдумывать нельзя).
+ * реже, растянет ту же сумму вдвое дольше.
+ *
+ * Делим на ФАКТИЧЕСКИ наблюдённый срок, а не на длину окна: пока данных меньше
+ * суток, возвращаем 0 — «не знаем». 0 означает «оценку не показывать».
  */
 export async function avgDailyChargeRub(db: Database, now: Date): Promise<number> {
-  const since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const since = new Date(now.getTime() - SPEND_WINDOW_DAYS * DAY_MS);
   const [row] = await db
-    .select({ total: sql<string>`coalesce(sum(-${balanceEntries.amountRub}), 0)` })
+    .select({
+      total: sql<string>`coalesce(sum(-${balanceEntries.amountRub}), 0)`,
+      oldest: sql<string | null>`min(${balanceEntries.createdAt})`,
+    })
     .from(balanceEntries)
     .where(and(eq(balanceEntries.kind, "charge"), gte(balanceEntries.createdAt, since)));
-  return row ? Number(row.total) / 7 : 0;
+
+  if (!row?.oldest) return 0;
+  const total = Number(row.total);
+  if (!(total > 0)) return 0;
+
+  const observedDays = (now.getTime() - new Date(row.oldest).getTime()) / DAY_MS;
+  if (observedDays < MIN_OBSERVED_DAYS) return 0;
+  return total / Math.min(observedDays, SPEND_WINDOW_DAYS);
 }
 
 /** «≈ на 9 дней» — человеческий хвост к сумме. Пусто, если считать не из чего. */

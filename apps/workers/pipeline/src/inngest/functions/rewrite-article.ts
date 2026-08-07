@@ -12,6 +12,7 @@ import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
 import { ARTICLE_REWRITE_REQUESTED, REVIEW_CARD_REQUESTED } from "../../events";
 import { modelsFromEnv } from "../../lib/agent-context";
+import { guardBilling } from "../../lib/billing-gate";
 import { recordRun } from "../../lib/cost-ledger";
 import { countWords } from "../../persist";
 import type { PipelineInngest } from "../client";
@@ -43,6 +44,21 @@ export function createRewriteArticleFunction(inngest: PipelineInngest, bindings:
     async ({ event, step }) => {
       const env = loadPipelineEnv(bindings);
       const { articleId, instruction, cardId } = event.data;
+
+      // Деньги КЛИЕНТА (Спека 6, шаг 2). Рерайт запускает человек кнопкой в
+      // «Редакции», но платный прогон от этого платным быть не перестаёт.
+      const nowMs = await step.run("now", async () => Date.now());
+      const money = await step.run("balance-gate", async () => {
+        const db = createDb(env.DATABASE_URL);
+        return guardBilling(db, env, new Date(nowMs));
+      });
+      if (money.blocked) {
+        return {
+          skipped: true as const,
+          reason: "client-balance-exhausted" as const,
+          balanceRub: money.balanceRub,
+        };
+      }
 
       const article = await step.run("load-article", async () => {
         const db = createDb(env.DATABASE_URL);

@@ -14,7 +14,13 @@ const { claimAlert, markAlertDelivered, recordAlertAttempt } = vi.hoisted(() => 
 }));
 vi.mock("../src/lib/cost-ledger", () => ({ claimAlert, markAlertDelivered, recordAlertAttempt }));
 
-import { attemptDelivery, deliverOpsAlert, sendOpsAlert } from "../src/lib/ops-alert";
+import {
+  attemptDelivery,
+  deliverOpsAlert,
+  sendByKind,
+  sendClientAlert,
+  sendOpsAlert,
+} from "../src/lib/ops-alert";
 
 const db = {} as Database;
 const env = {} as Env;
@@ -37,20 +43,57 @@ describe("sendOpsAlert — деградация при отсутствии ко
   });
 });
 
+describe("маршрут алерта по виду (Спека 6, шаг 2)", () => {
+  const cfg = { TG_OPS_CHAT_ID: "", TG_REVIEW_CHAT_ID: "", TELEGRAM_BOT_TOKEN: "t" };
+
+  it("🔴 деньги клиента идут в его «Редакцию», а не в наш служебный чат", async () => {
+    // Оба адреса пусты → причина отказа выдаёт, куда именно собирались слать.
+    for (const kind of ["balance_low", "balance_empty"] as const) {
+      const res = await sendByKind(cfg as unknown as Env, kind, "x");
+      expect(res).toEqual({
+        delivered: false,
+        reason: expect.stringMatching(/TG_REVIEW_CHAT_ID/),
+      });
+    }
+  });
+
+  it("наш дневной потолок остаётся в служебном чате", async () => {
+    for (const kind of ["warn", "exhausted"] as const) {
+      const res = await sendByKind(cfg as unknown as Env, kind, "x");
+      expect(res).toEqual({ delivered: false, reason: expect.stringMatching(/TG_OPS_CHAT_ID/) });
+    }
+  });
+
+  it("клиентский алерт НЕ подменяется служебным чатом при пустом адресе", async () => {
+    // Молчаливый фолбэк на наш чат означал бы, что клиент не узнал об остановке.
+    const res = await sendClientAlert(
+      { TG_OPS_CHAT_ID: "999", TG_REVIEW_CHAT_ID: "", TELEGRAM_BOT_TOKEN: "t" } as unknown as Env,
+      "x",
+    );
+    expect(res.delivered).toBe(false);
+  });
+});
+
 describe("attemptDelivery", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("доставлено → markAlertDelivered, без recordAlertAttempt, true", async () => {
     const send = vi.fn(async () => ({ delivered: true as const }));
-    const ok = await attemptDelivery(db, env, { id: "r1", message: "m" }, send);
+    const ok = await attemptDelivery(db, env, { id: "r1", message: "m", kind: "warn" }, send);
     expect(ok).toBe(true);
     expect(markAlertDelivered).toHaveBeenCalledWith(db, "r1");
     expect(recordAlertAttempt).not.toHaveBeenCalled();
   });
 
+  it("🔴 дослыка передаёт вид алерта — иначе клиентское уйдёт нам", async () => {
+    const send = vi.fn(async () => ({ delivered: true as const }));
+    await attemptDelivery(db, env, { id: "r1", message: "m", kind: "balance_empty" }, send);
+    expect(send).toHaveBeenCalledWith(env, "balance_empty", "m");
+  });
+
   it("провал → recordAlertAttempt(reason), без markAlertDelivered, false", async () => {
     const send = vi.fn(async () => ({ delivered: false as const, reason: "ETIMEDOUT" }));
-    const ok = await attemptDelivery(db, env, { id: "r1", message: "m" }, send);
+    const ok = await attemptDelivery(db, env, { id: "r1", message: "m", kind: "warn" }, send);
     expect(ok).toBe(false);
     expect(recordAlertAttempt).toHaveBeenCalledWith(db, "r1", "ETIMEDOUT");
     expect(markAlertDelivered).not.toHaveBeenCalled();

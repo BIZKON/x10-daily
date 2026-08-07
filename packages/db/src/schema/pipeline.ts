@@ -105,7 +105,14 @@ export type PipelineConfigRow = typeof pipelineConfig.$inferSelect;
  * (DAILY_BUDGET_WARN_USD); `exhausted` — достигнут жёсткий потолок
  * (DAILY_BUDGET_USD) и draft-article перестаёт драфтить до полуночи МСК.
  */
-export const costAlertKind = pgEnum("cost_alert_kind", ["warn", "exhausted"]);
+export const costAlertKind = pgEnum("cost_alert_kind", [
+  "warn",
+  "exhausted",
+  /** Остаток клиента ниже порога, конвейер ещё работает (Спека 6, миграция 0022). */
+  "balance_low",
+  /** Остаток исчерпан, новая работа не берётся (Спека 6, миграция 0022). */
+  "balance_empty",
+]);
 
 /**
  * Идемпотентность $-алертов: «один алерт на (день, порог)». Запись клеймится

@@ -6,6 +6,7 @@ import {
   asc,
   balanceEntries,
   clientBalance,
+  costAlertKind,
   costAlerts,
   eq,
   gte,
@@ -178,7 +179,15 @@ export async function recordRun(db: Database, entry: LedgerEntry): Promise<void>
   });
 }
 
-export type AlertKind = "warn" | "exhausted";
+/**
+ * Виды алертов = значения PG-enum `cost_alert_kind`. Берём из схемы, а не
+ * дублируем строками: разъехаться с базой на деньгах нельзя.
+ *
+ * `warn`/`exhausted` — НАШ дневной $-потолок (уходит в ops-чат).
+ * `balance_low`/`balance_empty` — деньги КЛИЕНТА (уходят в его «Редакцию»).
+ * Маршрут по виду разводится в ops-alert.ts.
+ */
+export type AlertKind = (typeof costAlertKind.enumValues)[number];
 
 /**
  * Идемпотентно «занять» алерт за (день МСК, порог) и сохранить его текст.
@@ -216,7 +225,12 @@ export async function recordAlertAttempt(db: Database, id: string, error: string
     .where(eq(costAlerts.id, id));
 }
 
-export type PendingAlert = { id: string; message: string };
+/**
+ * Строка в очереди дослыки. `kind` обязателен: без него sweeper не знает, чей
+ * это алерт — наш или клиента, и отправил бы предупреждение о деньгах клиента
+ * в наш служебный чат, то есть мимо адресата.
+ */
+export type PendingAlert = { id: string; message: string; kind: AlertKind };
 
 /**
  * Недоставленные алерты для дослыки (retry-ops-alerts). Ограничено:
@@ -233,7 +247,7 @@ export async function listPendingAlerts(
 ): Promise<PendingAlert[]> {
   const since = new Date(now.getTime() - opts.windowMs);
   const rows = await db
-    .select({ id: costAlerts.id, message: costAlerts.message })
+    .select({ id: costAlerts.id, message: costAlerts.message, kind: costAlerts.thresholdKind })
     .from(costAlerts)
     .where(
       and(
@@ -246,5 +260,5 @@ export async function listPendingAlerts(
     .orderBy(asc(costAlerts.createdAt))
     .limit(opts.limit);
   // message гарантированно не null по where, но тип — string | null; сужаем.
-  return rows.flatMap((r) => (r.message ? [{ id: r.id, message: r.message }] : []));
+  return rows.flatMap((r) => (r.message ? [{ id: r.id, message: r.message, kind: r.kind }] : []));
 }

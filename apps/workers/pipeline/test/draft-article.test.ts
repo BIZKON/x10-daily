@@ -227,6 +227,20 @@ vi.mock("../src/lib/cost-ledger", () => ({
 // правильными порогами/текстом и уважает warn-границу.
 const { deliverOpsAlert } = vi.hoisted(() => ({ deliverOpsAlert: vi.fn() }));
 vi.mock("../src/lib/ops-alert", () => ({ deliverOpsAlert }));
+// Денежный гейт клиента (Спека 6, шаг 2) мокаем — его политика проверяется в
+// billing-gate.test.ts. Здесь важно лишь, что функция его СПРАШИВАЕТ и
+// уважает ответ; по умолчанию денег хватает.
+const { guardBilling } = vi.hoisted(() => ({
+  guardBilling: vi.fn(async () => ({
+    balanceRub: 5000,
+    lowThresholdRub: 500,
+    billingEnforced: true,
+    blocked: false,
+    low: false,
+  })),
+}));
+vi.mock("../src/lib/billing-gate", () => ({ guardBilling }));
+
 
 import {
   BrevityAgent,
@@ -289,6 +303,41 @@ describe("draft-article pipeline", () => {
     vi.restoreAllMocks();
   });
 
+  it("🔴 баланс клиента исчерпан → НИ ОДИН платный агент не запускается", async () => {
+    // Смысл гейта: остановка должна стоять ДО трат, а не после. Если хоть один
+    // агент отработал, клиент заплатил за работу, которую не оплачивал.
+    guardBilling.mockResolvedValueOnce({
+      balanceRub: 0,
+      lowThresholdRub: 500,
+      billingEnforced: true,
+      blocked: true,
+      low: false,
+    });
+
+    const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
+    const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
+    const step = makeStep();
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
+
+    const result = (await handler({ event: EVENT, step })) as {
+      skipped: boolean;
+      reason: string;
+      balanceRub: number;
+    };
+
+    expect(result).toEqual({ skipped: true, reason: "client-balance-exhausted", balanceRub: 0 });
+    expect(DraftAgent.run).not.toHaveBeenCalled();
+    expect(NumbersAgent.run).not.toHaveBeenCalled();
+    expect(persistArticle).not.toHaveBeenCalled();
+    // Даже наш дневной потолок не считаем: платить всё равно нечем.
+    expect(getTodaySpendUsd).not.toHaveBeenCalled();
+    expect(step.run.mock.calls.map((c) => c[0])).toEqual(["now", "balance-gate"]);
+  });
+
   it("вызывает 7 агентов и возвращает articleId, hooks, social, score", async () => {
     const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
     const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
@@ -325,11 +374,12 @@ describe("draft-article pipeline", () => {
     expect(PreviewScoreAgent.run).toHaveBeenCalledOnce();
     expect(persistArticle).toHaveBeenCalledOnce();
 
-    // now + budget-gate + 8 шагов B2 + persist/record-run/save-tg-channel/budget-warn-alert.
-    expect(step.run).toHaveBeenCalledTimes(13);
+    // now + balance-gate + budget-gate + 8 шагов B2 + persist/record-run/save-tg-channel/budget-warn-alert.
+    expect(step.run).toHaveBeenCalledTimes(14);
     const stepIds = step.run.mock.calls.map((c) => c[0]);
     expect(stepIds).toEqual([
       "now",
+      "balance-gate",
       "budget-gate",
       "draft",
       "numbers",
@@ -450,11 +500,12 @@ describe("draft-article pipeline", () => {
     };
 
     expect(FactCheckAgent.run).toHaveBeenCalledOnce();
-    // now + budget-gate + 9 шагов B2 (с factcheck) + persist/record-run/save-tg-channel/budget-warn-alert.
-    expect(step.run).toHaveBeenCalledTimes(14);
+    // now + balance-gate + budget-gate + 9 шагов B2 (с factcheck) + persist/record-run/save-tg-channel/budget-warn-alert.
+    expect(step.run).toHaveBeenCalledTimes(15);
     const stepIds = step.run.mock.calls.map((c) => c[0]);
     expect(stepIds).toEqual([
       "now",
+      "balance-gate",
       "budget-gate",
       "draft",
       "numbers",
@@ -650,8 +701,8 @@ describe("draft-article pipeline", () => {
       factcheck: { status: string } | null;
     };
     expect(FactCheckAgent.run).not.toHaveBeenCalled();
-    // now + budget-gate + 8 (без factcheck) + persist/record-run/save-tg-channel/budget-warn-alert.
-    expect(step.run).toHaveBeenCalledTimes(13);
+    // now + balance-gate + budget-gate + 8 (без factcheck) + persist/record-run/save-tg-channel/budget-warn-alert.
+    expect(step.run).toHaveBeenCalledTimes(14);
     expect(result.factcheck).toBeNull();
   });
 
@@ -711,6 +762,7 @@ describe("draft-article pipeline", () => {
     // Только now + budget-gate + budget-exhausted-alert.
     expect(step.run.mock.calls.map((c) => c[0])).toEqual([
       "now",
+      "balance-gate",
       "budget-gate",
       "budget-exhausted-alert",
     ]);

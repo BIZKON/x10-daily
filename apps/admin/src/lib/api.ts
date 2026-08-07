@@ -1,3 +1,4 @@
+import type { BillingBannerState } from "@/components/billing-banner";
 import { type TeamRole, teamRoleFromDbRole } from "@x10/config";
 /**
  * HTTP-клиент к admin API (apps/api). Server-side only.
@@ -381,6 +382,14 @@ export type TeamInvite = {
 export async function fetchMyRole(): Promise<TeamRole | null> {
   const me = await getJson<{ user?: { role?: string } }>("/v1/auth/me");
   return teamRoleFromDbRole(me?.user?.role);
+}
+
+/**
+ * Состояние денег для плашки (Спека 6, шаг 2). `null` — ответа нет (нет сессии,
+ * api недоступен): плашку в этом случае не рисуем, см. BillingBanner.
+ */
+export async function fetchBillingBanner(): Promise<BillingBannerState | null> {
+  return getJson<BillingBannerState>("/v1/admin/billing/balance");
 }
 
 export async function fetchTeam(): Promise<{

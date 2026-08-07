@@ -10,6 +10,7 @@ import {
   topicIngestedEvent,
 } from "../../events";
 import { modelsFromEnv } from "../../lib/agent-context";
+import { guardBilling } from "../../lib/billing-gate";
 import { recordRun } from "../../lib/cost-ledger";
 import type { PipelineInngest } from "../client";
 
@@ -45,6 +46,23 @@ export function createProcessSourceItemFunction(
         masker,
         models: modelsFromEnv(env),
       };
+
+      // Деньги КЛИЕНТА (Спека 6, шаг 2). Гейт дешёвый, но идёт на КАЖДЫЙ item
+      // каждые 5 минут — без остановки мы месяцами оплачивали бы чужие ленты из
+      // своего кармана. Мемоизированный timestamp — чтобы алерт на границе
+      // полуночи МСК осел на тот же день, что и в остальных функциях.
+      const nowMs = await step.run("now", async () => Date.now());
+      const money = await step.run("balance-gate", async () => {
+        const db = createDb(env.DATABASE_URL);
+        return guardBilling(db, env, new Date(nowMs));
+      });
+      if (money.blocked) {
+        return {
+          skipped: true as const,
+          reason: "client-balance-exhausted" as const,
+          balanceRub: money.balanceRub,
+        };
+      }
 
       const ingest = await step.run("ingest", () =>
         IngestAgent.run(

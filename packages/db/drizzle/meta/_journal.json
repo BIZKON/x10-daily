@@ -148,6 +148,20 @@
       "when": 1781529372448,
       "tag": "0020_client_billing",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1781615772448,
+      "tag": "0021_billing_enforced_rename",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1781702172448,
+      "tag": "0022_balance_alert_kinds",
+      "breakpoints": true
     }
   ]
 }

@@ -22,6 +22,7 @@ import {
   topicIngestedEvent,
 } from "../../events";
 import { modelsFromEnv } from "../../lib/agent-context";
+import { guardBilling } from "../../lib/billing-gate";
 import { getTodaySpendUsd, mskDayString, recordRun } from "../../lib/cost-ledger";
 import { deliverOpsAlert } from "../../lib/ops-alert";
 import { cleanPostText } from "../../lib/text";
@@ -67,6 +68,21 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
       // иначе на границе полуночи МСК claim осядет не на тот день.
       const nowMs = await step.run("now", async () => Date.now());
       const now = new Date(nowMs);
+
+      // Деньги КЛИЕНТА (Спека 6, шаг 2). Два независимых контура: этот — про
+      // его предоплату, следующий — про наш дневной потолок. Проверяем баланс
+      // первым: если платить нечем, считать наш расход уже незачем.
+      const money = await step.run("balance-gate", async () => {
+        const db = createDb(env.DATABASE_URL);
+        return guardBilling(db, env, now);
+      });
+      if (money.blocked) {
+        return {
+          skipped: true as const,
+          reason: "client-balance-exhausted" as const,
+          balanceRub: money.balanceRub,
+        };
+      }
 
       // $-budget hard cap (session 20 hardening). Суммируем расход за
       // календарный день МСК (pipeline_runs.cost_usd) ДО запуска агентов. При

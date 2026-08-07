@@ -17,6 +17,18 @@ vi.mock("@x10/agents", async () => {
 // cost-ledger.test.ts; здесь мокаем recordRun + createDb (без реального pg).
 const { recordRun } = vi.hoisted(() => ({ recordRun: vi.fn() }));
 vi.mock("../src/lib/cost-ledger", () => ({ recordRun }));
+// Денежный гейт (Спека 6, шаг 2): политика — в billing-gate.test.ts, здесь
+// проверяем, что дешёвый гейт источников тоже уважает пустой баланс.
+const { guardBilling } = vi.hoisted(() => ({
+  guardBilling: vi.fn(async () => ({
+    balanceRub: 5000,
+    lowThresholdRub: 500,
+    billingEnforced: true,
+    blocked: false,
+    low: false,
+  })),
+}));
+vi.mock("../src/lib/billing-gate", () => ({ guardBilling }));
 vi.mock("@x10/db", () => ({ createDb: vi.fn(() => ({})) }));
 
 import { IngestAgent } from "@x10/agents";
@@ -113,6 +125,38 @@ describe("process-source-item", () => {
     expect(gate.agent).toBe("ingest");
     expect(gate.status).toBe("succeeded");
     expect(gate.costUsd).toBe(0.001);
+  });
+
+  it("🔴 баланс исчерпан → IngestAgent не вызывается, ленты не оплачиваются", async () => {
+    // Гейт источников дешёвый, но идёт на каждый item каждые 5 минут: без
+    // остановки мы месяцами оплачивали бы чужие ленты из своего кармана.
+    guardBilling.mockResolvedValueOnce({
+      balanceRub: -12,
+      lowThresholdRub: 500,
+      billingEnforced: true,
+      blocked: true,
+      low: false,
+    });
+
+    const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
+    const fn = createProcessSourceItemFunction(inngest, BINDINGS as unknown as PipelineBindings);
+    const step = makeStep();
+    const handler = (
+      fn as unknown as {
+        fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+      }
+    ).fn;
+
+    const result = (await handler({ event: EVENT, step })) as {
+      skipped: boolean;
+      reason: string;
+    };
+
+    expect(result.skipped).toBe(true);
+    expect(result.reason).toBe("client-balance-exhausted");
+    expect(IngestAgent.run).not.toHaveBeenCalled();
+    expect(recordRun).not.toHaveBeenCalled();
+    expect(step.sendEvent).not.toHaveBeenCalled();
   });
 
   it("reject: не шлёт topic.ingested, возвращает reason", async () => {

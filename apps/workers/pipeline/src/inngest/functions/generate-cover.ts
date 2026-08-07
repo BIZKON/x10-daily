@@ -10,6 +10,7 @@ import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
 import { ARTICLE_COVER_REQUESTED, REVIEW_CARD_REQUESTED } from "../../events";
 import { modelsFromEnv } from "../../lib/agent-context";
+import { guardBilling } from "../../lib/billing-gate";
 import { recordRun } from "../../lib/cost-ledger";
 import { coversEnabled, saveCover } from "../../lib/cover-storage";
 import { ImageContentFilterError, generateCoverImage } from "../../lib/gemini-image";
@@ -114,6 +115,23 @@ export function createGenerateCoverFunction(
       // Гард конфигурации: пусто → фича выключена, конвейер работает как раньше.
       if (!coversEnabled(env)) {
         return { skipped: true as const, reason: "covers-disabled" as const };
+      }
+
+      // Деньги КЛИЕНТА (Спека 6, шаг 2). Обложка — самый дорогой
+      // единичный прогон конвейера, поэтому проверяем до вызова модели, а не
+      // после. Ниже гарда конфигурации: выключенная фича не должна тревожить
+      // клиента разговорами про деньги.
+      const nowMs = await step.run("now", async () => Date.now());
+      const money = await step.run("balance-gate", async () => {
+        const db = createDb(env.DATABASE_URL);
+        return guardBilling(db, env, new Date(nowMs));
+      });
+      if (money.blocked) {
+        return {
+          skipped: true as const,
+          reason: "client-balance-exhausted" as const,
+          balanceRub: money.balanceRub,
+        };
       }
 
       const article = await step.run("load-article", async () => {

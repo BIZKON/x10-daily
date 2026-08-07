@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { BillingBanner } from "@/components/billing-banner";
 import { DemoBanner } from "@/components/demo-banner";
 import { Sidebar } from "@/components/sidebar";
-import { fetchMyRole } from "@/lib/api";
+import { fetchBillingBanner, fetchMyRole } from "@/lib/api";
 import { fontDisplay, fontMono, fontSans } from "@/lib/fonts";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -36,6 +37,11 @@ export default function RootLayout({
           </Suspense>
           <main className="flex-1 overflow-x-hidden">
             <DemoBanner />
+            {/* Своя дыра PPR, отдельно от меню: плашка про деньги не должна
+                задерживать отрисовку страницы, а её отсутствие — ломать меню. */}
+            <Suspense fallback={null}>
+              <BillingBannerSlot />
+            </Suspense>
             <div className="mx-auto max-w-[1280px] px-4 py-4 md:px-8 md:py-6">{children}</div>
           </main>
         </div>
@@ -66,4 +72,16 @@ async function SidebarWithRole() {
   await connection();
   const role = await fetchMyRole();
   return <Sidebar role={role} />;
+}
+
+/**
+ * Плашка про деньги (Спека 6, шаг 2).
+ *
+ * 🔴 Та же PPR-грабля, что и у меню: без `connection()` статичные страницы
+ * запекут ответ, полученный на билде (то есть «плашки нет»), и клиент никогда
+ * не узнает, что конвейер встал из-за денег.
+ */
+async function BillingBannerSlot() {
+  await connection();
+  return <BillingBanner data={await fetchBillingBanner()} />;
 }

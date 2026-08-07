@@ -3,6 +3,7 @@ import { CLIENT_PRICE_MULTIPLIER, can, usdToRub } from "@x10/config";
 import {
   and,
   articles,
+  clientBalance,
   costAlerts,
   desc,
   eq,
@@ -115,6 +116,53 @@ export const adminRoute = new Hono<AppEnv>()
     });
 
     return c.json({ items, count: items.length });
+  })
+
+  /**
+   * GET /v1/admin/billing/balance
+   *
+   * Состояние денег для плашки в кабинете (Спека 6, шаг 2). Отвечает на вопрос
+   * «почему конвейер молчит», поэтому доступно ВСЕЙ команде: автор, увидевший
+   * пустую очередь, должен понимать причину, а не идти выяснять её к владельцу.
+   *
+   * 🔴 Суммы отдаём только тем, кому дано `cost.view`. Остальные видят факт
+   * («деньги закончились»), но не цифры — как и на экране расходов.
+   */
+  .get("/billing/balance", async (c) => {
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    const me = await requirePermission(c, db, "content.view");
+    const showMoney = can(me.teamRole, "cost.view");
+
+    const [row] = await db
+      .select({
+        balanceRub: clientBalance.balanceRub,
+        lowThresholdRub: clientBalance.lowThresholdRub,
+        billingEnforced: clientBalance.billingEnforced,
+      })
+      .from(clientBalance)
+      .limit(1);
+
+    // Строки нет — денежный контур в этой копии не заведён. Молчим: плашка о
+    // деньгах там, где денег не считают, только пугает.
+    if (!row || !row.billingEnforced) {
+      return c.json({ state: "off" as const, balanceRub: null, lowThresholdRub: null });
+    }
+
+    const balanceRub = Number(row.balanceRub);
+    const lowThresholdRub = Number(row.lowThresholdRub);
+    const state =
+      balanceRub <= 0
+        ? ("empty" as const)
+        : balanceRub < lowThresholdRub
+          ? ("low" as const)
+          : ("ok" as const);
+
+    return c.json({
+      state,
+      balanceRub: showMoney ? balanceRub : null,
+      lowThresholdRub: showMoney ? lowThresholdRub : null,
+    });
   })
 
   /**

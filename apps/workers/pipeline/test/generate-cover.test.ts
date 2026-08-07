@@ -75,6 +75,20 @@ vi.mock("@x10/db", async () => {
   return { ...actual, createDb: vi.fn(makeDb) };
 });
 
+// Денежный гейт клиента (Спека 6, шаг 2) мокаем — его политика проверяется в
+// billing-gate.test.ts. Здесь важно лишь, что функция его СПРАШИВАЕТ и
+// уважает ответ; по умолчанию денег хватает.
+const { guardBilling } = vi.hoisted(() => ({
+  guardBilling: vi.fn(async () => ({
+    balanceRub: 5000,
+    lowThresholdRub: 500,
+    billingEnforced: true,
+    blocked: false,
+    low: false,
+  })),
+}));
+vi.mock("../src/lib/billing-gate", () => ({ guardBilling }));
+
 const { agentState } = vi.hoisted(() => ({
   agentState: { scene: "A single closed warehouse door", shouldThrow: false },
 }));

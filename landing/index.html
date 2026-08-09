@@ -130,16 +130,37 @@
   .chip.k4{background:var(--f-emerald);border-color:#C6EFDD;}
   .chip.k5{background:var(--f-rose);border-color:#FBCDD8;}
 
-  .cta{display:flex;flex-wrap:wrap;gap:11px;align-items:center;}
-  .cta a{display:inline-flex;align-items:center;gap:9px;text-decoration:none;
-    font-weight:700;font-size:15.5px;padding:14px 24px;border-radius:13px;
-    transition:transform .18s ease, box-shadow .18s ease;}
-  .cta .primary{background:linear-gradient(120deg,var(--violet),var(--pink));color:#fff;
+  /* ── ОДНА шкала для всех кнопок страницы ────────────────
+     Аудит 09.08.2026 показал три разные высоты (52 / 54 / 78) и два разных
+     паддинга у четырёх кнопок. Кнопка на лендинге — это один объект с одними
+     размерами, где бы она ни стояла. Высота фиксируется min-height, а не
+     паддингом: иконка и перенос строки иначе двигают её на пиксели. */
+  .act{display:inline-flex;align-items:center;justify-content:center;gap:9px;
+    text-decoration:none;font-weight:700;font-size:16px;line-height:1.2;
+    min-height:54px;padding:0 26px;border-radius:14px;border:1px solid transparent;
+    text-align:center;
+    transition:transform .18s ease, box-shadow .18s ease, background .18s ease;}
+  .act:focus-visible{outline:3px solid var(--violet);outline-offset:3px;}
+  .act svg{flex:0 0 auto;}
+  .act-primary{background:linear-gradient(120deg,var(--violet),var(--pink));color:#fff;
     box-shadow:0 12px 30px -14px rgba(190,60,150,.85);}
-  .cta .primary:hover{transform:translateY(-2px);box-shadow:0 18px 38px -14px rgba(190,60,150,.95);}
-  .cta .ghost{background:#fff;border:1px solid var(--line);color:var(--ink);}
-  .cta .ghost:hover{transform:translateY(-2px);box-shadow:0 12px 26px -16px rgba(22,22,46,.5);}
-  .cta a:focus-visible{outline:3px solid var(--violet);outline-offset:3px;}
+  .act-primary:hover{transform:translateY(-2px);box-shadow:0 18px 38px -14px rgba(190,60,150,.95);}
+  .act-ghost{background:#fff;border-color:var(--line);color:var(--ink);}
+  .act-ghost:hover{transform:translateY(-2px);box-shadow:0 12px 26px -16px rgba(22,22,46,.5);}
+  /* На тёмном градиенте: белая — основная, прозрачная — вторичная. */
+  .act-light{background:#fff;color:var(--violet);border-color:#fff;}
+  .act-light:hover{transform:translateY(-2px);box-shadow:0 14px 30px -14px rgba(0,0,0,.5);}
+  .act-dim{background:rgba(20,10,40,.24);border-color:rgba(255,255,255,.30);color:#fff;}
+  .act-dim:hover{background:rgba(20,10,40,.36);transform:translateY(-2px);}
+
+  .cta{display:flex;flex-wrap:wrap;gap:11px;align-items:center;}
+  /* Телефон — вспомогательное действие, но кегль у него тот же: цифры,
+     которые набирают с экрана, мельчить нельзя. */
+  .cta .tel{font-variant-numeric:tabular-nums;}
+  @media (max-width:560px){
+    .cta{display:grid;grid-template-columns:1fr;gap:10px;}
+    .cta .act{width:100%;}
+  }
 
   /* ── появление при прокрутке ───────────────────────── */
   .rise{opacity:0;transform:translateY(22px);
@@ -157,10 +178,33 @@
     .cta a:hover,.p:hover,.col:hover{transform:none;}
   }
 
+
+  /* ── липкая кнопка связи ───────────────────────────────
+     Лендинг отличается от презентации тем, что действие доступно в любой точке
+     прокрутки, а не только в начале и в конце. Показываем только на узких
+     экранах: на компьютере страница обозрима, а полоса внизу мешала бы. */
+  .dock{position:fixed;left:0;right:0;bottom:0;z-index:30;
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+    background:rgba(252,251,255,.92);backdrop-filter:blur(10px);
+    border-top:1px solid var(--line);
+    transform:translateY(110%);transition:transform .28s cubic-bezier(.2,.7,.3,1);
+    display:none;}
+  .dock.show{transform:none;}
+  .dock .act{width:100%;}
+  @media (max-width:720px){
+    .dock{display:block;}
+    body{padding-bottom:84px;}
+  }
+  @media (prefers-reduced-motion: reduce){ .dock{transition:none;} }
+
   /* ── контакты ──────────────────────────────────────── */
   .contacts{display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:center;}
   @media (max-width:860px){ .contacts{grid-template-columns:auto 1fr;} .contacts .links{grid-column:1/-1;} }
-  @media (max-width:460px){ .contacts{grid-template-columns:1fr;justify-items:start;} }
+  @media (max-width:460px){
+    .contacts{grid-template-columns:1fr;justify-items:stretch;}
+    .contacts .avatar{justify-self:start;}
+    .links{min-width:0;}
+  }
   /* Круглый портрет. Пока фото нет — инициалы, замена в одну строку: подставить
      data-URI в background-image у .avatar и убрать .avatar .ini. */
   .avatar{width:104px;height:104px;border-radius:50%;flex:0 0 auto;
@@ -174,17 +218,9 @@
   .person .name{font-family:var(--display);font-size:clamp(24px,3.4vw,34px);font-weight:800;
     letter-spacing:-.022em;color:#fff;margin-bottom:4px;line-height:1.1;}
   .person .pos{font-size:15px;color:rgba(255,255,255,.9);}
-  .links{display:flex;flex-direction:column;gap:10px;}
-  /* Тёмная подложка, а не светлая: блок лежит на градиенте, который к правому
-     краю уходит в жёлтый — белый текст на полупрозрачном белом там терялся. */
-  .links a{display:inline-flex;align-items:center;gap:10px;text-decoration:none;
-    background:rgba(20,10,40,.24);border:1px solid rgba(255,255,255,.30);
-    color:#fff;font-weight:700;font-size:15.5px;padding:14px 20px;border-radius:13px;
-    transition:background .18s ease, transform .18s ease;}
-  .links a:hover{background:rgba(20,10,40,.34);transform:translateY(-2px);}
-  .links a:focus-visible{outline:3px solid #fff;outline-offset:3px;}
-  .links .tg{background:#fff;color:#7C3AED;border-color:#fff;}
-  .links .tg:hover{background:#fff;}
+  .links{display:flex;flex-direction:column;gap:10px;min-width:260px;}
+  .links .act{width:100%;}
+  .links .act:focus-visible{outline:3px solid #fff;outline-offset:3px;}
 
   /* схема линии */
   figure.line{margin:0 0 30px;}
@@ -323,17 +359,17 @@
         <span class="chip k5">Ведущий в кадре</span>
       </div>
       <div class="cta rise">
-        <a class="primary" href="https://t.me/stsfinans" target="_blank" rel="noopener">
+        <a class="act act-primary" href="https://t.me/stsfinans" target="_blank" rel="noopener">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.24 1.07-.88 1.33-1.78.83l-4.92-3.63-2.37 2.29c-.26.26-.48.48-.99.48l.35-5.02 9.13-8.25c.4-.35-.09-.55-.62-.2L6.22 12.02 1.36 10.5c-1.06-.33-1.08-1.06.22-1.57L20.53 2.7c.88-.33 1.65.2 1.37 1.6Z"/></svg>
           Написать в Telegram
         </a>
-        <a class="ghost" href="tel:+79936560741">+7 993 656-07-41</a>
+        <a class="act act-ghost tel" href="tel:+79936560741">+7 993 656-07-41</a>
       </div>
     </div>
   </header>
 
   <section class="slide">
-    <div class="slide-no">01 — что вы покупаете</div>
+    <div class="slide-no">что вы покупаете</div>
     <h3>Не программу, а <span class="grad">работающую линию</span></h3>
     <p class="lede">Мы разворачиваем отдельный экземпляр под вас: свой бот, свой канал, своя витрина, своя база. Настраиваем под ваш бизнес и ведём каждый месяц. Вы получаете готовый поток публикаций и панель, где им управляет ваша команда.</p>
 
@@ -368,7 +404,7 @@
   </section>
 
   <section class="slide">
-    <div class="slide-no">02 — что производит линия</div>
+    <div class="slide-no">что производит линия</div>
     <h3>Четыре формата <span class="grad">из одного материала</span></h3>
     <p class="lede">Одна производственная линия, четыре формата на выходе и одно решение человека перед публикацией. Форматы включаются и выключаются в настройках: линия собирается под то, где живёт ваша аудитория.</p>
 
@@ -543,7 +579,7 @@
   </section>
 
   <section class="slide">
-    <div class="slide-no">03 — где это выходит</div>
+    <div class="slide-no">где это выходит</div>
     <h3>Площадки, <span class="grad">которые мы ведём</span></h3>
     <p class="lede">Один материал — несколько выходов, из одной очереди и с одним подтверждением. Каналы остаются вашими: вы подключаете их сами из панели и в любой момент отключаете.</p>
 
@@ -565,7 +601,7 @@
   </section>
 
   <section class="slide">
-    <div class="slide-no">04 — как вы этим управляете</div>
+    <div class="slide-no">как вы этим управляете</div>
     <h3>Панель, в которой <span class="grad">решаете вы</span></h3>
     <p class="lede">Материал приходит карточкой в вашу рабочую группу в Telegram и ждёт в панели. Одна кнопка — и он уходит во все подключённые площадки.</p>
 
@@ -619,7 +655,7 @@
   </section>
 
   <section class="slide">
-    <div class="slide-no">05 — как начинаем</div>
+    <div class="slide-no">как начинаем</div>
     <h3>Две недели <span class="grad">настройки под вас</span></h3>
     <p class="lede">За это время линия перестаёт быть общей и становится вашей: с вашими темами, вашим голосом, вашим оформлением и вашими каналами.</p>
 
@@ -650,11 +686,11 @@
         <div class="pos">Управляющий партнёр проекта</div>
       </div>
       <div class="links">
-        <a class="tg" href="https://t.me/stsfinans" target="_blank" rel="noopener">
+        <a class="act act-light" href="https://t.me/stsfinans" target="_blank" rel="noopener">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.24 1.07-.88 1.33-1.78.83l-4.92-3.63-2.37 2.29c-.26.26-.48.48-.99.48l.35-5.02 9.13-8.25c.4-.35-.09-.55-.62-.2L6.22 12.02 1.36 10.5c-1.06-.33-1.08-1.06.22-1.57L20.53 2.7c.88-.33 1.65.2 1.37 1.6Z"/></svg>
-          Написать в Telegram — @stsfinans
+          Написать в Telegram
         </a>
-        <a href="tel:+79936560741">Позвонить: +7 993 656-07-41</a>
+        <a class="act act-dim tel" href="tel:+79936560741">+7 993 656-07-41</a>
       </div>
     </div>
   </section>
@@ -663,6 +699,14 @@
     Цифры производства — по фактическому расходу работающей линии. Технические возможности площадок сверены с официальной документацией на август 2026 года.
   </footer>
 
+</div>
+
+
+<div class="dock" id="dock">
+  <a class="act act-primary" href="https://t.me/stsfinans" target="_blank" rel="noopener">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.24 1.07-.88 1.33-1.78.83l-4.92-3.63-2.37 2.29c-.26.26-.48.48-.99.48l.35-5.02 9.13-8.25c.4-.35-.09-.55-.62-.2L6.22 12.02 1.36 10.5c-1.06-.33-1.08-1.06.22-1.57L20.53 2.7c.88-.33 1.65.2 1.37 1.6Z"/></svg>
+    Обсудить проект
+  </a>
 </div>
 
 <script>
@@ -687,6 +731,22 @@
       });
     }, { rootMargin: '0px 0px -12% 0px', threshold: 0.06 });
     document.querySelectorAll('.rise:not(.in)').forEach(function (el) { io.observe(el); });
+  })();
+
+  // Липкая кнопка: прячется, пока виден герой (там своя кнопка) и пока виден
+  // блок контактов — иначе она перекрывала бы ровно то действие, к которому
+  // ведёт.
+  (function () {
+    var dock = document.getElementById('dock');
+    var hero = document.querySelector('.hero');
+    var end = document.querySelector('.contacts');
+    if (!dock || !hero || !end || !('IntersectionObserver' in window)) return;
+    var heroVisible = true, endVisible = false;
+    function sync() { dock.classList.toggle('show', !heroVisible && !endVisible); }
+    new IntersectionObserver(function (e) { heroVisible = e[0].isIntersecting; sync(); },
+      { threshold: 0.15 }).observe(hero);
+    new IntersectionObserver(function (e) { endVisible = e[0].isIntersecting; sync(); },
+      { threshold: 0.2 }).observe(end);
   })();
 </script>
 </body>

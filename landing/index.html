@@ -198,6 +198,22 @@
   .sv-w{font-family:var(--display);font-size:13.5px;font-weight:750;fill:#fff;}
   .sv-ws{font-size:11.5px;fill:#fff;fill-opacity:.9;}
   .sv-l{stroke:currentColor;stroke-opacity:.32;stroke-width:1.5;fill:none;}
+  .sv-group{fill:none;stroke:currentColor;stroke-opacity:.18;stroke-dasharray:5 5;}
+  .sv-gate-v{fill:url(#gateGradV);stroke:none;}
+  figure.line .line-tall{display:none;}
+  /* В вертикальной схеме поле уже (380 против 1020), значит на экране она
+     сжимается сильнее — кегль внутри viewBox поднимаем, чтобы после сжатия
+     подписи остались в читаемых 11–13 px, а не в восьми. */
+  .line-tall .sv-t{font-size:17.5px;}
+  .line-tall .sv-s{font-size:15px;}
+  .line-tall .sv-a{font-size:13.5px;}
+  .line-tall .sv-w{font-size:18px;}
+  .line-tall .sv-ws{font-size:15px;}
+  @media (max-width:760px){
+    figure.line .line-wide{display:none;}
+    figure.line .line-tall{display:block;}
+  }
+
 
   /* производство */
   .prod{display:grid;grid-template-columns:repeat(auto-fit,minmax(246px,1fr));gap:13px;}
@@ -356,7 +372,7 @@
 
 
     <figure class="line">
-      <svg viewBox="0 0 1020 440" role="img" aria-label="Схема производственной линии: источники, отбор, материал, четыре формата, одобрение человеком, публикация в площадки">
+      <svg class="line-wide" viewBox="0 0 1020 440" role="img" aria-label="Схема производственной линии: источники, отбор, материал, четыре формата, одобрение человеком, публикация в площадки">
         <defs>
           <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M0,0 L10,5 L0,10 z" fill="currentColor" fill-opacity=".45"/>
@@ -426,6 +442,55 @@
         <text class="sv-s" x="930" y="252" text-anchor="middle">Дзен</text>
         <text class="sv-s" x="930" y="272" text-anchor="middle">витрина Mini App</text>
         <text class="sv-a" x="930" y="292" text-anchor="middle">+ Клипы и Shorts</text>
+      </svg>
+      <svg class="line-tall" viewBox="0 0 380 772" role="img" aria-label="Схема производственной линии: источники, отбор, материал, четыре формата, одобрение человеком, публикация в площадки">
+        <defs>
+          <marker id="arv" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor" fill-opacity=".45"/>
+          </marker>
+          <linearGradient id="gateGradV" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#7C3AED"/><stop offset="100%" stop-color="#EC4899"/>
+          </linearGradient>
+        </defs>
+
+        <rect class="sv-box" x="20" y="8" width="340" height="58" rx="12"/>
+        <text class="sv-t" x="190" y="34" text-anchor="middle">Источники</text>
+        <text class="sv-s" x="190" y="53" text-anchor="middle">ленты вашей отрасли, каждые 5 минут</text>
+        <line class="sv-l" x1="190" y1="66" x2="190" y2="86" marker-end="url(#arv)"/>
+
+        <rect class="sv-box" x="20" y="92" width="340" height="58" rx="12"/>
+        <text class="sv-t" x="190" y="118" text-anchor="middle">Отбор</text>
+        <text class="sv-s" x="190" y="137" text-anchor="middle">отсеивает 9 тем из 10</text>
+        <line class="sv-l" x1="190" y1="150" x2="190" y2="170" marker-end="url(#arv)"/>
+
+        <rect class="sv-box" x="20" y="176" width="340" height="58" rx="12"/>
+        <text class="sv-t" x="190" y="202" text-anchor="middle">Материал</text>
+        <text class="sv-s" x="190" y="221" text-anchor="middle">текст и фирменная обложка</text>
+        <line class="sv-l" x1="190" y1="234" x2="190" y2="252" marker-end="url(#arv)"/>
+
+        <rect class="sv-group" x="20" y="258" width="340" height="244" rx="14"/>
+        <text class="sv-a" x="190" y="278" text-anchor="middle">один материал — четыре формата</text>
+        <rect class="sv-fmt" x="32" y="288" width="316" height="46" rx="10"/>
+        <text class="sv-t" x="190" y="317" text-anchor="middle">Пост — текст с обложкой</text>
+        <rect class="sv-fmt" x="32" y="342" width="316" height="46" rx="10"/>
+        <text class="sv-t" x="190" y="371" text-anchor="middle">Карусель — до 10 слайдов</text>
+        <rect class="sv-fmt" x="32" y="396" width="316" height="46" rx="10"/>
+        <text class="sv-t" x="190" y="425" text-anchor="middle">Ролик 9:16 с озвучкой</text>
+        <rect class="sv-fmt" x="32" y="450" width="316" height="46" rx="10"/>
+        <text class="sv-t" x="190" y="479" text-anchor="middle">Ролик с ведущим в кадре</text>
+        <line class="sv-l" x1="190" y1="502" x2="190" y2="520" marker-end="url(#arv)"/>
+
+        <rect class="sv-gate-v" x="20" y="526" width="340" height="70" rx="14"/>
+        <text class="sv-w" x="190" y="556" text-anchor="middle">Одобрение</text>
+        <text class="sv-ws" x="190" y="577" text-anchor="middle">решает человек из вашей команды</text>
+        <line class="sv-l" x1="190" y1="596" x2="190" y2="614" marker-end="url(#arv)"/>
+
+        <rect class="sv-out" x="20" y="620" width="340" height="144" rx="12"/>
+        <text class="sv-t" x="190" y="648" text-anchor="middle">Площадки</text>
+        <text class="sv-s" x="190" y="672" text-anchor="middle">Telegram · витрина Mini App</text>
+        <text class="sv-s" x="190" y="694" text-anchor="middle">Instagram и Threads</text>
+        <text class="sv-s" x="190" y="716" text-anchor="middle">ВКонтакте · Дзен</text>
+        <text class="sv-a" x="190" y="742" text-anchor="middle">+ Клипы и Shorts</text>
       </svg>
       <figcaption>Линия берёт тему один раз и разворачивает её в четыре формата. Все они проходят через одно решение человека — и только после него уходят во все подключённые площадки по расписанию.</figcaption>
     </figure>

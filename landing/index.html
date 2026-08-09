@@ -283,8 +283,16 @@
   .app{display:grid;grid-template-columns:190px 1fr;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#fff;}
   .nav{background:linear-gradient(170deg,#F7F2FF,#EEF8FB);padding:16px 12px;border-right:1px solid var(--line);}
   .nav .brand{font-family:var(--display);font-weight:800;font-size:14px;margin-bottom:14px;padding-left:8px;}
-  .nav a{display:block;padding:8px 10px;border-radius:9px;font-size:13.5px;color:var(--ink-soft);text-decoration:none;margin-bottom:2px;}
-  .nav a.on{background:#fff;color:var(--violet);font-weight:680;box-shadow:0 1px 3px rgba(90,60,180,.12);}
+  /* Это МАКЕТ панели, а не навигация: пункты — span, не ссылки. Раньше стояли
+     <a href="#">, и нажатие выбрасывало читателя в начало страницы. */
+  .nav span{display:block;padding:8px 10px;border-radius:9px;font-size:13.5px;color:var(--ink-soft);margin-bottom:2px;}
+  .nav span.on{background:#fff;color:var(--violet);font-weight:680;box-shadow:0 1px 3px rgba(90,60,180,.12);}
+
+  /* Пояснения к разделам панели: что означает каждый. */
+  .rooms{display:grid;grid-template-columns:repeat(auto-fit,minmax(266px,1fr));gap:12px;}
+  .room{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:#FDFCFF;}
+  .room b{display:block;font-family:var(--display);font-size:16px;font-weight:750;margin-bottom:5px;}
+  .room span{display:block;font-size:14px;color:var(--ink-soft);line-height:1.5;}
   .pane{padding:18px 20px 22px;}
   .pane .ttl{font-family:var(--display);font-weight:750;font-size:17px;margin-bottom:13px;}
   .item{border:1px solid var(--line);border-radius:13px;padding:14px 15px;margin-bottom:10px;background:#FDFCFF;}
@@ -329,8 +337,13 @@
     .row{grid-template-columns:1fr;gap:7px;}
     .row .pill{justify-self:start;}
     .app{grid-template-columns:1fr;}
-    .nav{display:flex;gap:6px;overflow-x:auto;border-right:none;border-bottom:1px solid var(--line);}
-    .nav .brand{display:none;} .nav a{white-space:nowrap;}
+    /* Не горизонтальный свайп: на телефоне список разделов идёт вниз двумя
+       колонками. Боковая прокрутка внутри страницы прячет половину пунктов и
+       читается как поломка. */
+    .nav{display:grid;grid-template-columns:1fr 1fr;gap:6px;
+      border-right:none;border-bottom:1px solid var(--line);}
+    .nav .brand{grid-column:1/-1;}
+    .nav span{margin-bottom:0;}
   }
 </style>
 <style>
@@ -608,13 +621,13 @@
     <div class="app">
       <nav class="nav">
         <div class="brand">Ваш контент-завод</div>
-        <a class="on" href="#">Очередь</a>
-        <a href="#">Контент-план</a>
-        <a href="#">Каналы</a>
-        <a href="#">Источники</a>
-        <a href="#">Рубрики</a>
-        <a href="#">Расходы</a>
-        <a href="#">Команда</a>
+        <span class="on">Очередь</span>
+        <span>Контент-план</span>
+        <span>Каналы</span>
+        <span>Источники</span>
+        <span>Рубрики</span>
+        <span>Расходы</span>
+        <span>Команда</span>
       </nav>
       <div class="pane">
         <div class="ttl">Ждут вашего решения — 3</div>
@@ -646,11 +659,15 @@
       </div>
     </div>
 
-    <h4>Что умеет ваша команда без нас</h4>
-    <div class="cols">
-      <div class="col a"><div class="cap">Роли</div><h5>Четыре уровня доступа</h5><p>Владелец, редактор, автор, наблюдатель. Приглашение одной ссылкой, отзыв доступа в один клик. Суммы расходов видят только те, кому вы разрешили.</p></div>
-      <div class="col b"><div class="cap">Темы</div><h5>Источники и рубрики</h5><p>Добавляете ленты своей отрасли сами. Новый источник система сначала проверяет и только потом включает — опечатка в адресе не превратится в поток мусора.</p></div>
-      <div class="col c"><div class="cap">Деньги</div><h5>Расход до копейки</h5><p>Видите, сколько стоил каждый материал и сколько осталось на балансе. Система заранее предупреждает, когда пора пополнить.</p></div>
+    <h4>Что в каждом разделе</h4>
+    <div class="rooms">
+      <div class="room"><b>Очередь</b><span>Материалы, которые ждут вашего решения. Видно тему, слот выхода и площадки. Здесь же кнопки: одобрить, перерисовать обложку, переписать текст.</span></div>
+      <div class="room"><b>Контент-план</b><span>Календарь на неделю вперёд: что и когда выходит. Материал можно перенести на другой день или слот, не трогая остальные.</span></div>
+      <div class="room"><b>Каналы</b><span>Ваши площадки: Telegram, ВКонтакте, Instagram, Threads. Подключаются и отключаются здесь же, доступы остаются вашими.</span></div>
+      <div class="room"><b>Источники</b><span>Ленты вашей отрасли, из которых линия берёт темы. Новый источник система сначала проверяет и только потом включает — опечатка в адресе не превратится в поток мусора.</span></div>
+      <div class="room"><b>Рубрики</b><span>Разделы вашего канала и правила для каждого: длина, тон, что можно и чего нельзя. Отсюда линия понимает, о чём вообще писать.</span></div>
+      <div class="room"><b>Расходы</b><span>Сколько стоил каждый материал и сколько осталось на балансе. Суммы видят только те, кому вы это разрешили.</span></div>
+      <div class="room"><b>Команда</b><span>Кто имеет доступ и что может делать: владелец, редактор, автор, наблюдатель. Приглашение по ссылке, отзыв доступа в одно действие.</span></div>
     </div>
   </section>
 

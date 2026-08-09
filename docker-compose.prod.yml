@@ -277,6 +277,8 @@ services:
       - covers:/srv/covers:ro
       # Загрузки админки — только чтение: пишет их api.
       - uploads:/srv/uploads:ro
+      # Лендинг коммерческого предложения: статика из репозитория, /kp на app.<domain>.
+      - ./landing:/srv/landing:ro
     environment:
       X10_BASE_DOMAIN: "${X10_BASE_DOMAIN:-pro-agent-ai.ru}"
       CADDY_ACME_EMAIL: "${CADDY_ACME_EMAIL:-admin@pro-agent-ai.ru}"

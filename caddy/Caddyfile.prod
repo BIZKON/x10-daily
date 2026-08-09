@@ -63,6 +63,23 @@ app.{$X10_BASE_DOMAIN:pro-agent-ai.ru} {
 		file_server
 	}
 
+	# Коммерческое предложение (лендинг под КП). Статика с диска VM, каталог
+	# ./landing в репозитории, монтируется в caddy только на чтение.
+	#
+	# Живёт ПУТЁМ на app.<domain>, а не отдельным поддоменом, потому что
+	# wildcard-записи у домена нет: kp.<domain> не резолвится, и Let's Encrypt
+	# не выпустил бы сертификат. Появится A-запись — блок переедет в свой домен
+	# без изменения содержимого.
+	#
+	# ⚠️ Как и covers/uploads, блок обязан стоять ДО общего handle: handle-блоки
+	# срабатывают в порядке записи, иначе /kp уйдёт в miniapp и вернёт 404.
+	handle_path /kp* {
+		root * /srv/landing
+		file_server
+		# Документ правится и перевыкладывается — вечный кэш здесь вреден.
+		header Cache-Control "public, max-age=300"
+	}
+
 	# Всё остальное → miniapp (fallback-handle, тот же прокси что был).
 	handle {
 		reverse_proxy miniapp:3000 {

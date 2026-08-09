@@ -3,14 +3,17 @@
 import { type Permission, type TeamRole, can } from "@x10/config";
 import {
   Calendar,
+  CalendarDays,
   Cpu,
   FileCheck2,
   Image as ImageIcon,
   Layers,
+  LayoutGrid,
   Menu,
   Mic,
   Power,
   Rss,
+  Share2,
   Users,
   UsersRound,
   Wallet,
@@ -49,6 +52,11 @@ const SECTIONS: Array<{
   {
     label: "Контент",
     items: [
+      // Разделы-заготовки: обещаны клиенту в коммерческом предложении, поэтому
+      // видны в меню и объясняют себя сами. Права те же, что у соседей по
+      // смыслу, — когда появится содержимое, менять их не придётся.
+      { href: "/plan", label: "Контент-план", icon: CalendarDays, permission: "content.view" },
+      { href: "/formats", label: "Форматы", icon: LayoutGrid, permission: "settings.manage" },
       { href: "/authors", label: "Авторы", icon: Users, permission: "catalog.manage" },
       { href: "/events", label: "События", icon: Calendar, permission: "catalog.manage" },
       { href: "/digests", label: "Дайджесты", icon: Mic, permission: "catalog.manage" },
@@ -60,6 +68,7 @@ const SECTIONS: Array<{
     label: "Настройки",
     items: [
       { href: "/team", label: "Команда", icon: UsersRound, permission: "team.manage" },
+      { href: "/channels", label: "Каналы", icon: Share2, permission: "settings.manage" },
       { href: "/sources", label: "Источники", icon: Rss, permission: "catalog.manage" },
       { href: "/rubrics", label: "Рубрики", icon: Layers, permission: "catalog.manage" },
       {

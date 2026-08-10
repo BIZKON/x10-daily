@@ -4,15 +4,16 @@ import type { PipelineBindings } from "./bindings";
 import { getPipelineEnv } from "./env";
 import { createPipelineInngest } from "./inngest/client";
 import { createAssembleNewsletterFunction } from "./inngest/functions/assemble-newsletter";
+import { createBreakdownLinkFunction } from "./inngest/functions/breakdown-link";
 import { createDraftArticleFunction } from "./inngest/functions/draft-article";
 import { createDrainPostSlotsFunction } from "./inngest/functions/drain-post-slots";
-import { createBreakdownLinkFunction } from "./inngest/functions/breakdown-link";
 import { createGenerateCoverFunction } from "./inngest/functions/generate-cover";
 import { createIngestRssFunction } from "./inngest/functions/ingest-rss";
 import { createPrimeSourceFunction } from "./inngest/functions/prime-source";
 import { createProcessSourceItemFunction } from "./inngest/functions/process-source-item";
 import { createRetryOpsAlertsFunction } from "./inngest/functions/retry-ops-alerts";
 import { createRewriteArticleFunction } from "./inngest/functions/rewrite-article";
+import { createRunCreationFunction } from "./inngest/functions/run-creation";
 import { createRunWeeklyScoreFunction } from "./inngest/functions/run-weekly-score";
 import { createSendReviewCardFunction } from "./inngest/functions/send-review-card";
 
@@ -63,6 +64,7 @@ export function createApp() {
         createPrimeSourceFunction(client, c.env),
         createSendReviewCardFunction(client, c.env),
         createRewriteArticleFunction(client, c.env),
+        createRunCreationFunction(client, c.env),
       ],
     });
     // inngest/hono возвращает HTTP-handler (c) => Response. Просто проксируем.

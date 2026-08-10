@@ -269,3 +269,22 @@ export const articleRewriteRequestedEvent = eventType("article/rewrite.requested
   schema: articleRewriteRequestedDataSchema,
 });
 export const ARTICLE_REWRITE_REQUESTED = articleRewriteRequestedEvent.event;
+
+/* ----------------------------------------------------------------
+ * creation/run.requested — человек попросил создать материал в разделе
+ * «Создать» (ручной режим, реестр разрыва §3.2).
+ *
+ * В событии только id задания, а не режим с темой: строка `creations` уже
+ * создана апи и хранит и то, и другое. Дублировать её содержимое в событие
+ * значило бы завести второй источник правды, который разойдётся с базой при
+ * первой же правке задания.
+ * ---------------------------------------------------------------- */
+export const creationRunRequestedDataSchema = z.object({
+  creationId: z.string().uuid(),
+});
+export type CreationRunRequestedData = z.infer<typeof creationRunRequestedDataSchema>;
+
+export const creationRunRequestedEvent = eventType("creation/run.requested", {
+  schema: creationRunRequestedDataSchema,
+});
+export const CREATION_RUN_REQUESTED = creationRunRequestedEvent.event;

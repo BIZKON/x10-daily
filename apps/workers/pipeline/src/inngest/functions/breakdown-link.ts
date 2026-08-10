@@ -153,7 +153,16 @@ export function createBreakdownLinkFunction(
         data: {
           topic: run.output.topic,
           context,
-          sources: [{ title: page.title || page.url, url: page.url }],
+          // Форма источника задана sourceRefSchema, и publisher в ней
+          // ОБЯЗАТЕЛЕН. Издание выводим из адреса: домен — это и есть то, на
+          // что ссылаемся, а выдумывать название нельзя.
+          sources: [
+            {
+              url: page.url,
+              title: page.title || page.url,
+              publisher: publisherFromUrl(page.url),
+            },
+          ],
           section: DEFAULT_SECTION,
           category: run.output.category ?? DEFAULT_CATEGORY,
           subcategory: run.output.subcategory ?? undefined,
@@ -173,4 +182,13 @@ export function createBreakdownLinkFunction(
       };
     },
   );
+}
+
+/** Издание = домен без www. Ровно то, на что ссылаемся, без выдумок. */
+function publisherFromUrl(raw: string): string {
+  try {
+    return new URL(raw).hostname.replace(/^www\./, "");
+  } catch {
+    return raw;
+  }
 }

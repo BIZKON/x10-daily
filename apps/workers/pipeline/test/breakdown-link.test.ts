@@ -1,4 +1,6 @@
+import { sourceRefSchema } from "@x10/agents";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import type { PipelineBindings } from "../src/bindings";
 
 /**
@@ -151,10 +153,17 @@ describe("breakdown-link", () => {
     expect(sent.data.topic).toBe("Автоматизация сверки остатков на складе");
     expect(sent.data.category).toBe("cases");
     expect(sent.data.template).toBe("deep-dive");
-    // Источник — разобранная ссылка, а не выдуманный адрес.
-    expect(sent.data.sources).toEqual([
-      { title: "Склад считает сам", url: "https://example.com/a" },
-    ]);
+    // 🔴 Источник проверяем СХЕМОЙ, а не своей догадкой о его форме.
+    // Первая версия теста сверяла {title, url} — ровно то, что я и отправлял,
+    // — и пропустила на прод отсутствующий publisher: конвейер отбил событие
+    // с EventValidationError, разбор отработал впустую. Тест, повторяющий
+    // предположение автора, не проверяет ничего.
+    const sources = z.array(sourceRefSchema).min(1).parse(sent.data.sources);
+    expect(sources[0]).toEqual({
+      url: "https://example.com/a",
+      title: "Склад считает сам",
+      publisher: "example.com",
+    });
   });
 
   it("🔴 приём уезжает в context — иначе разбор остался бы справкой", async () => {

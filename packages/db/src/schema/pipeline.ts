@@ -19,6 +19,8 @@ import { articles } from "./articles";
 
 export const agentKind = pgEnum("agent_kind", [
   "ingest",
+  /** Разбор материала по ссылке — второй вход конвейера. Миграция 0023. */
+  "breakdown",
   "draft",
   "numbers",
   "factcheck",

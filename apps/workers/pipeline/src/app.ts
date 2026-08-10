@@ -6,6 +6,7 @@ import { createPipelineInngest } from "./inngest/client";
 import { createAssembleNewsletterFunction } from "./inngest/functions/assemble-newsletter";
 import { createDraftArticleFunction } from "./inngest/functions/draft-article";
 import { createDrainPostSlotsFunction } from "./inngest/functions/drain-post-slots";
+import { createBreakdownLinkFunction } from "./inngest/functions/breakdown-link";
 import { createGenerateCoverFunction } from "./inngest/functions/generate-cover";
 import { createIngestRssFunction } from "./inngest/functions/ingest-rss";
 import { createPrimeSourceFunction } from "./inngest/functions/prime-source";
@@ -57,6 +58,7 @@ export function createApp() {
         createIngestRssFunction(client, c.env),
         createDrainPostSlotsFunction(client, c.env),
         createRetryOpsAlertsFunction(client, c.env),
+        createBreakdownLinkFunction(client, c.env),
         createGenerateCoverFunction(client, c.env),
         createPrimeSourceFunction(client, c.env),
         createSendReviewCardFunction(client, c.env),

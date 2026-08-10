@@ -20,7 +20,8 @@ const runSchema = z.object({
 });
 
 let cachedClient: Inngest | undefined;
-function getInngest(env: ReturnType<typeof getEnv>): Inngest {
+/** Один клиент на процесс. Экспортирован: тем же каналом шлёт события админка. */
+export function getInngest(env: ReturnType<typeof getEnv>): Inngest {
   if (cachedClient) return cachedClient;
   cachedClient = new Inngest({
     id: "x10-api",

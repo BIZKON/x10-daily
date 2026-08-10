@@ -1,5 +1,6 @@
 import { type AdminCategory, type AdminTemplate, type QueueItem, fetchQueue } from "@/lib/api";
 import { X } from "lucide-react";
+import { LinkForm } from "./link-form";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -79,6 +80,7 @@ async function QueueContent({
 
   return (
     <>
+      <LinkForm />
       <header className="mb-6 flex items-end justify-between border-b border-fence pb-5">
         <div>
           <h1 className="m-0 font-display text-2xl font-extrabold">Очередь к публикации</h1>

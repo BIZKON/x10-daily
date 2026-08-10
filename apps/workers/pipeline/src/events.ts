@@ -63,6 +63,28 @@ export const sourceItemReceivedEvent = eventType("source.item.received", {
 export const SOURCE_ITEM_RECEIVED = sourceItemReceivedEvent.event;
 
 /* ----------------------------------------------------------------
+ * article/link.submitted — человек прислал ссылку на чужой материал.
+ *
+ * Второй вход конвейера. Дальше breakdown-link разбирает исходник и отдаёт
+ * ОБЫЧНОЕ article/topic.ingested — то же событие, что и гейт лент. Именно
+ * поэтому весь конвейер после драфта переиспользуется как есть, а не строится
+ * второй трубой рядом.
+ * ---------------------------------------------------------------- */
+export const linkSubmittedDataSchema = z.object({
+  url: z.string().min(1),
+  /** Кто прислал — для аудита и чтобы вернуть результат тому же человеку. */
+  submittedBy: z.string().optional(),
+  /** Чем занимается клиент: адаптация должна быть под его бизнес, а не общая. */
+  clientContext: z.string().optional(),
+});
+export type LinkSubmittedData = z.infer<typeof linkSubmittedDataSchema>;
+
+export const linkSubmittedEvent = eventType("article/link.submitted", {
+  schema: linkSubmittedDataSchema,
+});
+export const LINK_SUBMITTED = linkSubmittedEvent.event;
+
+/* ----------------------------------------------------------------
  * newsletter.assemble.requested — собрать daily выпуск.
  * Триггер: cron 06:00 МСК или ручной POST из апи.
  * ---------------------------------------------------------------- */

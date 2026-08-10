@@ -18,6 +18,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../app";
 import { EDITOR_ROLES, requirePermission, requireRole } from "../auth";
+import { applyRateLimit } from "../rate-limit";
+import { getInngest } from "./pipeline";
 import { getDb } from "../db";
 import { getEnv } from "../env";
 
@@ -116,6 +118,52 @@ export const adminRoute = new Hono<AppEnv>()
     });
 
     return c.json({ items, count: items.length });
+  })
+
+  /**
+   * POST /v1/admin/breakdown
+   *
+   * Второй вход конвейера: человек присылает ссылку на чужой удачный материал,
+   * система разбирает его и ставит в очередь СВОЙ — в рубрике и голосе клиента.
+   *
+   * Здесь только проверка формы и постановка события: загрузка страницы, защита
+   * от обращений во внутреннюю сеть и сам разбор живут в воркере, у которого
+   * для этого есть и денежный гейт, и учёт расхода.
+   */
+  .post("/breakdown", zValidator("json", z.object({ url: z.string().min(1).max(2000) })), async (c) => {
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    // Разбор создаёт материал, поэтому право на правку контента, а не на просмотр.
+    const me = await requirePermission(c, db, "content.edit");
+
+    const { url } = c.req.valid("json");
+    let parsed: URL;
+    try {
+      parsed = new URL(url.trim());
+    } catch {
+      return c.json({ error: "Это не похоже на ссылку. Скопируйте адрес целиком, вместе с https://" }, 400);
+    }
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return c.json({ error: "Поддерживаются только ссылки http и https" }, 400);
+    }
+
+    // Разбор платный, поэтому лимит на человека — как у ручного запуска
+    // конвейера. Скомпрометированный аккаунт не зальёт нам счёт.
+    await applyRateLimit(c, c.env.PIPELINE_LIMITER, "breakdown", me.userId);
+
+    const { ids } = await getInngest(env).send({
+      name: "article/link.submitted",
+      data: { url: parsed.toString(), submittedBy: me.userId },
+    });
+
+    return c.json(
+      {
+        accepted: true,
+        eventIds: ids,
+        hint: "Разбор занимает около минуты. Материал появится в очереди на одобрение.",
+      },
+      202,
+    );
   })
 
   /**

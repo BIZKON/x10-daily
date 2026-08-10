@@ -162,6 +162,13 @@
       "when": 1781702172448,
       "tag": "0022_balance_alert_kinds",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1781788572448,
+      "tag": "0023_agent_kind_breakdown",
+      "breakpoints": true
     }
   ]
 }

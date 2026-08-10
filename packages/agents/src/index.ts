@@ -79,6 +79,11 @@ export {
   type RejectReason,
 } from "./agents/ingest";
 export {
+  BreakdownAgent,
+  type BreakdownInput,
+  type BreakdownOutput,
+} from "./agents/breakdown";
+export {
   ScoreWeeklyAgent,
   type ScoreWeeklyInput,
   type ScoreWeeklyOutput,

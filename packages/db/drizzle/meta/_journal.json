@@ -176,6 +176,20 @@
       "when": 1781874972448,
       "tag": "0024_knowledge_base",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1781875972448,
+      "tag": "0025_creation_modes",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1781876972448,
+      "tag": "0026_agent_kind_creation",
+      "breakpoints": true
     }
   ]
 }

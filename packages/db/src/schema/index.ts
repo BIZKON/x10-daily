@@ -18,3 +18,4 @@ export * from "./user_preferences";
 export * from "./team-invites";
 export * from "./review-cards";
 export * from "./billing";
+export * from "./knowledge";

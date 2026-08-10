@@ -1,6 +1,7 @@
 import { type KbShelf, fetchKnowledge } from "@/lib/api";
 import { BookOpen, Check, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { AnswerForm } from "./answer-form";
 
@@ -41,6 +42,13 @@ function Skeleton() {
 }
 
 async function Content() {
+  // 🔴 PPR-грабля (CLAUDE.md §8). На билде `X10_API_BASE_URL` не задан, поэтому
+  // `fetchKnowledge` возвращает null, НЕ дотянувшись до cookies. Динамической
+  // дыры не возникает, и Next запекает «База знаний недоступна» в статичную
+  // оболочку навсегда: сервер отдаёт карточку ошибки, клиент потом дорисовывает
+  // настоящее дерево, а React ругается на несовпадение разметки.
+  // `connection()` ВНУТРИ Suspense-компонента форсирует дыру.
+  await connection();
   const data = await fetchKnowledge();
 
   if (!data) {

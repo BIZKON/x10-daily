@@ -2,6 +2,7 @@ import { fetchKnowledgeShelf } from "@/lib/api";
 import { ChevronLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { AnswerForm } from "../answer-form";
 import { deleteKbDocument } from "../actions";
@@ -33,6 +34,9 @@ function Skeleton() {
 }
 
 async function Content({ params }: { params: Promise<{ slug: string }> }) {
+  // 🔴 PPR-грабля (CLAUDE.md §8) — та же, что на списке полок: без этого на
+  // билде запечётся notFound(), и полка будет отдавать 404 из статики.
+  await connection();
   const { slug } = await params;
   const data = await fetchKnowledgeShelf(slug);
   if (!data) notFound();

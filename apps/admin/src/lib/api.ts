@@ -721,3 +721,77 @@ export async function fetchVisualQueue(
     return null;
   }
 }
+
+/* ── База знаний ─────────────────────────────────────────────────────────── */
+
+export type KbShelf = {
+  id: string;
+  slug: string;
+  title: string;
+  purpose: string;
+  question: string;
+  hint: string | null;
+  position: number;
+  required: boolean;
+  documents: number;
+  chars: number;
+};
+
+export type KbDocument = {
+  id: string;
+  title: string;
+  source: "answer" | "file" | "url";
+  body: string;
+  status: "ready" | "parsing" | "failed";
+  statusReason: string | null;
+  charCount: number;
+  createdAt: string;
+};
+
+export type KbOverview = {
+  items: KbShelf[];
+  progress: {
+    required: number;
+    filled: number;
+    /** Решает сервер, а не вёрстка: два места считали бы «пусто» по-разному. */
+    mode: "survey" | "shelves";
+  };
+};
+
+/**
+ * Полки со счётчиками.
+ *
+ * ⚠️ Демо-фолбэка на моки нет намеренно: показать выдуманное знание о бизнесе
+ * клиента опаснее, чем показать пустой экран, — по нему он решит, что система
+ * уже что-то про него знает.
+ */
+export async function fetchKnowledge(): Promise<KbOverview | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  try {
+    const res = await fetchWithTimeout(`${base}/v1/admin/knowledge`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as KbOverview;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchKnowledgeShelf(
+  slug: string,
+): Promise<{ shelf: KbShelf; documents: KbDocument[] } | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  try {
+    const res = await fetchWithTimeout(
+      `${base}/v1/admin/knowledge/${encodeURIComponent(slug)}`,
+      { headers: await authHeaders() },
+    );
+    if (!res.ok) return null;
+    return (await res.json()) as { shelf: KbShelf; documents: KbDocument[] };
+  } catch {
+    return null;
+  }
+}

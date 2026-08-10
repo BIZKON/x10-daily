@@ -2,6 +2,7 @@
 
 import { type Permission, type TeamRole, can } from "@x10/config";
 import {
+  BookOpen,
   Calendar,
   CalendarDays,
   Cpu,
@@ -67,6 +68,10 @@ const SECTIONS: Array<{
   {
     label: "Настройки",
     items: [
+      // База знаний — то, с чего начинается настройка копии: пока полки пусты,
+      // система пишет общими словами. Право как у источников и рубрик: это
+      // справочник клиента, а не выпуск наружу.
+      { href: "/knowledge", label: "База знаний", icon: BookOpen, permission: "catalog.manage" },
       { href: "/team", label: "Команда", icon: UsersRound, permission: "team.manage" },
       { href: "/channels", label: "Каналы", icon: Share2, permission: "settings.manage" },
       { href: "/sources", label: "Источники", icon: Rss, permission: "catalog.manage" },

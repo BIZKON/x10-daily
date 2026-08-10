@@ -21,6 +21,13 @@ export {
   type OpenAIClientOptions,
 } from "./openai-client";
 export { zodToToolSchema } from "./zod-to-tool-schema";
+export {
+  formatKnowledge,
+  knowledgeSection,
+  KNOWLEDGE_BUDGET_CHARS,
+  type KnowledgeDocument,
+  type KnowledgeShelf,
+} from "./knowledge";
 
 export {
   DraftAgent,

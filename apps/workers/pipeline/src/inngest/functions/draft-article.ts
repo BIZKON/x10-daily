@@ -23,6 +23,7 @@ import {
 } from "../../events";
 import { modelsFromEnv } from "../../lib/agent-context";
 import { guardBilling } from "../../lib/billing-gate";
+import { loadKnowledge } from "../../lib/knowledge";
 import { getTodaySpendUsd, mskDayString, recordRun } from "../../lib/cost-ledger";
 import { deliverOpsAlert } from "../../lib/ops-alert";
 import { cleanPostText } from "../../lib/text";
@@ -153,6 +154,23 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
       // halt/success пишут свою строку ledger сами → catch не должен дублировать.
       let outcomeRecorded = false;
 
+      // База знаний клиента: что система знает о его продуктах, ценах,
+      // возражениях и запретах. Именно это отличает материал «про отрасль
+      // вообще» от материала «про этого клиента».
+      //
+      // Отдельным шагом — чтобы попасть в мемоизацию Inngest: при ретрае драфта
+      // база не перечитывается. Отказ базы не должен ронять конвейер: без блока
+      // материал выйдет более общим, но выйдет, а halt из-за справочника был бы
+      // хуже самой проблемы.
+      const knowledge = await step.run("load-knowledge", async () => {
+        try {
+          const db = createDb(env.DATABASE_URL);
+          return await loadKnowledge(db);
+        } catch {
+          return "";
+        }
+      });
+
       try {
         const draft = bill(
           await step.run("draft", () =>
@@ -164,6 +182,7 @@ export function createDraftArticleFunction(inngest: PipelineInngest, bindings: P
                 section: event.data.section ?? DEFAULT_SECTION,
                 template: event.data.template ?? DEFAULT_TEMPLATE,
                 subcategory: event.data.subcategory,
+                knowledge: knowledge || undefined,
               },
               ctx,
             ),

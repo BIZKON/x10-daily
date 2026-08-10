@@ -2,6 +2,7 @@ import { TEMPLATE_LIMITS, type TemplateKind } from "@x10/config";
 import { ABOUT_ME } from "@x10/voice";
 import { z } from "zod";
 import { defineAgent } from "../define-agent";
+import { knowledgeSection } from "../knowledge";
 import { draftShapeSchema, sourceRefSchema } from "./schemas";
 
 /**
@@ -21,6 +22,15 @@ const inputSchema = z.object({
   template: z.enum(DRAFT_TEMPLATES).optional(),
   /** brief §1 — "taxes.news", "practice.stories" и т.д. Используется DraftAgent для уточнения тона. */
   subcategory: z.string().optional(),
+  /**
+   * Блок базы знаний клиента — что система знает о его бизнесе (полки
+   * «Продукты», «Цены», «Возражения», «Правила»). Собирается воркером через
+   * `formatKnowledge`, сюда приходит уже готовым текстом под бюджет.
+   *
+   * Именно это отличает материал «про отрасль вообще» от материала «про этого
+   * клиента»: без блока агент знает только тему и источники.
+   */
+  knowledge: z.string().optional(),
 });
 
 const outputSchema = draftShapeSchema;
@@ -118,6 +128,25 @@ const agentByTemplate: Record<DraftTemplate, ReturnType<typeof makeAgent>> = {
   guide: makeAgent("guide"),
 };
 
+/**
+ * Задание — по-прежнему JSON, база знаний — отдельным текстом после него.
+ *
+ * 🔴 Когда знаний нет, результат ПОБАЙТОВО совпадает с прежним поведением
+ * (`JSON.stringify(input, null, 2)` было умолчанием `defineAgent`). Это
+ * намеренно: подмешивание не должно менять то, как агент читает задание, иначе
+ * пришлось бы заново проверять качество всех материалов, а не только тех, у
+ * кого база знаний заполнена.
+ *
+ * Блок не кладётся полем внутрь JSON, потому что там он превратился бы в одну
+ * строку с экранированными переносами — модель читает такое заметно хуже.
+ */
+export function formatDraftInput(input: z.infer<typeof inputSchema>): string {
+  const { knowledge, ...task } = input;
+  const json = JSON.stringify(task, null, 2);
+  const section = knowledgeSection(knowledge ?? "");
+  return section ? `${json}\n\n${section}` : json;
+}
+
 function makeAgent(template: DraftTemplate) {
   return defineAgent({
     // Имя одинаковое — tool_name "x10_emit_draft" для всех template'ов (на API уровне они независимы).
@@ -126,6 +155,7 @@ function makeAgent(template: DraftTemplate) {
     system: buildSystem(template),
     inputSchema,
     outputSchema,
+    formatInput: formatDraftInput,
     maxOutputTokens: TEMPLATE_MAX_OUTPUT_TOKENS[template],
   });
 }

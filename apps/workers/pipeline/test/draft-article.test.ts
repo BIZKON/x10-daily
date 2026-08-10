@@ -240,6 +240,12 @@ const { guardBilling } = vi.hoisted(() => ({
   })),
 }));
 vi.mock("../src/lib/billing-gate", () => ({ guardBilling }));
+// База знаний клиента: сама выборка проверяется отдельно, здесь важно, что
+// конвейер её СПРАШИВАЕТ и доносит блок до DraftAgent в целости.
+const { loadKnowledge } = vi.hoisted(() => ({
+  loadKnowledge: vi.fn(async () => "## Цены и условия\nПроект от 300 тысяч рублей"),
+}));
+vi.mock("../src/lib/knowledge", () => ({ loadKnowledge }));
 
 
 import {
@@ -374,13 +380,14 @@ describe("draft-article pipeline", () => {
     expect(PreviewScoreAgent.run).toHaveBeenCalledOnce();
     expect(persistArticle).toHaveBeenCalledOnce();
 
-    // now + balance-gate + budget-gate + 8 шагов B2 + persist/record-run/save-tg-channel/budget-warn-alert.
-    expect(step.run).toHaveBeenCalledTimes(14);
+    // now + balance-gate + budget-gate + load-knowledge + 8 шагов B2 + persist/record-run/save-tg-channel/budget-warn-alert.
+    expect(step.run).toHaveBeenCalledTimes(15);
     const stepIds = step.run.mock.calls.map((c) => c[0]);
     expect(stepIds).toEqual([
       "now",
       "balance-gate",
       "budget-gate",
+      "load-knowledge",
       "draft",
       "numbers",
       "tov",
@@ -500,13 +507,14 @@ describe("draft-article pipeline", () => {
     };
 
     expect(FactCheckAgent.run).toHaveBeenCalledOnce();
-    // now + balance-gate + budget-gate + 9 шагов B2 (с factcheck) + persist/record-run/save-tg-channel/budget-warn-alert.
-    expect(step.run).toHaveBeenCalledTimes(15);
+    // now + balance-gate + budget-gate + load-knowledge + 9 шагов B2 (с factcheck) + persist/record-run/save-tg-channel/budget-warn-alert.
+    expect(step.run).toHaveBeenCalledTimes(16);
     const stepIds = step.run.mock.calls.map((c) => c[0]);
     expect(stepIds).toEqual([
       "now",
       "balance-gate",
       "budget-gate",
+      "load-knowledge",
       "draft",
       "numbers",
       "tov",
@@ -701,8 +709,8 @@ describe("draft-article pipeline", () => {
       factcheck: { status: string } | null;
     };
     expect(FactCheckAgent.run).not.toHaveBeenCalled();
-    // now + balance-gate + budget-gate + 8 (без factcheck) + persist/record-run/save-tg-channel/budget-warn-alert.
-    expect(step.run).toHaveBeenCalledTimes(14);
+    // now + balance-gate + budget-gate + load-knowledge + 8 (без factcheck) + persist/record-run/save-tg-channel/budget-warn-alert.
+    expect(step.run).toHaveBeenCalledTimes(15);
     expect(result.factcheck).toBeNull();
   });
 
@@ -879,5 +887,52 @@ describe("draft-article pipeline", () => {
 
     expect(vi.mocked(SocialAmplifyAgent.run)).toHaveBeenCalledOnce();
     expect(sentEventNames(step)).toEqual(["article/cover.requested"]);
+  });
+
+  /**
+   * База знаний клиента. Счёт шагов выше доказывает лишь, что шаг добавлен;
+   * здесь проверяется то, ради чего всё строилось, — что знание доезжает до
+   * агента и что справочник не может уронить выпуск.
+   */
+  describe("база знаний клиента", () => {
+    const run = async () => {
+      const inngest = createPipelineInngest({ NODE_ENV: BINDINGS.NODE_ENV });
+      const fn = createDraftArticleFunction(inngest, BINDINGS as unknown as PipelineBindings);
+      const step = makeStep();
+      const handler = (
+        fn as unknown as {
+          fn: (args: { event: typeof EVENT; step: typeof step }) => Promise<unknown>;
+        }
+      ).fn;
+      await handler({ event: EVENT, step });
+      return step;
+    };
+
+    it("блок знаний доезжает до DraftAgent целиком", async () => {
+      await run();
+      const input = vi.mocked(DraftAgent.run).mock.calls[0]?.[0] as { knowledge?: string };
+      expect(input.knowledge).toBe("## Цены и условия\nПроект от 300 тысяч рублей");
+    });
+
+    it("пустая база не подставляет пустую строку — поля просто нет", async () => {
+      loadKnowledge.mockResolvedValueOnce("");
+      await run();
+      const input = vi.mocked(DraftAgent.run).mock.calls[0]?.[0] as { knowledge?: string };
+      expect(input.knowledge).toBeUndefined();
+    });
+
+    /**
+     * 🔴 Справочник не должен останавливать выпуск. Без блока материал выйдет
+     * более общим, но выйдет; halt из-за упавшего запроса к базе знаний был бы
+     * хуже самой проблемы — канал замолчал бы целиком.
+     */
+    it("отказ базы знаний не роняет конвейер — материал выходит без блока", async () => {
+      loadKnowledge.mockRejectedValueOnce(new Error("база недоступна"));
+      const step = await run();
+      const input = vi.mocked(DraftAgent.run).mock.calls[0]?.[0] as { knowledge?: string };
+      expect(input.knowledge).toBeUndefined();
+      expect(persistArticle).toHaveBeenCalledOnce();
+      expect(sentEventNames(step)).toContain("article/cover.requested");
+    });
   });
 });

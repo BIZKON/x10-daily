@@ -202,6 +202,7 @@ x10-daily/                  ← техническое имя репо (исто
 
 | Хочешь | Открой |
 |---|---|
+| **Что обещано клиенту и что из этого построено** | **`docs/promised-vs-built.md`** (реестр разрыва + порядок работ) |
 | **Что ещё не сделано (задачи владельца)** | **`docs/BACKLOG.md`** |
 | **Спеки в работе** | **`docs/superpowers/specs/`** (Спека 4 — HumanGate в Telegram, Спека 5 — команда и роли) |
 | Решения владельца по ребрендингу | `docs/REBRAND-MAP.md` (шапка «✅ Решения Константина») |
@@ -210,7 +211,8 @@ x10-daily/                  ← техническое имя репо (исто
 | Источники парсинга (список, adapter_type, правила, pending) | `docs/parsing-sources.md` (канон) + `scripts/seed-sources.sql` |
 | Dev-фикстуры | `scripts/seed.ts` (id совпадают с `apps/admin/src/lib/mocks.ts`) |
 | Деплой prod | `./deploy.sh`, `docker-compose.prod.yml`, `caddy/Caddyfile.prod` |
-| **Состояние на конец последней сессии** | **`docs/handoffs/handoff-session-32.md`** |
+| **Состояние на конец последней сессии** | **`docs/handoffs/handoff-session-33.md`** |
+| Коммерческое предложение (что читает клиент) | `landing/index.html` → https://app.pro-agent-ai.ru/kp |
 | Исторические handoffs сессий | `docs/handoffs/` |
 | Архив стратегии X10-эпохи | `docs/strategy/` (НЕ канон нового бренда) |
 | Старый CF/Neon deploy-гайд | `docs/DEPLOY.md` (архив, не применять) |

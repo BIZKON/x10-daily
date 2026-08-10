@@ -6,6 +6,7 @@ import { logger } from "hono/logger";
 import type { AppBindings } from "./bindings";
 import { adminRoute } from "./routes/admin";
 import { adminContentRoute } from "./routes/admin-content";
+import { adminCreateRoute } from "./routes/admin-create";
 import { adminKnowledgeRoute } from "./routes/admin-knowledge";
 import { adminSourcesRoute } from "./routes/admin-sources";
 import { adminTeamRoute } from "./routes/admin-team";
@@ -122,6 +123,7 @@ export function createApp() {
   app.route("/v1/admin", adminVisualRoute);
   app.route("/v1/admin", adminSourcesRoute);
   app.route("/v1/admin", adminKnowledgeRoute);
+  app.route("/v1/admin", adminCreateRoute);
   app.route("/v1/admin", adminTeamRoute);
   app.route("/v1/telegram", telegramWebhookRoute);
   app.route("/v1/admin/upload", uploadRoute);

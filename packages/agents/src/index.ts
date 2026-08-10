@@ -40,7 +40,14 @@ export { NumbersAgent, type NumbersInput, type NumbersOutput } from "./agents/nu
 export { ToVAgent, type ToVInput, type ToVOutput } from "./agents/tov";
 export { BrevityAgent, type BrevityInput, type BrevityOutput } from "./agents/brevity";
 export { RewriteAgent, type RewriteInput, type RewriteOutput } from "./agents/rewrite";
-export { CreationAgent, type CreationInput, type CreationOutput } from "./agents/creation";
+export {
+  CreationAgent,
+  // Схему отдаём наружу намеренно: маршруты api сверяют по ней свой потолок
+  // темы. Разъедутся — задание примут и уронят в конвейере (admin-create.ts).
+  creationInputSchema,
+  type CreationInput,
+  type CreationOutput,
+} from "./agents/creation";
 export {
   HookGenAgent,
   HOOK_PATTERNS,

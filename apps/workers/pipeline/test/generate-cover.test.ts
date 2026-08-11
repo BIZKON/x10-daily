@@ -575,3 +575,79 @@ describe("ретрай на отказ фильтра", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * 🔴 Карточка ревью не должна зависеть от того, получилась ли обложка.
+ *
+ * Раньше запрос карточки жил ТОЛЬКО в успешной ветке генерации. Значит при
+ * выключенных обложках, нехватке баланса, уже готовой картинке или падении
+ * модели статья не попадала редактору на глаза вообще — а ворота ревью
+ * пропускали её, потому что карточки нет. Замер на проде 10.08.2026: 102 поста
+ * из 117 за месяц ушли в канал именно так.
+ */
+describe("карточка ревью отвязана от обложки", () => {
+  beforeEach(() => {
+    dbState.selectResults = [];
+    dbState.updates = [];
+    dbState.inserts = [];
+    dbState.charges = [];
+    agentState.shouldThrow = false;
+    vi.clearAllMocks();
+  });
+
+  /**
+   * ⚠️ Приведение обязательно: мок `sendEvent` объявлен без параметров, и его
+   * `calls` типизируются пустым кортежем — обращение к `c[1]` не проходит
+   * typecheck, хотя тесты при этом зелёные.
+   */
+  const cardRequests = (step: ReturnType<typeof makeStep>) =>
+    (step.sendEvent.mock.calls as unknown as Array<[string, { name?: string }]>).filter(
+      (c) => c[1]?.name === "review/card.requested",
+    );
+
+  it("обложки выключены → карточка всё равно запрошена", async () => {
+    const step = makeStep();
+    await makeHandler({
+      NODE_ENV: "test",
+      DATABASE_URL: "postgresql://localhost/test",
+      AI_GATEWAY_API_KEY: "k",
+      // Ни COVERS_DIR, ни базового URL — фича выключена.
+    })({ event: { data: { articleId: ARTICLE_ID } }, step });
+
+    expect(cardRequests(step)).toHaveLength(1);
+  });
+
+  it("обложка уже есть → карточка всё равно запрошена", async () => {
+    dbState.selectResults = [[{ ...ARTICLE_ROW, coverImageUrl: "https://x/у.jpg" }]];
+    const step = makeStep();
+    await makeHandler(
+      await baseBindings(),
+      gatewayFetch(),
+    )({
+      event: { data: { articleId: ARTICLE_ID } },
+      step,
+    });
+
+    expect(cardRequests(step)).toHaveLength(1);
+  });
+
+  it("🔴 генерация упала → карточка всё равно запрошена, редактор увидит материал", async () => {
+    dbState.selectResults = [[ARTICLE_ROW]];
+    agentState.shouldThrow = true;
+    const step = makeStep();
+
+    await expect(
+      makeHandler(
+        await baseBindings(),
+        gatewayFetch(),
+      )({
+        event: { data: { articleId: ARTICLE_ID } },
+        step,
+      }),
+    ).rejects.toThrow();
+
+    // Падение обложки — наша авария, а не причина выпустить материал мимо
+    // редактора.
+    expect(cardRequests(step)).toHaveLength(1);
+  });
+});

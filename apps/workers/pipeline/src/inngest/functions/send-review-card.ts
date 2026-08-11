@@ -1,4 +1,4 @@
-import { and, articles, channels, createDb, eq, reviewCards } from "@x10/db";
+import { and, articles, channels, createDb, eq, reviewCards, sql } from "@x10/db";
 import type { PipelineBindings } from "../../bindings";
 import { loadPipelineEnv } from "../../env";
 import { REVIEW_CARD_REQUESTED } from "../../events";
@@ -56,6 +56,16 @@ export function createSendReviewCardFunction(
             visualStatus: articles.visualStatus,
             // 🔴 Признак «уже вышло» берём у КАНАЛА, а не у статьи. Разбор ниже.
             postedAt: channels.postedAt,
+            /**
+             * Сколько карточек по этой статье уже ждут решения.
+             *
+             * Подзапросом, а не отдельным обращением: запрос и так один, а
+             * второй появился бы только ради счётчика.
+             */
+            awaitingCards: sql<number>`(
+              select count(*) from review_cards rc
+              where rc.article_id = ${articles.id} and rc.state = 'awaiting'
+            )`,
           })
           .from(articles)
           .leftJoin(channels, and(eq(channels.articleId, articles.id), eq(channels.channel, "tg")))
@@ -87,6 +97,18 @@ export function createSendReviewCardFunction(
        */
       if (article.postedAt) {
         return { skipped: true as const, reason: "already-posted-to-channel" as const };
+      }
+
+      /**
+       * 🔴 Одна ждущая карточка на статью.
+       *
+       * Запрос карточки приходит из двух мест: из постановки материала в
+       * очередь и из готовой обложки. Без этой защиты редактор получил бы две
+       * карточки на одну статью, а ворота держались бы по обеим — одобрив
+       * одну, он бы ничего не добился и решил, что кнопка сломана.
+       */
+      if (Number(article.awaitingCards ?? 0) > 0) {
+        return { skipped: true as const, reason: "card-already-awaiting" as const };
       }
 
       const tgOpts = { token, proxyUrl: env.TELEGRAM_PROXY_URL || undefined, ...opts };

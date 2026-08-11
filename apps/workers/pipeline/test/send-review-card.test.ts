@@ -104,7 +104,10 @@ describe("send-review-card", () => {
     // persistArticle ставит published сразу, а карточка запрашивается через
     // полминуты. Пока гард смотрел на статус статьи, сюда не доходило ничего.
     const fetchImpl = tgFetch();
-    const r = await makeHandler(BINDINGS, fetchImpl)({
+    const r = await makeHandler(
+      BINDINGS,
+      fetchImpl,
+    )({
       event: { data: { articleId: ARTICLE_ID } },
       step: makeStep(),
     });
@@ -115,11 +118,36 @@ describe("send-review-card", () => {
     expect(dbState.inserts[0]?.articleId).toBe(ARTICLE_ID);
   });
 
+  it("🔴 карточка уже ждёт решения → второй раз не шлём", async () => {
+    // Запрос карточки приходит из двух мест: из постановки в очередь и из
+    // готовой обложки. Без этой защиты редактор получил бы две карточки на одну
+    // статью, а ворота держались бы по обеим — одобрив одну, он ничего бы не
+    // добился.
+    dbState.articleRow = { ...IN_FEED_NOT_POSTED, awaitingCards: 1 };
+    const fetchImpl = tgFetch();
+
+    const r = (await makeHandler(
+      BINDINGS,
+      fetchImpl,
+    )({
+      event: { data: { articleId: ARTICLE_ID } },
+      step: makeStep(),
+    })) as { skipped?: boolean; reason?: string };
+
+    expect(r.skipped).toBe(true);
+    expect(r.reason).toBe("card-already-awaiting");
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(dbState.inserts).toHaveLength(0);
+  });
+
   it("пост уже ушёл в канал → карточку не шлём (иначе «Одобрить» выпустит дважды)", async () => {
     dbState.articleRow = { ...IN_FEED_NOT_POSTED, postedAt: new Date("2026-08-07T10:00:00Z") };
     const fetchImpl = tgFetch();
 
-    const r = await makeHandler(BINDINGS, fetchImpl)({
+    const r = await makeHandler(
+      BINDINGS,
+      fetchImpl,
+    )({
       event: { data: { articleId: ARTICLE_ID } },
       step: makeStep(),
     });
@@ -133,7 +161,10 @@ describe("send-review-card", () => {
     // LEFT JOIN не нашёл очереди. «Перерисовать» и «Переписать» работают и без
     // неё, а молчание выглядело бы как поломка.
     dbState.articleRow = { ...IN_FEED_NOT_POSTED, postedAt: null };
-    const r = await makeHandler(BINDINGS, tgFetch())({
+    const r = await makeHandler(
+      BINDINGS,
+      tgFetch(),
+    )({
       event: { data: { articleId: ARTICLE_ID } },
       step: makeStep(),
     });
@@ -142,7 +173,10 @@ describe("send-review-card", () => {
 
   it("группа не настроена → тихий выход, ревью остаётся в кабинете", async () => {
     const fetchImpl = tgFetch();
-    const r = await makeHandler({ ...BINDINGS, TG_REVIEW_CHAT_ID: "" }, fetchImpl)({
+    const r = await makeHandler(
+      { ...BINDINGS, TG_REVIEW_CHAT_ID: "" },
+      fetchImpl,
+    )({
       event: { data: { articleId: ARTICLE_ID } },
       step: makeStep(),
     });
@@ -161,7 +195,10 @@ describe("send-review-card", () => {
 
   it("есть обложка → уходит фотографией с кнопками", async () => {
     const fetchImpl = tgFetch();
-    const r = await makeHandler(BINDINGS, fetchImpl)({
+    const r = await makeHandler(
+      BINDINGS,
+      fetchImpl,
+    )({
       event: { data: { articleId: ARTICLE_ID } },
       step: makeStep(),
     });

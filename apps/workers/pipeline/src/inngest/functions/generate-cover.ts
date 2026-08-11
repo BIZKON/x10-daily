@@ -112,8 +112,38 @@ export function createGenerateCoverFunction(
       const articleId = event.data.articleId;
       const force = event.data.force === true;
 
+      /**
+       * 🔴 Карточка ревью запрашивается на ЛЮБОМ исходе, а не только в успешной
+       * ветке.
+       *
+       * Раньше запрос жил внизу, после удачной генерации. Значит при
+       * выключенных обложках, нехватке баланса, уже готовой картинке или
+       * падении модели статья не попадала редактору на глаза вообще — а ворота
+       * ревью пропускали её именно потому, что карточки нет. Замер на проде
+       * 10.08.2026: 102 поста из 117 за месяц ушли в канал так.
+       *
+       * Обложка — про красоту, карточка — про контроль. Связывать их судьбой
+       * значит терять контроль каждый раз, когда не получилась красота.
+       */
+      const requestCard = () =>
+        step.sendEvent("request-review-card", {
+          name: REVIEW_CARD_REQUESTED,
+          data: { articleId },
+        });
+
+      /**
+       * Падение платной части — наша авария, а не причина выпустить материал
+       * мимо редактора. Просим карточку и пробрасываем ошибку дальше, чтобы
+       * Inngest отработал ретраи как обычно.
+       */
+      const withCard = async (err: unknown): Promise<never> => {
+        await requestCard();
+        throw err;
+      };
+
       // Гард конфигурации: пусто → фича выключена, конвейер работает как раньше.
       if (!coversEnabled(env)) {
+        await requestCard();
         return { skipped: true as const, reason: "covers-disabled" as const };
       }
 
@@ -127,6 +157,7 @@ export function createGenerateCoverFunction(
         return guardBilling(db, env, new Date(nowMs));
       });
       if (money.blocked) {
+        await requestCard();
         return {
           skipped: true as const,
           reason: "client-balance-exhausted" as const,
@@ -161,6 +192,7 @@ export function createGenerateCoverFunction(
         Boolean(article.coverImageUrl) &&
         (article.visualStatus === "pending_review" || article.visualStatus === "approved");
       if (alreadyHasCover && !force) {
+        await requestCard();
         return { skipped: true as const, reason: "cover-already-exists" as const };
       }
 
@@ -171,43 +203,47 @@ export function createGenerateCoverFunction(
 
       // Крафт сцены. VisualAgent возвращает ТОЛЬКО SUBJECT; стиль, негатив и
       // тех-параметры канона дописывает buildImagePrompt (packages/voice/visual.md).
-      const crafted = await step.run("visual-prompt", async () => {
-        const ctx: AgentContext = {
-          apiKey,
-          baseURL: env.AI_GATEWAY_BASE_URL,
-          masker: createMasker(env),
-          models: modelsFromEnv(env),
-        };
-        const res = await VisualAgent.run(
-          { tease: article.tease, lede: article.lede, category: article.category ?? "news" },
-          ctx,
-        );
-        return {
-          imagePrompt: buildPosterPrompt({
-            headline: res.output.headline,
-            sub: res.output.sub,
-            scene: res.output.scene,
-            category: article.category ?? "news",
-          }),
-          costUsd: res.costUsd,
-          modelUsed: res.modelUsed,
-          usage: res.usage,
-        };
-      });
+      const crafted = await step
+        .run("visual-prompt", async () => {
+          const ctx: AgentContext = {
+            apiKey,
+            baseURL: env.AI_GATEWAY_BASE_URL,
+            masker: createMasker(env),
+            models: modelsFromEnv(env),
+          };
+          const res = await VisualAgent.run(
+            { tease: article.tease, lede: article.lede, category: article.category ?? "news" },
+            ctx,
+          );
+          return {
+            imagePrompt: buildPosterPrompt({
+              headline: res.output.headline,
+              sub: res.output.sub,
+              scene: res.output.scene,
+              category: article.category ?? "news",
+            }),
+            costUsd: res.costUsd,
+            modelUsed: res.modelUsed,
+            usage: res.usage,
+          };
+        })
+        .catch(withCard);
 
       // Генерация + запись на диск одним шагом (см. докблок выше — байты не
       // должны пересекать границу Inngest-шага).
-      const stored = await step.run("generate-and-store", async () => {
-        const img = await generateWithRetry(env, crafted.imagePrompt, opts);
-        const url = await saveCover(env, articleId, img.bytes, img.mime);
-        return {
-          coverUrl: url,
-          mime: img.mime,
-          byteLength: img.bytes.length,
-          // Расход самой картинки — в $-ledger отдельной строкой ниже.
-          usage: img.usage,
-        };
-      });
+      const stored = await step
+        .run("generate-and-store", async () => {
+          const img = await generateWithRetry(env, crafted.imagePrompt, opts);
+          const url = await saveCover(env, articleId, img.bytes, img.mime);
+          return {
+            coverUrl: url,
+            mime: img.mime,
+            byteLength: img.bytes.length,
+            // Расход самой картинки — в $-ledger отдельной строкой ниже.
+            usage: img.usage,
+          };
+        })
+        .catch(withCard);
 
       // 🔴 pending_review, НЕ approved — HumanGate.
       await step.run("mark-pending-review", async () => {
@@ -227,10 +263,7 @@ export function createGenerateCoverFunction(
       // прямой отправкой: генерация обложки не должна падать из-за того, что
       // Telegram недоступен или группа не настроена. Не настроена → функция
       // карточки тихо выйдет, и ревью останется в кабинете.
-      await step.sendEvent("request-review-card", {
-        name: REVIEW_CARD_REQUESTED,
-        data: { articleId },
-      });
+      await requestCard();
 
       // $-ledger. ДВЕ строки, а не одна: у крафта промпта и у генерации картинки
       // разные модели и разные тарифы, сложить их в одну строку значило бы

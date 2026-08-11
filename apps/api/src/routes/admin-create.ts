@@ -91,6 +91,13 @@ export const adminCreateRoute = new Hono<AppEnv>()
         subtitle: creationModes.subtitle,
         purpose: creationModes.purpose,
         available: creationModes.available,
+        /**
+         * Экран показывает человеку, какие полки базы знаний уйдут в работу.
+         * Это не украшение: клиент должен видеть, что прайс не попадёт в
+         * публичный пост, — иначе он либо не доверит системе цены вовсе, либо
+         * узнает об утечке из готового материала.
+         */
+        shelfSlugs: creationModes.shelfSlugs,
       })
       .from(creationModes)
       .where(eq(creationModes.enabled, true))

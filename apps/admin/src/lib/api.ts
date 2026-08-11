@@ -785,12 +785,74 @@ export async function fetchKnowledgeShelf(
   const base = getBaseUrl();
   if (!base) return null;
   try {
-    const res = await fetchWithTimeout(
-      `${base}/v1/admin/knowledge/${encodeURIComponent(slug)}`,
-      { headers: await authHeaders() },
-    );
+    const res = await fetchWithTimeout(`${base}/v1/admin/knowledge/${encodeURIComponent(slug)}`, {
+      headers: await authHeaders(),
+    });
     if (!res.ok) return null;
     return (await res.json()) as { shelf: KbShelf; documents: KbDocument[] };
+  } catch {
+    return null;
+  }
+}
+
+/* ── Раздел «Создать» (ручной режим) ─────────────────────────────────────── */
+
+export type CreationMode = {
+  slug: string;
+  title: string;
+  subtitle: string | null;
+  purpose: string;
+  available: boolean;
+  /** Полки базы знаний, уходящие в работу. Пусто — все доступные. */
+  shelfSlugs: string[];
+};
+
+export type CreationStatus = "queued" | "running" | "ready" | "failed";
+
+export type CreationJob = {
+  id: string;
+  prompt: string;
+  status: CreationStatus;
+  statusReason: string | null;
+  articleId: string | null;
+  createdAt: string;
+  modeSlug: string;
+  modeTitle: string;
+};
+
+/**
+ * Режимы создания. Недоступные тоже приходят: честная пометка «готовится»
+ * объясняет, что будет дальше, а экран из одной кнопки читается как недоделка.
+ *
+ * ⚠️ Фолбэка на моки нет: выдуманный режим предложил бы человеку работу,
+ * которой не существует.
+ */
+export async function fetchCreationModes(): Promise<CreationMode[] | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  try {
+    const res = await fetchWithTimeout(`${base}/v1/admin/create/modes`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { items: CreationMode[] };
+    return json.items;
+  } catch {
+    return null;
+  }
+}
+
+/** Последние задания раздела. */
+export async function fetchCreations(): Promise<CreationJob[] | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  try {
+    const res = await fetchWithTimeout(`${base}/v1/admin/create`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { items: CreationJob[] };
+    return json.items;
   } catch {
     return null;
   }

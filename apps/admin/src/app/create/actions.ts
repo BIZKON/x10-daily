@@ -23,6 +23,9 @@ const REASONS: Record<string, string> = {
   not_found: "Такого режима нет. Обновите страницу.",
   queue_failed: "Не удалось поставить задание в очередь. Попробуйте ещё раз.",
   forbidden: "Недостаточно прав: создавать материалы может редактор или автор.",
+  not_ready: "Материал ещё не готов. Дождитесь, пока задание выполнится.",
+  already_queued: "Этот материал уже отправлен в очередь.",
+  empty_result: "У задания нет готового текста — отправлять нечего.",
 };
 
 export async function createMaterial(
@@ -49,5 +52,33 @@ export async function createMaterial(
   return {
     status: "ok",
     message: "Задание принято. Материал появится в списке ниже через минуту.",
+  };
+}
+
+/**
+ * Отправить готовый материал в очередь публикации.
+ *
+ * Дальше он идёт общим путём: обложка, карточка ревью в «Редакцию» и слот. В
+ * канал материал уйдёт только после одобрения редактором — HumanGate ручной
+ * режим не отменяет.
+ */
+export async function queueMaterial(
+  _prev: CreateFormState,
+  form: FormData,
+): Promise<CreateFormState> {
+  const id = String(form.get("id") ?? "").trim();
+  if (!id) return { status: "error", message: "Задание не найдено." };
+
+  const res = await adminMutate<{ articleId: string }>("POST", `/v1/admin/create/${id}/queue`);
+
+  if (!res.ok) {
+    const known = res.error ? REASONS[res.error] : undefined;
+    return { status: "error", message: known ?? "Не удалось отправить в очередь." };
+  }
+
+  revalidatePath("/create");
+  return {
+    status: "ok",
+    message: "Отправлено. Материал ждёт одобрения редактора и уйдёт в канал ближайшим слотом.",
   };
 }

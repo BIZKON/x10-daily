@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { AutoRefresh } from "./auto-refresh";
 import { CreateForm } from "./create-form";
+import { QueueButton } from "./queue-button";
 
 export const metadata = { title: "Создать — ProAgent AI Admin" };
 
@@ -137,6 +138,13 @@ function JobRow({ job }: { job: CreationJob }) {
           {job.status === "failed" && job.statusReason ? ` · ${job.statusReason}` : ""}
         </p>
       </div>
+
+      {/* Кнопка только у готового и ещё не отправленного: у остальных её
+          отсутствие и есть ответ. Отключённая кнопка предлагала бы действие
+          и тут же в нём отказывала. */}
+      {job.status === "ready" && !job.articleId && <QueueButton id={job.id} />}
+
+      {job.articleId && <span className="shrink-0 text-[11.5px] text-haze">В очереди канала</span>}
 
       <span className="shrink-0 rounded-md border border-fence px-2 py-0.5 text-[10.5px] text-mist">
         {job.modeTitle}

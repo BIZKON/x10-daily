@@ -2,7 +2,7 @@ import { creationInputSchema } from "@x10/agents";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import type { AppBindings, RateLimiter } from "../src/bindings";
-import { MAX_PROMPT, checkMode } from "../src/routes/admin-create";
+import { MAX_PROMPT, checkMode, checkQueueable } from "../src/routes/admin-create";
 
 /**
  * Раздел «Создать» — маршруты api (ручной режим, шаг 2).
@@ -80,6 +80,39 @@ describe("гейт режима", () => {
   });
 });
 
+describe("гейт отправки в очередь", () => {
+  const READY = {
+    status: "ready" as const,
+    articleId: null,
+    result: { title: "Заголовок", body: "Текст материала." },
+  };
+
+  it("готовый материал отправить можно", () => {
+    expect(checkQueueable(READY).ok).toBe(true);
+  });
+
+  it("🔴 незаконченное задание в очередь не уходит", () => {
+    // Иначе в канал уедет пустая статья: результата ещё нет.
+    for (const status of ["queued", "running", "failed"] as const) {
+      const r = checkQueueable({ ...READY, status });
+      expect(r.ok).toBe(false);
+      expect(r.ok === false && r.error).toBe("not_ready");
+    }
+  });
+
+  it("🔴 повторная отправка отклоняется", () => {
+    // Без этого одно задание завело бы вторую статью с тем же текстом, и в
+    // канал ушёл бы дубль — а автор бы решил, что первая кнопка не сработала.
+    const r = checkQueueable({ ...READY, articleId: "00000000-0000-4000-8000-000000000009" });
+    expect(r.ok === false && r.error).toBe("already_queued");
+  });
+
+  it("задание без результата отклоняется, даже если помечено готовым", () => {
+    expect(checkQueueable({ ...READY, result: null }).ok).toBe(false);
+    expect(checkQueueable({ ...READY, result: { title: "З", body: "  " } }).ok).toBe(false);
+  });
+});
+
 describe("без прав ничего не отдаём и не создаём", () => {
   it("список режимов без Authorization → не 200", async () => {
     const res = await call("/create/modes");
@@ -107,6 +140,13 @@ describe("без прав ничего не отдаём и не создаём"
 
   it("Bearer-мусор не принимается", async () => {
     const res = await call("/create/modes", { headers: { Authorization: "Bearer not-a-jwt" } });
+    expect([401, 403, 503]).toContain(res.status);
+  });
+
+  it("🔴 отправка в очередь без Authorization → не 200 (это выпуск наружу)", async () => {
+    const res = await call("/create/00000000-0000-4000-8000-000000000001/queue", {
+      method: "POST",
+    });
     expect([401, 403, 503]).toContain(res.status);
   });
 });

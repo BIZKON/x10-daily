@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { creationModes, creations, desc, eq } from "@x10/db";
+import { articles, channels, creationModes, creations, desc, eq } from "@x10/db";
 import { Hono } from "hono";
 import { Inngest } from "inngest";
 import { z } from "zod";
@@ -7,6 +7,7 @@ import type { AppEnv } from "../app";
 import { requirePermission } from "../auth";
 import { getDb } from "../db";
 import { getEnv } from "../env";
+import { toArticleDraft } from "../lib/creation-to-article";
 
 /**
  * Раздел «Создать» — ручной режим (реестр разрыва §3.2).
@@ -35,6 +36,7 @@ const createSchema = z.object({
 const idParam = z.object({ id: z.string().uuid() });
 
 const CREATION_RUN_REQUESTED = "creation/run.requested" as const;
+const ARTICLE_COVER_REQUESTED = "article/cover.requested" as const;
 
 let cachedClient: Inngest | undefined;
 function getInngest(env: ReturnType<typeof getEnv>): Inngest {
@@ -68,6 +70,44 @@ export function checkMode(mode: ModeRow | undefined): ModeGate {
       ok: false,
       error: "mode_unavailable",
       message: `Режим «${mode.title}» ещё готовится — материал по нему пока не создаётся.`,
+    };
+  }
+  return { ok: true };
+}
+
+type QueueableRow = {
+  status: string;
+  articleId: string | null;
+  result: { title?: string; body?: string } | null;
+};
+
+/**
+ * Можно ли отправить задание в очередь публикации.
+ *
+ * Повторную отправку отклоняем по `article_id`, а не по статусу: без этого
+ * второе нажатие завело бы вторую статью с тем же текстом, в канал ушёл бы
+ * дубль, а автор решил бы, что первая кнопка не сработала.
+ */
+export function checkQueueable(row: QueueableRow): ModeGate {
+  if (row.articleId) {
+    return {
+      ok: false,
+      error: "already_queued",
+      message: "Этот материал уже отправлен в очередь.",
+    };
+  }
+  if (row.status !== "ready") {
+    return {
+      ok: false,
+      error: "not_ready",
+      message: "Материал ещё не готов. Дождитесь, пока задание выполнится.",
+    };
+  }
+  if (!row.result?.title?.trim() || !row.result?.body?.trim()) {
+    return {
+      ok: false,
+      error: "empty_result",
+      message: "У задания нет готового текста — отправлять нечего.",
     };
   }
   return { ok: true };
@@ -246,4 +286,117 @@ export const adminCreateRoute = new Hono<AppEnv>()
     }
 
     return c.json({ id: row.id, status: "queued" }, 201);
+  })
+
+  /**
+   * Отправить готовый материал в очередь публикации.
+   *
+   * Повторяет путь конвейера ШАГ В ШАГ, а не строит второй рядом: статья →
+   * строка очереди канала → событие обложки. Дальше работает уже готовая
+   * машинерия: обложка, карточка ревью в «Редакцию», ворота HumanGate и слоты.
+   * Ручной материал в канале ничем не отличается от автоматического — этого и
+   * добивались.
+   *
+   * Право `content.publish`, а не `content.edit`: статья сразу попадает в ленту
+   * мини-аппа (так же, как у конвейера), то есть это выпуск наружу. Автор
+   * материал создаёт, редактор выпускает — как и задумано ролями.
+   */
+  .post("/create/:id/queue", zValidator("param", idParam), async (c) => {
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    await requirePermission(c, db, "content.publish");
+    const { id } = c.req.valid("param");
+
+    const [row] = await db
+      .select({
+        id: creations.id,
+        status: creations.status,
+        articleId: creations.articleId,
+        result: creations.result,
+      })
+      .from(creations)
+      .where(eq(creations.id, id))
+      .limit(1);
+
+    if (!row) return c.json({ error: "not_found", message: "Задание не найдено." }, 404);
+
+    const gate = checkQueueable(row);
+    if (!gate.ok) return c.json({ error: gate.error, message: gate.message }, 409);
+
+    const draft = toArticleDraft({
+      title: String(row.result?.title ?? ""),
+      body: String(row.result?.body ?? ""),
+    });
+
+    // Адрес обязан быть уникальным: колонка под уникальным индексом, и
+    // столкновение заголовков уронило бы отправку на ровном месте.
+    const [taken] = await db
+      .select({ slug: articles.slug })
+      .from(articles)
+      .where(eq(articles.slug, draft.slug))
+      .limit(1);
+    const slug = taken ? `${draft.slug}-${Date.now().toString(36)}` : draft.slug;
+
+    const [article] = await db
+      .insert(articles)
+      .values({
+        slug,
+        section: "main",
+        category: "news",
+        template: "card-news",
+        // Как у конвейера: в ленте мини-аппа материал виден сразу, а канал
+        // остаётся курируемым — его держат ворота ревью.
+        status: "published",
+        publishedAt: new Date(),
+        tease: draft.tease,
+        lede: draft.lede,
+        whyItMatters: null,
+        body: draft.body,
+        wordCount: draft.wordCount,
+        readSeconds: draft.readSeconds,
+        metadata: { source: "creation", creationId: row.id },
+      })
+      .returning({ id: articles.id, slug: articles.slug });
+
+    if (!article) {
+      return c.json({ error: "not_created", message: "Не удалось создать материал." }, 500);
+    }
+
+    // Очередь канала. Текст кладём как есть: ссылку, превью и обложку
+    // `drain-post-slots` соберёт сам в момент отправки.
+    await db
+      .insert(channels)
+      .values({ articleId: article.id, channel: "tg", text: String(row.result?.body ?? "") })
+      .onConflictDoNothing();
+
+    await db
+      .update(creations)
+      .set({ articleId: article.id, updatedAt: new Date() })
+      .where(eq(creations.id, row.id));
+
+    /**
+     * Обложка отдельным событием — и вместе с ней приезжает карточка ревью:
+     * её шлёт `generate-cover` после генерации. Сбой отправки события не
+     * должен отменять уже созданную статью, поэтому ошибку глотаем с записью
+     * в лог.
+     *
+     * ⚠️ Пока карточки нет, ворота ревью статью не держат — она может уйти в
+     * ближайший слот без одобрения. Окно длится до конца генерации обложки.
+     * Это поведение КОНВЕЙЕРА, не новое: он создаёт строку очереди ровно так
+     * же, до обложки. Сужать окно — отдельная задача для обоих путей сразу.
+     */
+    try {
+      await getInngest(env).send({
+        name: ARTICLE_COVER_REQUESTED,
+        data: { articleId: article.id },
+      });
+    } catch (e) {
+      console.error(
+        `admin-create: обложка для ${article.id} не заказана: ${
+          e instanceof Error ? e.message : e
+        }`,
+      );
+    }
+
+    return c.json({ articleId: article.id, slug: article.slug }, 201);
   });

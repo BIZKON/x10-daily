@@ -23,6 +23,7 @@ import {
   recordChannelFailure,
   sendToChannel,
 } from "../../lib/post-channel";
+import { pickPostable } from "../../lib/review-gate";
 import { articleToTelegramHtml } from "../../lib/telegram-html";
 import type { PipelineInngest } from "../client";
 
@@ -31,6 +32,16 @@ import type { PipelineInngest } from "../client";
  * пропустить слот, чем выдать вчерашнее). Считается от channels.created_at.
  */
 const STALE_HOURS = 24;
+
+/**
+ * Сколько голов очереди осматриваем за слот.
+ *
+ * Ворота теперь решают в коде, поэтому кандидатов надо принести. Потолок нужен,
+ * чтобы запрос не разрастался вместе с очередью: за сутки в неё попадает
+ * десятки строк, полсотни покрывают их с запасом. Если все осмотренные
+ * заблокированы, слот пропускается — это честнее, чем тянуть всю очередь.
+ */
+const QUEUE_SCAN_LIMIT = 50;
 
 /**
  * Слот-постинг (session 23). Раньше post-to-tg/post-to-vk постили КАЖДУЮ
@@ -112,35 +123,34 @@ export function createDrainPostSlotsFunction(
         const db = createDb(env.DATABASE_URL);
         const staleBefore = new Date(gate.nowMs - STALE_HOURS * 3_600_000);
 
-        // 🔴 Ворота ревью (Спека 4). Статью, у которой карточка ещё ждёт
-        // решения, крон НЕ публикует. Раньше слот забирал что угодно, не
-        // глядя на статус, и кнопка «Одобрить» была не воротами, а
-        // ускорителем: не нажал — ушло само в ближайший слот.
-        //
-        // Предохранитель: блокировка снимается через REVIEW_GATE_HOURS часов
-        // от создания карточки. Жёсткие ворота означают, что день без
-        // редактора = день тишины в канале, а медиа так себе позволить не
-        // может. `0` — предохранитель выключен, ворота жёсткие.
-        //
-        // ⚠️ Прицельная публикация ворота НЕ проверяет: она приходит ровно из
-        // нажатия «Одобрить», то есть решение уже принято.
-        const gateHours = env.REVIEW_GATE_HOURS;
-        const gated =
-          !wantedArticleId && gateHours >= 0
-            ? sql`not exists (
-                select 1 from review_cards rc
-                where rc.article_id = ${channels.articleId}
-                  and rc.state = 'awaiting'
-                  ${
-                    gateHours > 0
-                      ? sql`and rc.created_at > now() - make_interval(hours => ${gateHours})`
-                      : sql``
-                  }
-              )`
-            : undefined;
-
-        const [r] = await db
-          .select({ articleId: channels.articleId })
+        /**
+         * 🔴 Ворота ревью (Спека 4). Решение принимает `pickPostable`, а не
+         * условие запроса — и вот почему.
+         *
+         * Раньше ворота были условием `not exists (карточка awaiting)`. Оно
+         * выглядело строгим, но по смыслу разрешало всё, у чего карточки нет
+         * вовсе, — а карточка рождается лишь побочным эффектом успешной
+         * генерации обложки. Замер на проде 10.08.2026: за три дня 6 постов из
+         * 20 ушли в канал, не побывав ни у кого перед глазами.
+         *
+         * Поэтому запрос теперь только ПРИНОСИТ факты о карточках, а правило
+         * живёт отдельной чистой функцией и покрыто тестами.
+         *
+         * ⚠️ Прицельная публикация ворота НЕ проверяет: она приходит ровно из
+         * нажатия «Одобрить», то есть решение уже принято.
+         */
+        const rows = await db
+          .select({
+            articleId: channels.articleId,
+            queuedAt: channels.createdAt,
+            awaitingSince: sql<string | null>`(
+              select min(rc.created_at) from review_cards rc
+              where rc.article_id = ${channels.articleId} and rc.state = 'awaiting'
+            )`,
+            cards: sql<number>`(
+              select count(*) from review_cards rc where rc.article_id = ${channels.articleId}
+            )`,
+          })
           .from(channels)
           .where(
             and(
@@ -150,12 +160,30 @@ export function createDrainPostSlotsFunction(
               // Окно свежести намеренно сохраняется и для прицельного случая:
               // одобрить статью суточной давности — это опубликовать вчерашнее.
               ...(wantedArticleId ? [eq(channels.articleId, wantedArticleId)] : []),
-              ...(gated ? [gated] : []),
             ),
           )
           .orderBy(asc(channels.createdAt))
-          .limit(1);
-        return r ?? null;
+          .limit(QUEUE_SCAN_LIMIT);
+
+        if (wantedArticleId) {
+          const [r] = rows;
+          return r ? { articleId: r.articleId } : null;
+        }
+
+        const id = pickPostable(
+          rows.map((r) => ({
+            articleId: r.articleId,
+            queuedAt: new Date(r.queuedAt),
+            awaitingSince: r.awaitingSince ? new Date(r.awaitingSince) : null,
+            hasAnyCard: Number(r.cards) > 0,
+          })),
+          {
+            reviewConfigured: Boolean(env.TG_REVIEW_CHAT_ID),
+            gateHours: env.REVIEW_GATE_HOURS,
+            now: new Date(gate.nowMs),
+          },
+        );
+        return id ? { articleId: id } : null;
       });
 
       if (!selected) {

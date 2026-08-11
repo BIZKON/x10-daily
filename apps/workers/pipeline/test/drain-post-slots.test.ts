@@ -428,11 +428,14 @@ describe("drain-post-slots", () => {
 });
 
 /**
- * Ворота ревью (Спека 4). До них слот забирал статью, не глядя на решение
- * редактора: кнопка «Одобрить» была не воротами, а ускорителем.
+ * Ворота ревью (Спека 4).
  *
- * Мок не исполняет SQL, поэтому проверяем ПРОВОДКУ — попало ли условие с
- * `review_cards` в запрос выбора. Само поведение SQL проверяется на проде.
+ * Раньше здесь проверялась ПРОВОДКА — попало ли условие с `review_cards` в
+ * запрос. Проверять стало нечего и незачем: решение переехало из SQL в чистую
+ * функцию `pickPostable`, потому что условие в запросе было написано наизнанку
+ * (отсутствие карточки читалось как разрешение). Теперь проверяем ПОВЕДЕНИЕ —
+ * уходит ли материал в канал, — а правило само по себе покрыто
+ * `review-gate.test.ts`.
  */
 describe("ворота ревью", () => {
   // ⚠️ Свой сброс: блок вынесен из describe выше, и его beforeEach сюда не
@@ -445,71 +448,70 @@ describe("ворота ревью", () => {
     vi.clearAllMocks();
   });
 
+  /** Группа «Редакция» настроена — только тогда ворота вообще существуют. */
+  const REVIEW_BINDINGS = { ...TG_BINDINGS, TG_REVIEW_CHAT_ID: "-100777", REVIEW_GATE_HOURS: "6" };
+
   /**
-   * Текст первого условия выбора.
-   *
-   * ⚠️ JSON.stringify не годится: объекты drizzle ссылаются на таблицы, а те —
-   * обратно на колонки, и обход зацикливается. Собираем только строковые куски
-   * SQL, помечая пройденные объекты.
+   * Кандидат очереди, затем строка канала с текстом — тот же порядок выборок,
+   * что у happy-пути выше.
    */
-  function firstWhereSql(): string {
-    const parts: string[] = [];
-    const seen = new WeakSet<object>();
-    const walk = (v: unknown): void => {
-      if (typeof v === "string") {
-        parts.push(v);
-        return;
-      }
-      if (!v || typeof v !== "object" || seen.has(v as object)) return;
-      seen.add(v as object);
-      for (const item of Object.values(v as Record<string, unknown>)) walk(item);
-    };
-    walk(dbState.selectWheres[0] ?? []);
-    return parts.join(" ");
+  function queueWith(card: { awaitingSince?: string | null; cards: number }) {
+    return [
+      [
+        {
+          articleId: "a1",
+          queuedAt: new Date(),
+          awaitingSince: card.awaitingSince ?? null,
+          cards: card.cards,
+        },
+      ],
+      [{ text: "пост", visualRef: null }],
+    ];
   }
 
-  it("крон: в выборку добавлено условие по карточкам ревью", async () => {
-    dbState.selectResults = [[], []];
-    await makeHandler(TG_BINDINGS, dualFetch())({ step: makeStep() });
-    expect(firstWhereSql()).toContain("review_cards");
+  it("🔴 карточки нет вовсе → в канал НЕ уходит", async () => {
+    // Тот самый дефект: 6 постов из 20 за три дня уходили именно так.
+    dbState.selectResults = queueWith({ cards: 0 });
+    const fetchImpl = dualFetch();
+    await makeHandler(REVIEW_BINDINGS, fetchImpl)({ step: makeStep() });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("карточка ждёт решения → в канал НЕ уходит", async () => {
+    dbState.selectResults = queueWith({ awaitingSince: new Date().toISOString(), cards: 1 });
+    const fetchImpl = dualFetch();
+    await makeHandler(REVIEW_BINDINGS, fetchImpl)({ step: makeStep() });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("решение принято → уходит в канал", async () => {
+    dbState.selectResults = queueWith({ awaitingSince: null, cards: 1 });
+    const fetchImpl = dualFetch();
+    await makeHandler(REVIEW_BINDINGS, fetchImpl)({ step: makeStep() });
+    expect(fetchImpl).toHaveBeenCalled();
+  });
+
+  it("группа «Редакция» не настроена → ворот нет, поведение как раньше", async () => {
+    // Иначе включение ворот стало бы обязательным, и канал такого экземпляра
+    // замолчал бы после обновления.
+    dbState.selectResults = queueWith({ cards: 0 });
+    const fetchImpl = dualFetch();
+    await makeHandler(TG_BINDINGS, fetchImpl)({ step: makeStep() });
+    expect(fetchImpl).toHaveBeenCalled();
   });
 
   it("🔴 прицельная публикация ворота НЕ проверяет — решение уже принято", async () => {
-    dbState.selectResults = [[], []];
+    // Иначе «Одобрить» не сработало бы никогда: карточка ещё `awaiting` ровно
+    // в тот момент, когда редактор её одобряет.
+    dbState.selectResults = queueWith({ awaitingSince: new Date().toISOString(), cards: 1 });
+    const fetchImpl = dualFetch();
     await makeHandler(
-      TG_BINDINGS,
-      dualFetch(),
+      REVIEW_BINDINGS,
+      fetchImpl,
     )({
       event: { data: { articleId: "a1", reason: "review-card-approve" } },
       step: makeStep(),
     });
-    // Иначе «Одобрить» не сработало бы никогда: карточка ещё `awaiting` в тот
-    // самый момент, когда редактор её одобряет.
-    expect(firstWhereSql()).not.toContain("review_cards");
-  });
-
-  it("предохранитель выключен (0 часов) → ворота жёсткие, условие всё равно есть", async () => {
-    dbState.selectResults = [[], []];
-    await makeHandler(
-      { ...TG_BINDINGS, REVIEW_GATE_HOURS: "0" },
-      dualFetch(),
-    )({
-      step: makeStep(),
-    });
-    const w = firstWhereSql();
-    expect(w).toContain("review_cards");
-    // Без окна: блокировка не снимается по времени вообще.
-    expect(w).not.toContain("make_interval");
-  });
-
-  it("предохранитель включён → в условии есть окно по времени", async () => {
-    dbState.selectResults = [[], []];
-    await makeHandler(
-      { ...TG_BINDINGS, REVIEW_GATE_HOURS: "6" },
-      dualFetch(),
-    )({
-      step: makeStep(),
-    });
-    expect(firstWhereSql()).toContain("make_interval");
+    expect(fetchImpl).toHaveBeenCalled();
   });
 });

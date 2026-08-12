@@ -795,6 +795,74 @@ export async function fetchKnowledgeShelf(
   }
 }
 
+/* ── База знаний по ссылке ───────────────────────────────────────────────── */
+
+/** Что стало с одной страницей сайта. Отвечает на «почему не нашлись цены». */
+export type KbImportPage = {
+  url: string;
+  title?: string;
+  status: "read" | "skipped";
+  reason?: string;
+  chars?: number;
+};
+
+export type KbImport = {
+  id: string;
+  siteUrl: string;
+  status: "queued" | "running" | "ready" | "failed";
+  statusReason: string | null;
+  pages: KbImportPage[] | null;
+  notes: string[] | null;
+  proposed: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Предложение — материал, найденный на сайте и ждущий решения человека. */
+export type KbProposal = {
+  id: string;
+  title: string;
+  body: string;
+  sourceUrl: string | null;
+  charCount: number;
+  shelfSlug: string;
+  shelfTitle: string;
+  shelfPosition: number;
+};
+
+/** Последний обход: по нему экран базы знаний решает, что показывать. */
+export async function fetchLatestKnowledgeImport(): Promise<KbImport | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  try {
+    const res = await fetchWithTimeout(`${base}/v1/admin/knowledge/imports/latest`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { item: KbImport | null };
+    return data.item;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchKnowledgeImport(
+  id: string,
+): Promise<{ item: KbImport; documents: KbProposal[] } | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  try {
+    const res = await fetchWithTimeout(
+      `${base}/v1/admin/knowledge/imports/${encodeURIComponent(id)}`,
+      { headers: await authHeaders() },
+    );
+    if (!res.ok) return null;
+    return (await res.json()) as { item: KbImport; documents: KbProposal[] };
+  } catch {
+    return null;
+  }
+}
+
 /* ── Раздел «Создать» (ручной режим) ─────────────────────────────────────── */
 
 export type CreationMode = {

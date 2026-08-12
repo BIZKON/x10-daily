@@ -1,9 +1,10 @@
-import { type KbShelf, fetchKnowledge } from "@/lib/api";
-import { BookOpen, Check, ChevronRight } from "lucide-react";
+import { type KbImport, type KbShelf, fetchKnowledge, fetchLatestKnowledgeImport } from "@/lib/api";
+import { BookOpen, Check, ChevronRight, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AnswerForm } from "./answer-form";
+import { ImportForm } from "./import-form";
 
 export const metadata = { title: "База знаний — ProAgent AI Admin" };
 
@@ -49,7 +50,9 @@ async function Content() {
   // настоящее дерево, а React ругается на несовпадение разметки.
   // `connection()` ВНУТРИ Suspense-компонента форсирует дыру.
   await connection();
-  const data = await fetchKnowledge();
+  // Оба запроса разом: последний обход нужен обоим режимам экрана, а ждать их
+  // по очереди значит удвоить ожидание на ровном месте.
+  const [data, lastImport] = await Promise.all([fetchKnowledge(), fetchLatestKnowledgeImport()]);
 
   if (!data) {
     return (
@@ -64,10 +67,68 @@ async function Content() {
 
   const { items, progress } = data;
   return progress.mode === "survey" ? (
-    <Survey shelves={items} />
+    <Survey shelves={items} lastImport={lastImport} />
   ) : (
-    <Shelves shelves={items} filled={progress.filled} required={progress.required} />
+    <Shelves
+      shelves={items}
+      filled={progress.filled}
+      required={progress.required}
+      lastImport={lastImport}
+    />
   );
+}
+
+/**
+ * Обход, который уже был: идёт, ждёт разбора или отказал.
+ *
+ * Показываем в обоих режимах экрана. Молчать о непринятых предложениях нельзя:
+ * человек заплатил за обход, а найденное не работает, пока он его не принял.
+ */
+function ImportState({ item }: { item: KbImport }) {
+  if (item.status === "queued" || item.status === "running") {
+    return (
+      <Link
+        href={`/knowledge/import/${item.id}`}
+        className="mb-4 flex items-center gap-2.5 rounded-2xl border border-fence bg-card p-4 hover:border-gold/50"
+      >
+        <Loader2 size={15} className="animate-spin text-gold" />
+        <span className="text-[13.5px] text-paper">Читаем ваш сайт</span>
+        <span className="ml-auto text-[13px] text-gold">Посмотреть ход →</span>
+      </Link>
+    );
+  }
+
+  if (item.status === "ready" && item.proposed > 0) {
+    return (
+      <Link
+        href={`/knowledge/import/${item.id}`}
+        className="mb-4 flex flex-wrap items-center gap-2.5 rounded-2xl border border-gold/35 bg-gold/[0.07] p-4 hover:border-gold"
+      >
+        <span className="text-[13.5px] text-paper">
+          С сайта найдено {item.proposed}{" "}
+          {item.proposed === 1 ? "материал" : item.proposed < 5 ? "материала" : "материалов"} — ждут
+          вашего решения
+        </span>
+        <span className="ml-auto text-[13px] font-semibold text-gold">Разобрать →</span>
+      </Link>
+    );
+  }
+
+  if (item.status === "failed") {
+    return (
+      <Link
+        href={`/knowledge/import/${item.id}`}
+        className="mb-4 flex flex-wrap items-center gap-2.5 rounded-2xl border border-red/35 bg-red/[0.06] p-4 hover:border-red"
+      >
+        <span className="text-[13.5px] text-mist">
+          {item.statusReason ?? "Обход сайта не удался."}
+        </span>
+        <span className="ml-auto text-[13px] text-gold">Подробнее →</span>
+      </Link>
+    );
+  }
+
+  return null;
 }
 
 /* ── Режим 1: анкета ─────────────────────────────────────────────────────── */
@@ -77,7 +138,7 @@ async function Content() {
  * пустую форму загрузки. Вопросы лежат в самих полках (`kb_shelves.question`),
  * поэтому анкета — это другое представление тех же данных, а не вторая труба.
  */
-function Survey({ shelves }: { shelves: KbShelf[] }) {
+function Survey({ shelves, lastImport }: { shelves: KbShelf[]; lastImport: KbImport | null }) {
   const required = shelves.filter((s) => s.required);
   const done = required.filter((s) => s.documents > 0).length;
 
@@ -92,12 +153,21 @@ function Survey({ shelves }: { shelves: KbShelf[] }) {
         </h1>
         <p className="m-0 max-w-[70ch] text-[14.5px] leading-relaxed text-mist">
           Ответьте своими словами — как рассказали бы новому сотруднику в первый день. Дальше
-          система будет писать, зная это, и вам не придётся объяснять одно и то же в каждом
-          запросе. Можно прерваться и вернуться: ответы сохраняются по одному.
+          система будет писать, зная это, и вам не придётся объяснять одно и то же в каждом запросе.
+          Можно прерваться и вернуться: ответы сохраняются по одному.
         </p>
       </header>
 
       <Progress done={done} total={required.length} />
+
+      {lastImport && <ImportState item={lastImport} />}
+
+      {/* 🔴 Кнопка стоит ВЫШЕ вопросов, а не под ними. Час в анкете — та самая
+          причина, по которой на проде лежал один материал: до конца опроса не
+          доходят. Пусть первым предложением будет «возьмите с моего сайта». */}
+      <div className="mb-5">
+        <ImportForm />
+      </div>
 
       <div className="space-y-3">
         {shelves.map((s, i) => (
@@ -159,8 +229,8 @@ function Question({ shelf, index }: { shelf: KbShelf; index: number }) {
             className="inline-flex items-center gap-1.5 text-[13px] text-gold hover:underline"
           >
             {shelf.documents}{" "}
-            {shelf.documents === 1 ? "материал" : shelf.documents < 5 ? "материала" : "материалов"} ·
-            посмотреть и дополнить
+            {shelf.documents === 1 ? "материал" : shelf.documents < 5 ? "материала" : "материалов"}{" "}
+            · посмотреть и дополнить
             <ChevronRight size={14} strokeWidth={2} />
           </Link>
         ) : (
@@ -181,10 +251,12 @@ function Shelves({
   shelves,
   filled,
   required,
+  lastImport,
 }: {
   shelves: KbShelf[];
   filled: number;
   required: number;
+  lastImport: KbImport | null;
 }) {
   return (
     <div>
@@ -202,6 +274,12 @@ function Shelves({
       </header>
 
       <Progress done={filled} total={required} />
+
+      {lastImport && <ImportState item={lastImport} />}
+
+      <div className="mb-5">
+        <ImportForm />
+      </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {shelves.map((s) => (
@@ -229,7 +307,9 @@ function ShelfCard({ shelf }: { shelf: KbShelf }) {
         {empty ? (shelf.required ? "Полка пуста" : "Не заполнено") : "Полка"}
       </div>
       <h2 className="m-0 mb-2 font-display text-[16.5px] font-bold leading-snug">{shelf.title}</h2>
-      <p className="m-0 mb-4 min-h-[3.2em] text-[13px] leading-relaxed text-mist">{shelf.purpose}</p>
+      <p className="m-0 mb-4 min-h-[3.2em] text-[13px] leading-relaxed text-mist">
+        {shelf.purpose}
+      </p>
 
       <div className="mb-2 h-1 overflow-hidden rounded-pill bg-fence">
         <div

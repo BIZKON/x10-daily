@@ -28,6 +28,11 @@ export type FetchArticleResult =
   | { ok: true; url: string; title: string; text: string }
   | { ok: false; reason: string };
 
+/** Ответ как есть: тело и его тип. Разбирает вызывающий. */
+export type FetchRawResult =
+  | { ok: true; url: string; body: string; contentType: string }
+  | { ok: false; reason: string };
+
 /** Приватные и служебные диапазоны IPv4 — сюда наш сервер ходить не должен. */
 function isPrivateIPv4(ip: string): boolean {
   const p = ip.split(".").map(Number);
@@ -60,7 +65,9 @@ async function isSafeHost(hostname: string): Promise<boolean> {
   try {
     const records = await lookup(hostname, { all: true });
     if (records.length === 0) return false;
-    return records.every((r) => (r.family === 6 ? !isPrivateIPv6(r.address) : !isPrivateIPv4(r.address)));
+    return records.every((r) =>
+      r.family === 6 ? !isPrivateIPv6(r.address) : !isPrivateIPv4(r.address),
+    );
   } catch {
     return false;
   }
@@ -72,7 +79,10 @@ export function checkUrlShape(raw: string): { ok: true; url: URL } | { ok: false
   try {
     url = new URL(raw);
   } catch {
-    return { ok: false, reason: "Это не похоже на ссылку. Скопируйте адрес целиком, вместе с https://" };
+    return {
+      ok: false,
+      reason: "Это не похоже на ссылку. Скопируйте адрес целиком, вместе с https://",
+    };
   }
   if (url.protocol !== "https:" && url.protocol !== "http:") {
     return { ok: false, reason: "Поддерживаются только ссылки http и https" };
@@ -96,7 +106,9 @@ export function checkUrlShape(raw: string): { ok: true; url: URL } | { ok: false
  */
 export function extractText(html: string): { title: string; text: string } {
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  const title = titleMatch?.[1] ? decodeEntities(stripTags(titleMatch[1])).trim().slice(0, 200) : "";
+  const title = titleMatch?.[1]
+    ? decodeEntities(stripTags(titleMatch[1])).trim().slice(0, 200)
+    : "";
 
   let body = html;
   const article = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
@@ -110,7 +122,10 @@ export function extractText(html: string): { title: string; text: string } {
         .replace(/<script[\s\S]*?<\/script>/gi, " ")
         .replace(/<style[\s\S]*?<\/style>/gi, " ")
         .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
-        .replace(/<(?:nav|header|footer|aside|form)[\s\S]*?<\/(?:nav|header|footer|aside|form)>/gi, " ")
+        .replace(
+          /<(?:nav|header|footer|aside|form)[\s\S]*?<\/(?:nav|header|footer|aside|form)>/gi,
+          " ",
+        )
         // Блочные теги → перенос строки, иначе абзацы слипнутся в одну простыню.
         .replace(/<\/(?:p|div|li|h[1-6]|br|tr)>/gi, "\n"),
     ),
@@ -138,16 +153,22 @@ function decodeEntities(s: string): string {
 }
 
 /**
- * Загрузить страницу и вернуть её текст.
+ * Загрузить адрес и вернуть тело как есть.
+ *
+ * 🔴 ЕДИНСТВЕННОЕ место, где сервер ходит наружу по пользовательскому адресу.
+ * Обёрток над ним две — `fetchArticle` (страница для человека) и `fetchRaw`
+ * (служебные файлы сайта), — но проверка адреса у них одна на двоих. Второй
+ * загрузчик со своей проверкой означал бы, что защиту однажды починят в одном
+ * месте из двух.
  *
  * Редиректы разбираем ВРУЧНУЮ (`redirect: "manual"`): при автоматическом
  * следовании проверка адреса сработала бы только на первом хопе, а второй мог
  * бы увести во внутреннюю сеть.
  */
-export async function fetchArticle(
+async function fetchSafely(
   rawUrl: string,
-  fetchImpl: typeof fetch = globalThis.fetch,
-): Promise<FetchArticleResult> {
+  opts: { fetchImpl: typeof fetch; maxBytes: number; accept: string },
+): Promise<FetchRawResult> {
   const shape = checkUrlShape(rawUrl);
   if (!shape.ok) return shape;
 
@@ -161,19 +182,22 @@ export async function fetchArticle(
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     let res: Response;
     try {
-      res = await fetchImpl(current.toString(), {
+      res = await opts.fetchImpl(current.toString(), {
         redirect: "manual",
         signal: controller.signal,
         headers: {
           // Честно представляемся: скрываться под видом браузера — плохая
           // практика и повод для блокировки со стороны сайта.
           "User-Agent": "ProAgentAI/1.0 (+https://pro-agent-ai.ru)",
-          Accept: "text/html,application/xhtml+xml",
+          Accept: opts.accept,
         },
       });
     } catch (e) {
       clearTimeout(timer);
-      const msg = e instanceof Error && e.name === "AbortError" ? "Страница не ответила вовремя" : "Не удалось открыть ссылку";
+      const msg =
+        e instanceof Error && e.name === "AbortError"
+          ? "Страница не ответила вовремя"
+          : "Не удалось открыть ссылку";
       return { ok: false, reason: msg };
     }
     clearTimeout(timer);
@@ -195,23 +219,61 @@ export async function fetchArticle(
       return { ok: false, reason: `Страница ответила ошибкой ${res.status}` };
     }
 
-    const type = res.headers.get("content-type") ?? "";
-    if (!type.includes("html") && !type.includes("text/plain")) {
-      return { ok: false, reason: "По ссылке не страница с текстом" };
-    }
     const declared = Number(res.headers.get("content-length") ?? 0);
-    if (declared > MAX_BYTES) return { ok: false, reason: "Страница слишком большая" };
+    if (declared > opts.maxBytes) return { ok: false, reason: "Страница слишком большая" };
 
-    const html = (await res.text()).slice(0, MAX_BYTES);
-    const { title, text } = extractText(html);
-    if (text.length < 200) {
-      return {
-        ok: false,
-        reason:
-          "На странице не нашлось текста. Так бывает у соцсетей и видео — там текст рисуется скриптом. Пришлите ссылку на статью или сам текст.",
-      };
-    }
-    return { ok: true, url: current.toString(), title, text };
+    return {
+      ok: true,
+      url: current.toString(),
+      body: (await res.text()).slice(0, opts.maxBytes),
+      contentType: res.headers.get("content-type") ?? "",
+    };
   }
   return { ok: false, reason: "Слишком много переадресаций" };
+}
+
+/** Загрузить страницу и вернуть её текст. */
+export async function fetchArticle(
+  rawUrl: string,
+  fetchImpl: typeof fetch = globalThis.fetch,
+): Promise<FetchArticleResult> {
+  const res = await fetchSafely(rawUrl, {
+    fetchImpl,
+    maxBytes: MAX_BYTES,
+    accept: "text/html,application/xhtml+xml",
+  });
+  if (!res.ok) return res;
+
+  if (!res.contentType.includes("html") && !res.contentType.includes("text/plain")) {
+    return { ok: false, reason: "По ссылке не страница с текстом" };
+  }
+
+  const { title, text } = extractText(res.body);
+  if (text.length < 200) {
+    return {
+      ok: false,
+      reason:
+        "На странице не нашлось текста. Так бывает у соцсетей и видео — там текст рисуется скриптом. Пришлите ссылку на статью или сам текст.",
+    };
+  }
+  return { ok: true, url: res.url, title, text };
+}
+
+/**
+ * Загрузить служебный файл сайта: `robots.txt`, `sitemap.xml` или разметку
+ * главной ради ссылок.
+ *
+ * Отличий от `fetchArticle` ровно два, и оба обязательны для обхода: тип
+ * содержимого не сужается до html (карта сайта — это `application/xml`) и нет
+ * порога «мало текста» (нормальный `robots.txt` короче 200 знаков).
+ */
+export async function fetchRaw(
+  rawUrl: string,
+  opts: { fetchImpl?: typeof fetch; maxBytes?: number } = {},
+): Promise<FetchRawResult> {
+  return fetchSafely(rawUrl, {
+    fetchImpl: opts.fetchImpl ?? globalThis.fetch,
+    maxBytes: opts.maxBytes ?? MAX_BYTES,
+    accept: "text/plain,application/xml,text/xml,text/html;q=0.9",
+  });
 }

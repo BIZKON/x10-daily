@@ -288,3 +288,20 @@ export const creationRunRequestedEvent = eventType("creation/run.requested", {
   schema: creationRunRequestedDataSchema,
 });
 export const CREATION_RUN_REQUESTED = creationRunRequestedEvent.event;
+
+/* ------------------------------------------------------------------
+ * База знаний по ссылке: клиент дал адрес сайта, надо его обойти.
+ *
+ * В событии только id задания — по той же причине, что и у «Создать»: строка
+ * `kb_imports` уже создана апи и хранит адрес; дублировать его в событие значит
+ * завести второй источник правды.
+ * ---------------------------------------------------------------- */
+export const knowledgeImportRequestedDataSchema = z.object({
+  importId: z.string().uuid(),
+});
+export type KnowledgeImportRequestedData = z.infer<typeof knowledgeImportRequestedDataSchema>;
+
+export const knowledgeImportRequestedEvent = eventType("knowledge/import.requested", {
+  schema: knowledgeImportRequestedDataSchema,
+});
+export const KNOWLEDGE_IMPORT_REQUESTED = knowledgeImportRequestedEvent.event;

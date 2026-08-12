@@ -1,4 +1,14 @@
-import { boolean, index, integer, pgTable, text, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  uniqueIndex,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 import { id, timestamps } from "./_shared";
 import { users } from "./users";
 
@@ -49,10 +59,53 @@ export type KbSource = (typeof KB_SOURCES)[number];
 
 /**
  * Состояние материала. `ready` — можно класть в промпт; `parsing` — файл
- * разбирается; `failed` — текста из файла не достали.
+ * разбирается; `failed` — текста из файла не достали; `proposed` — система
+ * нашла это на сайте клиента и ждёт, что человек утвердит (миграция 0028).
+ *
+ * 🔴 `loadKnowledge` берёт ТОЛЬКО `ready`. Поэтому непринятое предложение
+ * физически не может уехать в промпт агента, даже если про него забыли.
  */
-export const KB_STATUSES = ["ready", "parsing", "failed"] as const;
+export const KB_STATUSES = ["ready", "parsing", "failed", "proposed"] as const;
 export type KbStatus = (typeof KB_STATUSES)[number];
+
+/** Состояние обхода сайта. Совпадает по смыслу со статусами `creations`. */
+export const KB_IMPORT_STATUSES = ["queued", "running", "ready", "failed"] as const;
+export type KbImportStatus = (typeof KB_IMPORT_STATUSES)[number];
+
+/** Что взяли со страницы и что с ней стало. */
+export type KbImportPage = {
+  url: string;
+  title?: string;
+  /** `skipped` — страница отсеяна (нет текста, запрет robots и подобное). */
+  status: "read" | "skipped";
+  reason?: string;
+  chars?: number;
+};
+
+/**
+ * Обход сайта клиента (миграция 0030).
+ *
+ * Строка заводится ДО события и она же есть то, что человек видит на экране;
+ * событие несёт только её id. Иначе тему обхода пришлось бы дублировать в
+ * событии и получить второй источник правды, который разойдётся с базой.
+ */
+export const kbImports = pgTable(
+  "kb_imports",
+  {
+    id: id(),
+    siteUrl: text("site_url").notNull(),
+    status: varchar("status", { length: 16 }).$type<KbImportStatus>().notNull().default("queued"),
+    /** Человеческая причина отказа — показывается клиенту как есть. */
+    statusReason: text("status_reason"),
+    pages: jsonb("pages").$type<KbImportPage[]>(),
+    /** Чего на сайте не нашлось: подсказка, что дозаполнить руками. */
+    notes: jsonb("notes").$type<string[]>(),
+    proposed: integer("proposed").notNull().default(0),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (t) => [index("kb_imports_recent_idx").on(t.createdAt)],
+);
 
 /**
  * Материал на полке.
@@ -79,12 +132,20 @@ export const kbDocuments = pgTable(
     status: varchar("status", { length: 16 }).$type<KbStatus>().notNull().default("ready"),
     statusReason: text("status_reason"),
     charCount: integer("char_count").notNull().default(0),
+    /**
+     * Каким обходом сайта предложен материал (миграция 0030).
+     *
+     * SET NULL, а не CASCADE: принятое человеком — уже его знание, и удаление
+     * истории обхода не вправе уносить его вместе с собой.
+     */
+    importId: uuid("import_id").references(() => kbImports.id, { onDelete: "set null" }),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     ...timestamps,
   },
   (t) => [
     index("kb_documents_shelf_idx").on(t.shelfId, t.createdAt),
     index("kb_documents_ready_idx").on(t.status, t.shelfId),
+    index("kb_documents_import_idx").on(t.importId, t.status),
   ],
 );
 
@@ -92,3 +153,5 @@ export type KbShelf = typeof kbShelves.$inferSelect;
 export type NewKbShelf = typeof kbShelves.$inferInsert;
 export type KbDocument = typeof kbDocuments.$inferSelect;
 export type NewKbDocument = typeof kbDocuments.$inferInsert;
+export type KbImport = typeof kbImports.$inferSelect;
+export type NewKbImport = typeof kbImports.$inferInsert;

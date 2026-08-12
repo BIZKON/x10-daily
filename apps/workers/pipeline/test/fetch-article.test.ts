@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { checkUrlShape, extractText, fetchArticle } from "../src/lib/fetch-article";
+import { checkUrlShape, extractText, fetchArticle, fetchRaw } from "../src/lib/fetch-article";
 
 /**
  * Загрузка материала по ссылке — второй вход конвейера.
@@ -82,17 +82,21 @@ describe("fetchArticle — защита от обращений во внутр�
 
 describe("fetchArticle — обычная работа", () => {
   function htmlFetch(html: string, type = "text/html; charset=utf-8") {
-    return vi.fn(async () =>
-      new Response(html, { status: 200, headers: { "content-type": type } }),
+    return vi.fn(
+      async () => new Response(html, { status: 200, headers: { "content-type": type } }),
     ) as unknown as typeof fetch;
   }
 
-  const LONG = "Внедрение ИИ сократило сверку остатков с четырёх часов до двадцати минут. ".repeat(6);
+  const LONG = "Внедрение ИИ сократило сверку остатков с четырёх часов до двадцати минут. ".repeat(
+    6,
+  );
 
   it("достаёт заголовок и текст статьи", async () => {
     const r = await fetchArticle(
       "https://example.com/a",
-      htmlFetch(`<html><head><title>Склад считает сам</title></head><body><article><p>${LONG}</p></article></body></html>`),
+      htmlFetch(
+        `<html><head><title>Склад считает сам</title></head><body><article><p>${LONG}</p></article></body></html>`,
+      ),
     );
     expect(r.ok).toBe(true);
     if (r.ok) {
@@ -112,7 +116,10 @@ describe("fetchArticle — обычная работа", () => {
   });
 
   it("не-HTML отклоняется", async () => {
-    const r = await fetchArticle("https://example.com/f.pdf", htmlFetch("%PDF-1.7", "application/pdf"));
+    const r = await fetchArticle(
+      "https://example.com/f.pdf",
+      htmlFetch("%PDF-1.7", "application/pdf"),
+    );
     expect(r.ok).toBe(false);
   });
 
@@ -121,6 +128,84 @@ describe("fetchArticle — обычная работа", () => {
     const r = await fetchArticle("https://example.com/none", f);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toContain("404");
+  });
+});
+
+/**
+ * `fetchRaw` — вторая обёртка над той же защитой (спека базы знаний §4.1).
+ *
+ * Понадобилась потому, что обход сайта начинается с `robots.txt` и
+ * `sitemap.xml`, а `fetchArticle` их не пропускает: карта приезжает как
+ * `application/xml`, а robots короче порога в 200 знаков. Ключевое требование —
+ * защита адреса ОБЩАЯ: второй загрузчик со своей проверкой означал бы, что
+ * однажды починят один из двух.
+ */
+describe("fetchRaw — служебные файлы сайта", () => {
+  function forbiddenFetch() {
+    return vi.fn(async () => {
+      throw new Error("сеть не должна была вызываться");
+    }) as unknown as typeof fetch;
+  }
+
+  function bodyFetch(body: string, type: string) {
+    return vi.fn(
+      async () => new Response(body, { status: 200, headers: { "content-type": type } }),
+    ) as unknown as typeof fetch;
+  }
+
+  it("🔴 внутренняя сеть закрыта так же, как для статей", async () => {
+    const f = forbiddenFetch();
+    const r = await fetchRaw("http://169.254.169.254/robots.txt", { fetchImpl: f });
+    expect(r.ok).toBe(false);
+    expect(f).not.toHaveBeenCalled();
+  });
+
+  it("🔴 редирект во внутреннюю сеть обрывается", async () => {
+    let hops = 0;
+    const f = vi.fn(async () => {
+      hops++;
+      return new Response(null, {
+        status: 301,
+        headers: { location: "http://127.0.0.1/robots.txt" },
+      });
+    }) as unknown as typeof fetch;
+
+    const r = await fetchRaw("https://veles.ru/robots.txt", { fetchImpl: f });
+    expect(r.ok).toBe(false);
+    expect(hops).toBe(1);
+  });
+
+  it("отдаёт xml карты сайта — то, что fetchArticle отвергает", async () => {
+    const xml = "<urlset><url><loc>https://veles.ru/about</loc></url></urlset>";
+    const r = await fetchRaw("https://veles.ru/sitemap.xml", {
+      fetchImpl: bodyFetch(xml, "application/xml"),
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.body).toContain("<loc>");
+  });
+
+  it("отдаёт короткий robots.txt — порог в 200 знаков здесь не действует", async () => {
+    const robots = "User-agent: *\nDisallow: /admin\n";
+    const r = await fetchRaw("https://veles.ru/robots.txt", {
+      fetchImpl: bodyFetch(robots, "text/plain"),
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.body).toBe(robots);
+  });
+
+  it("404 возвращается отказом, а не пустым телом", async () => {
+    const f = vi.fn(async () => new Response("", { status: 404 })) as unknown as typeof fetch;
+    const r = await fetchRaw("https://veles.ru/robots.txt", { fetchImpl: f });
+    expect(r.ok).toBe(false);
+  });
+
+  it("объём режется потолком, а не доверием к сайту", async () => {
+    const r = await fetchRaw("https://veles.ru/sitemap.xml", {
+      fetchImpl: bodyFetch("x".repeat(5000), "application/xml"),
+      maxBytes: 1000,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.body).toHaveLength(1000);
   });
 });
 

@@ -49,6 +49,16 @@ export {
   type CreationOutput,
 } from "./agents/creation";
 export {
+  KnowledgeExtractAgent,
+  // Потолок тела и чистка выхода нужны воркеру: он пишет предложения в базу
+  // напрямую, минуя маршрут с его валидацией (knowledge-extract.ts).
+  KB_BODY_LIMIT,
+  sanitizeProposals,
+  type KnowledgeExtractInput,
+  type KnowledgeExtractOutput,
+  type KnowledgeProposal,
+} from "./agents/knowledge-extract";
+export {
   HookGenAgent,
   HOOK_PATTERNS,
   HOOK_CHANNELS,

@@ -110,6 +110,14 @@ export async function loadPlanContext(db: Database): Promise<PlanContext> {
  * её значит порвать связь и соврать в отчёте. Остальное уходит: это ещё не
  * работа, а предложение. Правило и причина те же, что у повторного обхода сайта.
  */
+/** Дата через N дней. Полдень UTC — перевод часов не сдвинет день. */
+function shiftDate(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const date = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1, 12));
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 export async function savePlanItems(
   db: Database,
   planId: string,
@@ -131,10 +139,12 @@ export async function savePlanItems(
       ),
     );
 
-  const month = payload.periodStart.slice(0, 7);
   const rows = payload.topics.map((topic, index) => ({
     planId,
-    plannedFor: `${month}-${String(topic.day).padStart(2, "0")}`,
+    // 🔴 День темы — СМЕЩЕНИЕ от начала периода, а не число месяца. План
+    // начинается завтра: собранный 13-го «на август» разложил бы двенадцать тем
+    // в прошлое (находка живого прогона 13.08).
+    plannedFor: shiftDate(payload.periodStart, topic.day - 1),
     slot: topic.slot,
     category: topic.categorySlug as (typeof planItems.$inferInsert)["category"],
     modeSlug: topic.modeSlug,

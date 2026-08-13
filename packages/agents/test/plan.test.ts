@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_TOPIC,
+  PLAN_HORIZON_DAYS,
   PLAN_SYSTEM,
   PLAN_TOPICS_TARGET,
   buildCreationTopic,
@@ -23,7 +24,7 @@ const INPUT = {
   categories: [{ slug: "business", title: "Практика", purpose: "Как это работает в деле." }],
   formats: [{ slug: "post", title: "Пост" }],
   slots: ["09:30", "12:30"],
-  days: 31,
+  days: PLAN_HORIZON_DAYS,
   count: PLAN_TOPICS_TARGET,
 };
 
@@ -93,6 +94,15 @@ describe("formatPlanInput", () => {
   it("говорит агенту, сколько тем нужно", () => {
     expect(formatPlanInput(INPUT)).toContain(String(PLAN_TOPICS_TARGET));
   });
+
+  it("🔴 план считается от первого дня периода, а не от первого числа месяца", () => {
+    // Находка живого прогона 13.08: план на «календарный месяц» разложил 12 тем
+    // из 30 в прошлое, потому что человек нажал кнопку 13-го числа.
+    expect(PLAN_HORIZON_DAYS).toBe(30);
+    expect(PLAN_SYSTEM).toMatch(/день ПЕРИОДА/);
+    // Отрицание в промпте стоит намеренно: модель сама тянется к числу месяца.
+    expect(PLAN_SYSTEM).toMatch(/не число месяца/i);
+  });
 });
 
 describe("sanitizePlanItems — ответ модели не должен ронять сборку", () => {
@@ -100,7 +110,7 @@ describe("sanitizePlanItems — ответ модели не должен рон
     categorySlugs: ["business", "cases"],
     modeSlugs: ["post"],
     slots: ["09:30", "12:30"],
-    days: 31,
+    days: 30,
     recentTitles: ["Склад считает остатки сам"],
   };
 
@@ -155,10 +165,11 @@ describe("sanitizePlanItems — ответ модели не должен рон
     expect(r.items).toHaveLength(1);
   });
 
-  it("день вне месяца прижимается к границе, а тема остаётся", () => {
+  it("день вне горизонта прижимается к границе, а тема остаётся", () => {
     // Модель ошибётся числом, но тема может быть хорошей — терять её из-за
-    // арифметики глупо.
-    expect(sanitizePlanItems({ items: [item({ day: 44 })] }, known).items[0]?.day).toBe(31);
+    // арифметики глупо. `day` — порядковый день ПЕРИОДА, а не число месяца:
+    // план начинается завтра, а не первого числа (находка живого прогона 13.08).
+    expect(sanitizePlanItems({ items: [item({ day: 44 })] }, known).items[0]?.day).toBe(30);
     expect(sanitizePlanItems({ items: [item({ day: 0 })] }, known).items[0]?.day).toBe(1);
   });
 

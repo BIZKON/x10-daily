@@ -1,5 +1,6 @@
 import {
   type AgentContext,
+  PLAN_HORIZON_DAYS,
   PLAN_TOPICS_TARGET,
   PlanAgent,
   createMasker,
@@ -36,9 +37,12 @@ import type { PipelineInngest } from "../client";
 /** Слоты выхода МСК. Совпадают с расписанием `drain-post-slots`. */
 const SLOTS = ["09:30", "12:30", "15:30", "18:30"];
 
-function daysInMonth(periodStart: string): number {
-  const [y, m] = periodStart.split("-").map(Number);
-  return new Date(Date.UTC(y ?? 1970, m ?? 1, 0, 12)).getUTCDate();
+/** Последний день периода: начало плюс горизонт минус один. */
+function periodEnd(periodStart: string): string {
+  const [y, m, d] = periodStart.split("-").map(Number);
+  const end = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1, 12));
+  end.setUTCDate(end.getUTCDate() + PLAN_HORIZON_DAYS - 1);
+  return end.toISOString().slice(0, 10);
 }
 
 export function createBuildContentPlanFunction(
@@ -129,7 +133,6 @@ export function createBuildContentPlanFunction(
         await markPlanRunning(db, planId);
       });
 
-      const days = daysInMonth(job.periodStart);
       const masker = createMasker(env);
       const ctx: AgentContext = {
         apiKey,
@@ -151,7 +154,7 @@ export function createBuildContentPlanFunction(
               categories: [...PLAN_CATEGORIES],
               formats: context.formats,
               slots: SLOTS,
-              days,
+              days: PLAN_HORIZON_DAYS,
               count: PLAN_TOPICS_TARGET,
             },
             ctx,
@@ -164,7 +167,7 @@ export function createBuildContentPlanFunction(
           categorySlugs: PLAN_CATEGORIES.map((c) => c.slug),
           modeSlugs: context.formats.map((f) => f.slug),
           slots: SLOTS,
-          days,
+          days: PLAN_HORIZON_DAYS,
           recentTitles: context.recentTitles,
         });
 
@@ -174,7 +177,7 @@ export function createBuildContentPlanFunction(
             topics: clean.items,
             knowledgeUsed: context.knowledge,
             periodStart: job.periodStart,
-            periodEnd: `${job.periodStart.slice(0, 7)}-${String(days).padStart(2, "0")}`,
+            periodEnd: periodEnd(job.periodStart),
           });
         });
 

@@ -53,6 +53,7 @@ export {
   // Наружу отдаём чистые части: маршруты api сверяют по ним свой потолок
   // задания, а воркер чистит ответ модели, минуя валидацию маршрута.
   PLAN_TOPICS_TARGET,
+  PLAN_HORIZON_DAYS,
   MAX_TOPIC,
   buildCreationTopic,
   sanitizePlanItems,

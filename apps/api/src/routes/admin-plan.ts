@@ -128,9 +128,18 @@ export function checkMoveTarget(target: {
   return { ok: true };
 }
 
-/** Первое число месяца, к которому относится дата. */
-function monthStart(iso: string): string {
-  return `${iso.slice(0, 7)}-01`;
+/**
+ * С какого дня начинается план.
+ *
+ * 🔴 С ЗАВТРА, а не с первого числа месяца. Живой прогон 13.08 показал, чем
+ * плох календарный месяц: план, собранный в середине, разложил двенадцать тем
+ * из тридцати в прошлое. Сегодняшний день тоже не берём — материал из темы ещё
+ * надо сделать и одобрить.
+ */
+function planStart(): string {
+  const start = new Date();
+  start.setUTCDate(start.getUTCDate() + 1);
+  return start.toISOString().slice(0, 10);
 }
 
 export const adminPlanRoute = new Hono<AppEnv>()
@@ -263,7 +272,7 @@ export const adminPlanRoute = new Hono<AppEnv>()
       );
     }
 
-    const period = monthStart(new Date().toISOString().slice(0, 10));
+    const period = planStart();
     const [row] = await db
       .insert(contentPlans)
       .values({ periodStart: period, status: "queued", createdBy: me.userId })

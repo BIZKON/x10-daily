@@ -31,9 +31,16 @@ type PlanContext = {
   recentTitles: string[];
   formats: Array<{ slug: string; title: string }>;
 };
-type Saved = { topics: Array<{ title: string }>; knowledgeUsed: string };
+type Saved = {
+  topics: Array<{ title: string }>;
+  knowledgeUsed: string;
+  periodStart: string;
+  periodEnd: string;
+};
 
-const JOB = { id: "plan-1", periodStart: "2026-09-01", status: "queued" as const };
+// Период начинается в произвольный день, а не первого числа: план собирают
+// когда придётся (находка живого прогона 13.08).
+const JOB = { id: "plan-1", periodStart: "2026-09-14", status: "queued" as const };
 
 const CONTEXT: PlanContext = {
   knowledge: "## Цены и условия\nСтраховой взнос от 150 ₽…",
@@ -220,6 +227,13 @@ describe("сборка контент-плана", () => {
     expect(r.status).toBe("failed");
     expect(agentRun).not.toHaveBeenCalled();
     expect(failPlan.mock.calls[0]?.[2]).toMatch(/формат/i);
+  });
+
+  it("🔴 дата темы отсчитывается от начала периода, а не от первого числа", async () => {
+    // День 3 при периоде с 14 сентября — это 16-е, а не 3-е.
+    await run();
+    expect(savePlanItems.mock.calls[0]?.[2]?.periodStart).toBe("2026-09-14");
+    expect(savePlanItems.mock.calls[0]?.[2]?.periodEnd).toBe("2026-10-13");
   });
 
   it("🔴 в модель уходят только доступные форматы", async () => {

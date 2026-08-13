@@ -305,3 +305,19 @@ export const knowledgeImportRequestedEvent = eventType("knowledge/import.request
   schema: knowledgeImportRequestedDataSchema,
 });
 export const KNOWLEDGE_IMPORT_REQUESTED = knowledgeImportRequestedEvent.event;
+
+/* ------------------------------------------------------------------
+ * Контент-план: человек нажал «собрать план на месяц».
+ *
+ * В событии только id сборки: строка `content_plans` уже создана апи и хранит
+ * месяц. Дублировать его в событие значит завести второй источник правды.
+ * ---------------------------------------------------------------- */
+export const planBuildRequestedDataSchema = z.object({
+  planId: z.string().uuid(),
+});
+export type PlanBuildRequestedData = z.infer<typeof planBuildRequestedDataSchema>;
+
+export const planBuildRequestedEvent = eventType("plan/build.requested", {
+  schema: planBuildRequestedDataSchema,
+});
+export const PLAN_BUILD_REQUESTED = planBuildRequestedEvent.event;

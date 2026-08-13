@@ -5,6 +5,7 @@ import { getPipelineEnv } from "./env";
 import { createPipelineInngest } from "./inngest/client";
 import { createAssembleNewsletterFunction } from "./inngest/functions/assemble-newsletter";
 import { createBreakdownLinkFunction } from "./inngest/functions/breakdown-link";
+import { createBuildContentPlanFunction } from "./inngest/functions/build-content-plan";
 import { createDraftArticleFunction } from "./inngest/functions/draft-article";
 import { createDrainPostSlotsFunction } from "./inngest/functions/drain-post-slots";
 import { createGenerateCoverFunction } from "./inngest/functions/generate-cover";
@@ -67,6 +68,7 @@ export function createApp() {
         createRewriteArticleFunction(client, c.env),
         createRunCreationFunction(client, c.env),
         createImportKnowledgeFunction(client, c.env),
+        createBuildContentPlanFunction(client, c.env),
       ],
     });
     // inngest/hono возвращает HTTP-handler (c) => Response. Просто проксируем.

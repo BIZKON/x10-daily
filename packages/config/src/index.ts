@@ -11,6 +11,7 @@ export {
   PERF_BUDGETS,
   BREVITY_LIMITS,
   TEMPLATE_LIMITS,
+  PLAN_CATEGORIES,
   type ModelTier,
   type TemplateKind,
 } from "./constants";

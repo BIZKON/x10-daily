@@ -37,14 +37,6 @@ import type { PipelineInngest } from "../client";
 /** Слоты выхода МСК. Совпадают с расписанием `drain-post-slots`. */
 const SLOTS = ["09:30", "12:30", "15:30", "18:30"];
 
-/** Последний день периода: начало плюс горизонт минус один. */
-function periodEnd(periodStart: string): string {
-  const [y, m, d] = periodStart.split("-").map(Number);
-  const end = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1, 12));
-  end.setUTCDate(end.getUTCDate() + PLAN_HORIZON_DAYS - 1);
-  return end.toISOString().slice(0, 10);
-}
-
 export function createBuildContentPlanFunction(
   inngest: PipelineInngest,
   bindings: PipelineBindings,
@@ -177,7 +169,6 @@ export function createBuildContentPlanFunction(
             topics: clean.items,
             knowledgeUsed: context.knowledge,
             periodStart: job.periodStart,
-            periodEnd: periodEnd(job.periodStart),
           });
         });
 

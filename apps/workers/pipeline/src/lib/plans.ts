@@ -8,7 +8,7 @@ import {
   desc,
   eq,
   gte,
-  lte,
+  isNull,
   ne,
   planItems,
   sql,
@@ -105,10 +105,15 @@ export async function loadPlanContext(db: Database): Promise<PlanContext> {
 /**
  * Записать темы и закрыть сборку.
  *
- * 🔴 Пересборка месяца сносит прежние темы, КРОМЕ сделанных. Тема со статусом
- * `done` привязана к материалу, который уже вышел или стоит в очереди, — снести
- * её значит порвать связь и соврать в отчёте. Остальное уходит: это ещё не
- * работа, а предложение. Правило и причина те же, что у повторного обхода сайта.
+ * 🔴 Пересборка сносит темы прежних сборок, К КОТОРЫМ ЧЕЛОВЕК НЕ ПРИКАСАЛСЯ
+ * (`creation_id IS NULL`). Тема с заданием остаётся всегда: за ней стоит
+ * материал, который уже вышел или ждёт в очереди, и снести её значит порвать
+ * связь и соврать в отчёте.
+ *
+ * ⚠️ Раньше уборка шла по ДИАПАЗОНУ нового периода, и живой прогон 13.08 показал
+ * дыру: период сдвинулся с 01.08 на 14.08, и тринадцать тем старой сборки
+ * повисли в прошлом навсегда. Условие «не тронуто человеком» от границ периода
+ * не зависит вовсе — поэтому мусор больше не копится.
  */
 /** Дата через N дней. Полдень UTC — перевод часов не сдвинет день. */
 function shiftDate(iso: string, days: number): string {
@@ -124,20 +129,11 @@ export async function savePlanItems(
   payload: {
     topics: PlanTopic[];
     knowledgeUsed: string;
+    /** Первый день периода: от него отсчитывается день каждой темы. */
     periodStart: string;
-    periodEnd: string;
   },
 ): Promise<number> {
-  await db
-    .delete(planItems)
-    .where(
-      and(
-        ne(planItems.planId, planId),
-        ne(planItems.status, "done"),
-        gte(planItems.plannedFor, payload.periodStart),
-        lte(planItems.plannedFor, payload.periodEnd),
-      ),
-    );
+  await db.delete(planItems).where(and(ne(planItems.planId, planId), isNull(planItems.creationId)));
 
   const rows = payload.topics.map((topic, index) => ({
     planId,

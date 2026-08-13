@@ -31,6 +31,27 @@ import { articles } from "./articles";
  */
 export const channelKind = pgEnum("channel_kind", ["tg", "vk", "dzen", "linkedin"]);
 
+/**
+ * Формат публикации (миграция 0033). Четыре из КП: «пост, карусель, ролик и
+ * ролик с ведущим собираются из одной темы, без доплаты за переупаковку».
+ *
+ * 🔴 Формат входит в уникальность строки. До 0033 индекс был по
+ * `(article_id, channel)` и физически запрещал второй формат — то есть запрещал
+ * ровно то, что продано в КП.
+ */
+export const CHANNEL_FORMATS = ["post", "carousel", "video", "host_video"] as const;
+export type ChannelFormat = (typeof CHANNEL_FORMATS)[number];
+
+/**
+ * Состояние строки очереди (миграция 0033).
+ *
+ * 🔴 До 0033 состояние ВЫВОДИЛОСЬ из `posted_at`: пусто — в очереди, заполнено —
+ * опубликовано, третьего не дано. Снятый модерацией пост навсегда числился
+ * опубликованным, и отчёт клиенту врал.
+ */
+export const CHANNEL_STATUSES = ["queued", "posted", "rejected"] as const;
+export type ChannelStatus = (typeof CHANNEL_STATUSES)[number];
+
 export const channels = pgTable(
   "channels",
   {
@@ -39,6 +60,10 @@ export const channels = pgTable(
       .notNull()
       .references(() => articles.id, { onDelete: "cascade" }),
     channel: channelKind("channel").notNull(),
+    /** Чем материал выходит в эту площадку. Дефолт — пост. */
+    format: varchar("format", { length: 16 }).$type<ChannelFormat>().notNull().default("post"),
+    /** Явное состояние строки: очередь · опубликовано · снято площадкой. */
+    status: varchar("status", { length: 16 }).$type<ChannelStatus>().notNull().default("queued"),
     text: text("text").notNull(),
     /** Опциональная ссылка/идентификатор медиа (URL/S3-key/...). Posting ветвится по null. */
     visualRef: text("visual_ref"),
@@ -57,14 +82,24 @@ export const channels = pgTable(
      * взлетела» не сохранялся нигде. NULL — строки старше миграции 0015.
      */
     postMode: varchar("post_mode", { length: 16 }),
+    /** Когда публикацию сняла площадка. Отмечает человек кнопкой в админке. */
+    rejectedAt: timestamp("rejected_at", { withTimezone: true }),
+    /**
+     * Почему сняли. Обязательна на уровне интерфейса: «сняли» без причины не
+     * помогает ни повторить, ни не повторить. При возврате в очередь остаётся —
+     * иначе второй заход выглядел бы первым.
+     */
+    rejectedReason: text("rejected_reason"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex("channels_article_channel_uidx").on(t.articleId, t.channel),
-    // Частичный индекс: drain-post-slots сканит только непостнутые строки.
-    index("channels_pending_idx")
+    // Формат входит в уникальность: один материал живёт в площадке столько раз,
+    // сколько у него форматов (миграция 0033).
+    uniqueIndex("channels_article_channel_format_uidx").on(t.articleId, t.channel, t.format),
+    // Частичный индекс: drain-post-slots сканит только очередь.
+    index("channels_queued_idx")
       .on(t.createdAt)
-      .where(sql`posted_at is null`),
+      .where(sql`status = 'queued'`),
   ],
 );
 

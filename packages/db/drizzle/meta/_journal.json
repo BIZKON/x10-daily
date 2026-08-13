@@ -232,6 +232,13 @@
       "when": 1781882972448,
       "tag": "0032_agent_kind_plan",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1781883972448,
+      "tag": "0033_channels_format_status",
+      "breakpoints": true
     }
   ]
 }

@@ -994,3 +994,67 @@ export async function fetchCreations(): Promise<CreationJob[] | null> {
     return null;
   }
 }
+
+/* ── Очередь публикаций (спека 13.08, реестр §3.12) ──────────────────────── */
+
+export type PublicationRowView = {
+  id: string;
+  articleId: string;
+  slug: string;
+  title: string;
+  channel: string;
+  format: string;
+  status: "queued" | "posted" | "rejected";
+  postedAt: string | null;
+  rejectedAt: string | null;
+  rejectedReason: string | null;
+  postRef: string | null;
+  attempts: number;
+  lastError: string | null;
+  createdAt: string;
+};
+
+/** Карточка материала: внутри — строка на каждый формат (решение владельца 13.08). */
+export type PublicationCardView = {
+  articleId: string;
+  slug: string;
+  title: string;
+  lastAt: string | null;
+  rows: PublicationRowView[];
+};
+
+export type PublicationsView = {
+  items: PublicationCardView[];
+  counts: { all: number; queued: number; posted: number; rejected: number };
+  status: "all" | "queued" | "posted" | "rejected";
+  limit: number;
+  /** Строк ровно столько, сколько влезло — значит, показано не всё. */
+  truncated: boolean;
+};
+
+/**
+ * Публикации: что вышло, что ждёт слота, что сняла площадка.
+ *
+ * ⚠️ Фолбэка на моки нет намеренно: выдуманная публикация — это выдуманный
+ * отчёт клиенту, а именно ради честного отчёта всё это и строилось.
+ */
+export async function fetchPublications(params: {
+  status?: string;
+}): Promise<PublicationsView | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  const query = new URLSearchParams();
+  if (params.status) query.set("status", params.status);
+  try {
+    const res = await fetchWithTimeout(
+      `${base}/v1/admin/posting/publications?${query.toString()}`,
+      {
+        headers: await authHeaders(),
+      },
+    );
+    if (!res.ok) return null;
+    return (await res.json()) as PublicationsView;
+  } catch {
+    return null;
+  }
+}

@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { updatePostingControl } from "./actions";
 import { PostingForm } from "./posting-form";
+import { Publications } from "./publications";
 
 export const metadata = { title: "Постинг — ProAgent AI Admin" };
 
@@ -11,11 +12,26 @@ export const metadata = { title: "Постинг — ProAgent AI Admin" };
  * Стоп-кран автопостинга (session 20): ручная пауза + тихие часы (МСК).
  * Гейтит ingest-rss (генерация) и post-to-tg (публикация) на лету.
  */
-export default function PostingPage() {
+export default function PostingPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  // 🔴 `searchParams` НЕ разворачиваем здесь: с Cache Components чтение адреса
+  // на уровне страницы — это данные вне Suspense, и билд падает целиком
+  // («Uncached data was accessed outside of <Suspense>»). Промис уезжает внутрь
+  // дыры, где его и ждут. Тот же приём в `/plan`.
   return (
-    <Suspense fallback={<div className="h-64 animate-pulse rounded-2xl bg-card" />}>
-      <PostingContent />
-    </Suspense>
+    <>
+      <Suspense fallback={<div className="h-64 animate-pulse rounded-2xl bg-card" />}>
+        <PostingContent />
+      </Suspense>
+      {/* Отдельная дыра PPR: стоп-кран не должен ждать список публикаций —
+          он и есть аварийная кнопка, к нему приходят, когда спешат. */}
+      <Suspense fallback={<div className="mt-8 h-64 animate-pulse rounded-2xl bg-card" />}>
+        <Publications searchParams={searchParams} />
+      </Suspense>
+    </>
   );
 }
 

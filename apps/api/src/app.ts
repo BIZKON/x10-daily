@@ -8,6 +8,7 @@ import { adminRoute } from "./routes/admin";
 import { adminContentRoute } from "./routes/admin-content";
 import { adminCreateRoute } from "./routes/admin-create";
 import { adminKnowledgeRoute } from "./routes/admin-knowledge";
+import { adminPlanRoute } from "./routes/admin-plan";
 import { adminSourcesRoute } from "./routes/admin-sources";
 import { adminTeamRoute } from "./routes/admin-team";
 import { adminVisualRoute } from "./routes/admin-visual";
@@ -124,6 +125,7 @@ export function createApp() {
   app.route("/v1/admin", adminSourcesRoute);
   app.route("/v1/admin", adminKnowledgeRoute);
   app.route("/v1/admin", adminCreateRoute);
+  app.route("/v1/admin", adminPlanRoute);
   app.route("/v1/admin", adminTeamRoute);
   app.route("/v1/telegram", telegramWebhookRoute);
   app.route("/v1/admin/upload", uploadRoute);

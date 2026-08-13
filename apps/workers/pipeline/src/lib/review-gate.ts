@@ -71,3 +71,27 @@ export function pickPostable(rows: readonly QueueCandidate[], o: GateOptions): s
   }
   return null;
 }
+
+/** Строка очереди: материал плюс формат, которым он выходит (миграция 0033). */
+export type QueueRow = QueueCandidate & { format: string };
+
+/**
+ * Первая строка очереди, которую ворота выпускают, — вместе с её форматом.
+ *
+ * 🔴 Слот забирает ОДНУ строку, а не весь материал. С появлением форматов у
+ * материала стало несколько строк на одну площадку, и «опубликовать материал»
+ * означало бы четыре публикации подряд — решение владельца 13.08: по одному
+ * формату в слот, материал живёт день разными гранями.
+ *
+ * Порядок FIFO сохраняется, и заблокированная голова по-прежнему не держит
+ * остальных: одна статья на ревью не должна означать пустой слот.
+ */
+export function pickPostableRow(
+  rows: readonly QueueRow[],
+  o: GateOptions,
+): { articleId: string; format: string } | null {
+  for (const row of rows) {
+    if (mayPost(row, o)) return { articleId: row.articleId, format: row.format };
+  }
+  return null;
+}

@@ -1,4 +1,5 @@
 import {
+  type ChannelFormat,
   and,
   articles,
   asc,
@@ -23,7 +24,7 @@ import {
   recordChannelFailure,
   sendToChannel,
 } from "../../lib/post-channel";
-import { pickPostable } from "../../lib/review-gate";
+import { pickPostableRow } from "../../lib/review-gate";
 import { articleToTelegramHtml } from "../../lib/telegram-html";
 import type { PipelineInngest } from "../client";
 
@@ -142,6 +143,7 @@ export function createDrainPostSlotsFunction(
         const rows = await db
           .select({
             articleId: channels.articleId,
+            format: channels.format,
             queuedAt: channels.createdAt,
             awaitingSince: sql<string | null>`(
               select min(rc.created_at) from review_cards rc
@@ -155,7 +157,10 @@ export function createDrainPostSlotsFunction(
           .where(
             and(
               eq(channels.channel, "tg"),
-              isNull(channels.postedAt),
+              // Очередь читается по ЯВНОМУ состоянию (миграция 0033): снятая
+              // площадкой строка сюда не попадёт, а `posted_at` больше не
+              // означает «в очереди/не в очереди» в одиночку.
+              eq(channels.status, "queued"),
               gte(channels.createdAt, staleBefore),
               // Окно свежести намеренно сохраняется и для прицельного случая:
               // одобрить статью суточной давности — это опубликовать вчерашнее.
@@ -167,12 +172,15 @@ export function createDrainPostSlotsFunction(
 
         if (wantedArticleId) {
           const [r] = rows;
-          return r ? { articleId: r.articleId } : null;
+          return r ? { articleId: r.articleId, format: r.format } : null;
         }
 
-        const id = pickPostable(
+        // Слот забирает ОДНУ строку — то есть один формат, а не весь материал
+        // разом (решение владельца 13.08).
+        return pickPostableRow(
           rows.map((r) => ({
             articleId: r.articleId,
+            format: r.format,
             queuedAt: new Date(r.queuedAt),
             awaitingSince: r.awaitingSince ? new Date(r.awaitingSince) : null,
             hasAnyCard: Number(r.cards) > 0,
@@ -183,7 +191,6 @@ export function createDrainPostSlotsFunction(
             now: new Date(gate.nowMs),
           },
         );
-        return id ? { articleId: id } : null;
       });
 
       if (!selected) {
@@ -193,6 +200,10 @@ export function createDrainPostSlotsFunction(
         };
       }
       const articleId = selected.articleId;
+      // Формат выбранной строки ведёт нас через все шаги: загрузку текста,
+      // отправку и пометку. Потерять его здесь значит пометить опубликованными
+      // все форматы материала.
+      const format = selected.format as ChannelFormat;
 
       // Каналы статьи: tg всегда; vk — если VK сконфигурирован и есть
       // непостнутая vk-строка (draft-article создаёт vk-row только при конфиге).
@@ -207,7 +218,8 @@ export function createDrainPostSlotsFunction(
               and(
                 eq(channels.articleId, articleId),
                 eq(channels.channel, "vk"),
-                isNull(channels.postedAt),
+                eq(channels.format, format),
+                eq(channels.status, "queued"),
               ),
             )
             .limit(1);
@@ -230,7 +242,13 @@ export function createDrainPostSlotsFunction(
           const [r] = await db
             .select({ text: channels.text, visualRef: channels.visualRef })
             .from(channels)
-            .where(and(eq(channels.articleId, articleId), eq(channels.channel, channel)))
+            .where(
+              and(
+                eq(channels.articleId, articleId),
+                eq(channels.channel, channel),
+                eq(channels.format, format),
+              ),
+            )
             .limit(1);
           if (!r) {
             throw new Error(
@@ -331,7 +349,7 @@ export function createDrainPostSlotsFunction(
           // last_error. Не ретраим (sendToChannel уже решил, что ретрай вреден).
           await step.run(`skip-${channel}`, async () => {
             const db = createDb(env.DATABASE_URL);
-            await recordChannelFailure(db, { articleId, channel, error: outcome.reason });
+            await recordChannelFailure(db, { articleId, channel, format, error: outcome.reason });
             return { recorded: true };
           });
           results.push({ channel, status: `skipped:${outcome.reason}` });
@@ -342,7 +360,14 @@ export function createDrainPostSlotsFunction(
         const mode = outcome.mode;
         await step.run(`mark-${channel}`, async () => {
           const db = createDb(env.DATABASE_URL);
-          await markChannelPosted(db, { articleId, channel, postRef, at: new Date(), mode });
+          await markChannelPosted(db, {
+            articleId,
+            channel,
+            format,
+            postRef,
+            at: new Date(),
+            mode,
+          });
           return { posted: true };
         });
         results.push({ channel, status: "posted", postRef, mode });

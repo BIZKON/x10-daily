@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { type QueueCandidate, pickPostable } from "../src/lib/review-gate";
+import {
+  type GateOptions,
+  type QueueCandidate,
+  type QueueRow,
+  pickPostable,
+  pickPostableRow,
+} from "../src/lib/review-gate";
 
 /**
  * Ворота ревью: что из очереди канала можно публиковать.
@@ -98,5 +104,64 @@ describe("ворота ревью", () => {
 
   it("пустая очередь → публиковать нечего", () => {
     expect(pickPostable([], opts())).toBeNull();
+  });
+});
+
+/**
+ * Выбор строки очереди в слот (спека 13.08, дефект §3.12).
+ *
+ * 🔴 С появлением форматов у материала стало НЕСКОЛЬКО строк на одну площадку:
+ * пост, карусель, ролик, ролик с ведущим. Решение владельца — «по одному в
+ * слот»: слот забирает ОДИН формат, а не весь материал разом, иначе канал
+ * получает четыре публикации подряд.
+ */
+describe("pickPostableRow — какую строку берём в слот", () => {
+  const OPEN: GateOptions = { reviewConfigured: false, gateHours: 0, now: new Date() };
+  const t = (min: number) => new Date(Date.UTC(2026, 7, 13, 10, min));
+
+  const row = (over: Partial<QueueRow> = {}): QueueRow => ({
+    articleId: "a-1",
+    format: "post",
+    queuedAt: t(0),
+    awaitingSince: null,
+    hasAnyCard: true,
+    ...over,
+  });
+
+  it("берёт голову очереди вместе с её форматом", () => {
+    const picked = pickPostableRow([row({ format: "carousel" })], OPEN);
+    expect(picked).toEqual({ articleId: "a-1", format: "carousel" });
+  });
+
+  it("🔴 у материала четыре формата — за слот уходит ОДИН", () => {
+    // Иначе канал получит четыре публикации подряд, и это прочтут как спам.
+    const picked = pickPostableRow(
+      [
+        row({ format: "post", queuedAt: t(0) }),
+        row({ format: "carousel", queuedAt: t(1) }),
+        row({ format: "video", queuedAt: t(2) }),
+        row({ format: "host_video", queuedAt: t(3) }),
+      ],
+      OPEN,
+    );
+    expect(picked).toEqual({ articleId: "a-1", format: "post" });
+  });
+
+  it("🔴 заблокированная воротами строка не держит остальные", () => {
+    // Одна статья на ревью не должна означать пустой слот — канал молчал бы
+    // без причины.
+    const closed: GateOptions = { reviewConfigured: true, gateHours: 6, now: t(0) };
+    const picked = pickPostableRow(
+      [
+        row({ articleId: "ждёт", awaitingSince: t(0), hasAnyCard: true }),
+        row({ articleId: "решён", format: "carousel", hasAnyCard: true }),
+      ],
+      closed,
+    );
+    expect(picked).toEqual({ articleId: "решён", format: "carousel" });
+  });
+
+  it("пустая очередь — пустой слот, а не падение", () => {
+    expect(pickPostableRow([], OPEN)).toBeNull();
   });
 });

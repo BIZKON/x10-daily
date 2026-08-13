@@ -224,6 +224,7 @@ describe("markChannelPosted / recordChannelFailure", () => {
     await markChannelPosted(db, {
       articleId: "a1",
       channel: "tg",
+      format: "post",
       postRef: "555",
       at,
       mode: "photo",
@@ -234,9 +235,42 @@ describe("markChannelPosted / recordChannelFailure", () => {
     expect(sets[0]!.postMode).toBe("photo");
   });
 
+  it("🔴 markChannelPosted переводит строку в состояние «опубликовано»", async () => {
+    // С миграции 0033 очередь читается по статусу, а не по `posted_at`. Забыть
+    // статус значит оставить вышедший пост в очереди навсегда: следующий слот
+    // выдаст его повторно.
+    const { db, sets } = captureDb();
+    await markChannelPosted(db, {
+      articleId: "a1",
+      channel: "tg",
+      format: "carousel",
+      postRef: null,
+      at: new Date(),
+      mode: "text_html",
+    });
+    expect(sets[0]!.status).toBe("posted");
+  });
+
+  it("🔴 неудачная попытка НЕ меняет состояние строки", async () => {
+    // Строка остаётся в очереди, слот просто уходит следующему материалу.
+    const { db, sets } = captureDb();
+    await recordChannelFailure(db, {
+      articleId: "a1",
+      channel: "tg",
+      format: "post",
+      error: "сеть",
+    });
+    expect(sets[0]!.status).toBeUndefined();
+  });
+
   it("recordChannelFailure инкрементит attempts + пишет last_error (≤500 симв.)", async () => {
     const { db, sets } = captureDb();
-    await recordChannelFailure(db, { articleId: "a1", channel: "vk", error: "x".repeat(600) });
+    await recordChannelFailure(db, {
+      articleId: "a1",
+      channel: "vk",
+      format: "post",
+      error: "x".repeat(600),
+    });
     expect(sets).toHaveLength(1);
     expect(sets[0]!.attempts).toBeDefined(); // sql`attempts + 1`
     expect(typeof sets[0]!.lastError).toBe("string");

@@ -61,7 +61,10 @@ const IN_FEED_NOT_POSTED = {
   slug: "sklad-schitaet",
   coverImageUrl: "https://app.example.ru/covers/a-1.jpg",
   visualStatus: "pending_review",
-  postedAt: null,
+  // С миграции 0033 «уже вышло» считается по числу опубликованных форматов:
+  // у материала несколько строк на площадку, и `posted_at` одной из них уже не
+  // отвечает за материал целиком.
+  postedFormats: 0,
 };
 
 function makeStep() {
@@ -141,7 +144,7 @@ describe("send-review-card", () => {
   });
 
   it("пост уже ушёл в канал → карточку не шлём (иначе «Одобрить» выпустит дважды)", async () => {
-    dbState.articleRow = { ...IN_FEED_NOT_POSTED, postedAt: new Date("2026-08-07T10:00:00Z") };
+    dbState.articleRow = { ...IN_FEED_NOT_POSTED, postedFormats: 1 };
     const fetchImpl = tgFetch();
 
     const r = await makeHandler(
@@ -160,7 +163,7 @@ describe("send-review-card", () => {
   it("строки канала нет → карточку всё равно показываем редактору", async () => {
     // LEFT JOIN не нашёл очереди. «Перерисовать» и «Переписать» работают и без
     // неё, а молчание выглядело бы как поломка.
-    dbState.articleRow = { ...IN_FEED_NOT_POSTED, postedAt: null };
+    dbState.articleRow = { ...IN_FEED_NOT_POSTED, postedFormats: 0 };
     const r = await makeHandler(
       BINDINGS,
       tgFetch(),

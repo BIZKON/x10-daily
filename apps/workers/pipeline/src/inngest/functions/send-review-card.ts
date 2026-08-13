@@ -54,8 +54,19 @@ export function createSendReviewCardFunction(
             slug: articles.slug,
             coverImageUrl: articles.coverImageUrl,
             visualStatus: articles.visualStatus,
-            // 🔴 Признак «уже вышло» берём у КАНАЛА, а не у статьи. Разбор ниже.
-            postedAt: channels.postedAt,
+            /**
+             * 🔴 Признак «уже вышло» берём у КАНАЛА, а не у статьи. Разбор ниже.
+             *
+             * Подзапросом, а не соединением: с миграции 0033 у материала
+             * НЕСКОЛЬКО строк на площадку — по одной на формат, — и соединение
+             * вернуло бы столько же строк статьи, из которых взялась бы
+             * случайная. Считаем опубликованные: вышел хоть один формат —
+             * карточка бессмысленна.
+             */
+            postedFormats: sql<number>`(
+              select count(*) from channels ch
+              where ch.article_id = ${articles.id} and ch.status = 'posted'
+            )`,
             /**
              * Сколько карточек по этой статье уже ждут решения.
              *
@@ -68,7 +79,6 @@ export function createSendReviewCardFunction(
             )`,
           })
           .from(articles)
-          .leftJoin(channels, and(eq(channels.articleId, articles.id), eq(channels.channel, "tg")))
           .where(eq(articles.id, articleId))
           .limit(1);
         return a ?? null;
@@ -95,7 +105,7 @@ export function createSendReviewCardFunction(
        * редактору всё равно правильно: кнопки «Перерисовать» и «Переписать»
        * работают и без очереди.
        */
-      if (article.postedAt) {
+      if (Number(article.postedFormats) > 0) {
         return { skipped: true as const, reason: "already-posted-to-channel" as const };
       }
 

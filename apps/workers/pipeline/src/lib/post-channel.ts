@@ -1,4 +1,4 @@
-import { type Database, and, channels, eq, sql } from "@x10/db";
+import { type ChannelFormat, type Database, and, channels, eq, sql } from "@x10/db";
 import type { PipelineEnv } from "../env";
 import { callTelegram } from "./telegram";
 import { cleanPostText } from "./text";
@@ -220,6 +220,14 @@ export async function markChannelPosted(
   args: {
     articleId: string;
     channel: PostableChannel;
+    /**
+     * 🔴 Формат ОБЯЗАТЕЛЕН, и это главная защита миграции 0033. Без него
+     * условие `(article_id, channel)` пометило бы опубликованными ВСЕ строки
+     * материала разом: вышел пост — «вышли» и карусель, и оба ролика. Раньше
+     * строка была одна, и параметр был не нужен; теперь его отсутствие — тихая
+     * ложь в отчёте клиенту.
+     */
+    format: ChannelFormat;
     postRef: string | null;
     at: Date;
     /** Ступень успеха. Единственный след деградации фото→текст — см. `PostMode`. */
@@ -228,17 +236,32 @@ export async function markChannelPosted(
 ): Promise<void> {
   await db
     .update(channels)
-    .set({ postedAt: args.at, postRef: args.postRef, postMode: args.mode })
-    .where(and(eq(channels.articleId, args.articleId), eq(channels.channel, args.channel)));
+    .set({ postedAt: args.at, postRef: args.postRef, postMode: args.mode, status: "posted" })
+    .where(
+      and(
+        eq(channels.articleId, args.articleId),
+        eq(channels.channel, args.channel),
+        eq(channels.format, args.format),
+      ),
+    );
 }
 
 /** Инкремент attempts + last_error непостнутой строки (диагностика, не блокирует). */
 export async function recordChannelFailure(
   db: Database,
-  args: { articleId: string; channel: PostableChannel; error: string },
+  args: { articleId: string; channel: PostableChannel; format: ChannelFormat; error: string },
 ): Promise<void> {
+  // Статус НЕ трогаем: неудачная попытка оставляет строку в очереди, слот
+  // просто уходит следующему. Формат — по той же причине, что и в пометке
+  // публикации: иначе диагностика одного формата затирает остальные.
   await db
     .update(channels)
     .set({ attempts: sql`${channels.attempts} + 1`, lastError: args.error.slice(0, 500) })
-    .where(and(eq(channels.articleId, args.articleId), eq(channels.channel, args.channel)));
+    .where(
+      and(
+        eq(channels.articleId, args.articleId),
+        eq(channels.channel, args.channel),
+        eq(channels.format, args.format),
+      ),
+    );
 }

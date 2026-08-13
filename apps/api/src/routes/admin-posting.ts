@@ -1,4 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
+import { POST_SLOT_STALE_HOURS } from "@x10/config";
 import {
   CHANNEL_FORMATS,
   type ChannelFormat,
@@ -8,6 +9,7 @@ import {
   channels,
   desc,
   eq,
+  gte,
   sql,
 } from "@x10/db";
 import { Hono } from "hono";
@@ -114,6 +116,25 @@ export function buildRequeuePatch(at: Date): {
   return { status: "queued", postedAt: null, postRef: null, createdAt: at };
 }
 
+/**
+ * Возьмёт ли слот эту строку когда-нибудь.
+ *
+ * 🔴 `drain-post-slots` отбирает из очереди только строки не старше окна
+ * свежести — протухшую новость лучше не выдавать вовсе. Для очереди это
+ * значит, что старая строка не выйдет НИКОГДА, и молчать об этом нельзя:
+ * 13.08.2026 на проде «в очереди» числилось 2432 строки, а слот видел пять.
+ * Клиент, глядя на такой счётчик, ждал бы две тысячи публикаций.
+ */
+export function isStaleForSlot(
+  row: { status: ChannelStatus | string; createdAt: string | Date },
+  now: Date,
+): boolean {
+  if (row.status !== "queued") return false;
+  const created = row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt);
+  if (Number.isNaN(created.getTime())) return false;
+  return now.getTime() - created.getTime() > POST_SLOT_STALE_HOURS * 3_600_000;
+}
+
 export type PublicationRow = {
   id: string;
   articleId: string;
@@ -129,6 +150,8 @@ export type PublicationRow = {
   attempts: number;
   lastError: string | null;
   createdAt: string;
+  /** Окно свежести истекло — слот эту строку уже не возьмёт. */
+  staleForSlot?: boolean;
 };
 
 export type PublicationCard = {
@@ -250,7 +273,7 @@ export const adminPostingRoute = new Hono<AppEnv>()
       .from(channels)
       .groupBy(channels.status);
 
-    const counts = { queued: 0, posted: 0, rejected: 0, all: 0 };
+    const counts = { queued: 0, posted: 0, rejected: 0, all: 0, queuedFresh: 0 };
     for (const r of countRows) {
       if (r.status === "queued" || r.status === "posted" || r.status === "rejected") {
         counts[r.status] = Number(r.count);
@@ -258,13 +281,30 @@ export const adminPostingRoute = new Hono<AppEnv>()
       counts.all += Number(r.count);
     }
 
+    // Сколько строк очереди слот реально возьмёт. Считаем той же границей, что
+    // и конвейер, — иначе экран и слот разошлись бы в понимании «в очереди».
+    const [fresh] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(channels)
+      .where(
+        and(
+          eq(channels.status, "queued"),
+          gte(channels.createdAt, new Date(Date.now() - POST_SLOT_STALE_HOURS * 3_600_000)),
+        ),
+      );
+    counts.queuedFresh = Number(fresh?.count ?? 0);
+
+    const now = new Date();
     const items = groupPublications(
-      rows.map((r) => ({
-        ...r,
-        postedAt: iso(r.postedAt),
-        rejectedAt: iso(r.rejectedAt),
-        createdAt: iso(r.createdAt) ?? "",
-      })),
+      rows.map((r) => {
+        const row = {
+          ...r,
+          postedAt: iso(r.postedAt),
+          rejectedAt: iso(r.rejectedAt),
+          createdAt: iso(r.createdAt) ?? "",
+        };
+        return { ...row, staleForSlot: isStaleForSlot(row, now) };
+      }),
     );
 
     return c.json({

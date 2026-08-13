@@ -7,6 +7,7 @@ import {
   checkRejectable,
   checkRequeueable,
   groupPublications,
+  isStaleForSlot,
 } from "../src/routes/admin-posting";
 
 /**
@@ -168,6 +169,31 @@ describe("список публикаций", () => {
       }),
     ]);
     expect(cards[0]?.articleId).toBe("art-2");
+  });
+});
+
+describe("окно свежести очереди", () => {
+  const now = new Date("2026-08-13T18:00:00.000Z");
+
+  it("свежая строка очереди ждёт слота", () => {
+    expect(isStaleForSlot({ status: "queued", createdAt: "2026-08-13T09:00:00.000Z" }, now)).toBe(
+      false,
+    );
+  });
+
+  it("🔴 строка старше суток не выйдет никогда — это надо показывать", () => {
+    // На проде 13.08 из 2432 строк «в очереди» слот видел ПЯТЬ: остальные
+    // старше окна свежести. Счётчик без этой пометки врал бы клиенту в
+    // пятьсот раз — он бы думал, что две тысячи материалов ждут выхода.
+    expect(isStaleForSlot({ status: "queued", createdAt: "2026-08-11T09:00:00.000Z" }, now)).toBe(
+      true,
+    );
+  });
+
+  it("к опубликованному и снятому окно свежести отношения не имеет", () => {
+    const old = "2026-08-01T09:00:00.000Z";
+    expect(isStaleForSlot({ status: "posted", createdAt: old }, now)).toBe(false);
+    expect(isStaleForSlot({ status: "rejected", createdAt: old }, now)).toBe(false);
   });
 });
 

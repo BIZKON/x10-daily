@@ -93,6 +93,14 @@ export async function Publications({
       ) : (
         <>
           <Filters current={data.status} counts={data.counts} />
+          {/* Разница между «строк в состоянии queued» и «строк, которые выйдут»
+              — не деталь: без неё счётчик обещает клиенту сотни публикаций. */}
+          {data.counts.queued > data.counts.queuedFresh && (
+            <p className="mb-4 -mt-1 text-[12px] leading-relaxed text-haze">
+              Из {data.counts.queued} строк в очереди слот возьмёт {data.counts.queuedFresh}:
+              остальные старше суток — окно свежести истекло, и как свежие они уже не выйдут.
+            </p>
+          )}
           {data.items.length === 0 ? (
             <Empty status={data.status} />
           ) : (
@@ -201,6 +209,16 @@ function Row({ row, canPublish }: { row: PublicationRowView; canPublish: boolean
         <p className="m-0 mt-1.5 max-w-[74ch] text-[12.5px] leading-relaxed text-mist">
           <span className="text-haze">Уже снимали {fmtWhen(row.rejectedAt)}: </span>
           {row.rejectedReason}
+        </p>
+      )}
+
+      {/* 🔴 Слот берёт из очереди только строки не старше суток. Без этой
+          пометки экран обещает публикацию, которой не будет: 13.08.2026 на
+          проде «в очереди» числилось 2432 строки, а слот видел пять. */}
+      {row.status === "queued" && row.staleForSlot && (
+        <p className="m-0 mt-1.5 max-w-[74ch] text-[12.5px] leading-relaxed text-haze">
+          Окно свежести истекло — слот эту строку уже не возьмёт. Новость старше суток, и выпускать
+          её как свежую нельзя.
         </p>
       )}
 

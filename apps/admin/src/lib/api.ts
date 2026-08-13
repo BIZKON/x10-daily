@@ -1012,6 +1012,8 @@ export type PublicationRowView = {
   attempts: number;
   lastError: string | null;
   createdAt: string;
+  /** Окно свежести истекло — слот эту строку уже не возьмёт. */
+  staleForSlot?: boolean;
 };
 
 /** Карточка материала: внутри — строка на каждый формат (решение владельца 13.08). */
@@ -1025,7 +1027,14 @@ export type PublicationCardView = {
 
 export type PublicationsView = {
   items: PublicationCardView[];
-  counts: { all: number; queued: number; posted: number; rejected: number };
+  counts: {
+    all: number;
+    queued: number;
+    posted: number;
+    rejected: number;
+    /** Сколько строк очереди слот реально возьмёт: остальные старше суток. */
+    queuedFresh: number;
+  };
   status: "all" | "queued" | "posted" | "rejected";
   limit: number;
   /** Строк ровно столько, сколько влезло — значит, показано не всё. */

@@ -12,6 +12,7 @@ export {
   BREVITY_LIMITS,
   TEMPLATE_LIMITS,
   PLAN_CATEGORIES,
+  POST_SLOT_STALE_HOURS,
   type ModelTier,
   type TemplateKind,
 } from "./constants";

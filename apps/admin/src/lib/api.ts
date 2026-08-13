@@ -863,6 +863,75 @@ export async function fetchKnowledgeImport(
   }
 }
 
+/* ── Контент-план ────────────────────────────────────────────────────────── */
+
+export type PlanView = "calendar" | "days";
+export type PlanRange = "week" | "month";
+
+export type PlanTopicRow = {
+  id: string;
+  plannedFor: string;
+  slot: string | null;
+  category: string;
+  modeSlug: string;
+  title: string;
+  angle: string;
+  rationale: string | null;
+  status: "planned" | "running" | "done" | "dropped";
+  creationId: string | null;
+};
+
+export type PlanSummary = {
+  id: string;
+  periodStart: string;
+  status: "queued" | "running" | "ready" | "failed";
+  statusReason: string | null;
+  createdAt: string;
+};
+
+export type PlanCalendar = {
+  view: PlanView;
+  range: PlanRange;
+  anchor: string;
+  bounds: { start: string; end: string };
+  /** Неделя: семь дней подряд. Месяц: не приходит. */
+  days?: string[];
+  /** Месяц: сетка целых недель с пометкой «свой месяц». */
+  grid?: Array<{ date: string; inMonth: boolean }>;
+  items: PlanTopicRow[];
+  byDate: Record<string, PlanTopicRow[]>;
+  plan: PlanSummary | null;
+  /** Сколько материалов в базе знаний готово. Ноль — плану не на что опереться. */
+  knowledgeReady: number;
+  slots: string[];
+};
+
+/**
+ * Календарь плана. Раскладку считает сервер — иначе экран и запрос считали бы
+ * границы недели по-разному.
+ */
+export async function fetchPlan(params: {
+  view?: string;
+  range?: string;
+  anchor?: string;
+}): Promise<PlanCalendar | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  const query = new URLSearchParams();
+  if (params.view) query.set("view", params.view);
+  if (params.range) query.set("range", params.range);
+  if (params.anchor) query.set("anchor", params.anchor);
+  try {
+    const res = await fetchWithTimeout(`${base}/v1/admin/plan?${query.toString()}`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as PlanCalendar;
+  } catch {
+    return null;
+  }
+}
+
 /* ── Раздел «Создать» (ручной режим) ─────────────────────────────────────── */
 
 export type CreationMode = {

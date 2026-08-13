@@ -1,3 +1,4 @@
+import { AutoRefresh } from "@/components/auto-refresh";
 import {
   type KbImport,
   type KbShelf,
@@ -11,7 +12,6 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AnswerForm } from "./answer-form";
-import { AutoRefresh } from "./auto-refresh";
 import { ImportForm } from "./import-form";
 
 export const metadata = { title: "База знаний — ProAgent AI Admin" };

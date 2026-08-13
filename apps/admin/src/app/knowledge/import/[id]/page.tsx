@@ -1,3 +1,4 @@
+import { AutoRefresh } from "@/components/auto-refresh";
 import { type KbImport, type KbProposal, fetchKnowledgeImport, fetchMyRole } from "@/lib/api";
 import { can } from "@x10/config";
 import { AlertCircle, ArrowLeft, Check, Globe, Loader2, X } from "lucide-react";
@@ -5,7 +6,6 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { acceptAllProposals, acceptProposal, rejectProposal } from "../../actions";
-import { AutoRefresh } from "../../auto-refresh";
 
 export const metadata = { title: "Разбор сайта — ProAgent AI Admin" };
 

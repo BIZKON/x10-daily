@@ -49,6 +49,18 @@ export {
   type CreationOutput,
 } from "./agents/creation";
 export {
+  PlanAgent,
+  // Наружу отдаём чистые части: маршруты api сверяют по ним свой потолок
+  // задания, а воркер чистит ответ модели, минуя валидацию маршрута.
+  PLAN_TOPICS_TARGET,
+  MAX_TOPIC,
+  buildCreationTopic,
+  sanitizePlanItems,
+  type PlanInput,
+  type PlanOutput,
+  type PlanTopic,
+} from "./agents/plan";
+export {
   KnowledgeExtractAgent,
   // Потолок тела и чистка выхода нужны воркеру: он пишет предложения в базу
   // напрямую, минуя маршрут с его валидацией (knowledge-extract.ts).

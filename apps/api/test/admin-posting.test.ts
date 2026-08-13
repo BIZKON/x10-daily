@@ -84,16 +84,25 @@ describe("возврат в очередь", () => {
   it("🔴 не стирает след снятия", () => {
     // Спека §7: причина и время снятия ОСТАЮТСЯ. Иначе второй заход выглядит
     // первым, и та же причина повторяется — снимут снова.
-    const patch = buildRequeuePatch();
+    const patch = buildRequeuePatch(new Date());
     expect(patch).not.toHaveProperty("rejectedAt");
     expect(patch).not.toHaveProperty("rejectedReason");
   });
 
   it("возвращает строку в очередь и убирает следы публикации", () => {
-    const patch = buildRequeuePatch();
+    const patch = buildRequeuePatch(new Date("2026-08-13T12:00:00.000Z"));
     expect(patch.status).toBe("queued");
     expect(patch.postedAt).toBeNull();
     expect(patch.postRef).toBeNull();
+  });
+
+  it("🔴 строка встаёт в очередь заново, а не остаётся со старым временем", () => {
+    // Слот берёт только строки не старше суток (STALE_HOURS в
+    // drain-post-slots). Публикацию снимают обычно на следующий день, и со
+    // старым `created_at` возвращённая строка не вышла бы НИКОГДА: кнопка
+    // отработала бы молча и без эффекта.
+    const at = new Date("2026-08-13T12:00:00.000Z");
+    expect(buildRequeuePatch(at).createdAt).toBe(at);
   });
 });
 

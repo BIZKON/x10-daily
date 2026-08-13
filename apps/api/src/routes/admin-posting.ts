@@ -96,13 +96,22 @@ export function checkRequeueable(row: { status: ChannelStatus | string }): Posti
  * 🔴 `rejected_at` и `rejected_reason` НЕ трогаем намеренно: в строке должно
  * быть видно, что публикацию снимали и почему. Иначе второй заход выглядит
  * первым, и та же причина повторяется — снимут снова.
+ *
+ * 🔴 `created_at` переставляем на момент возврата, и без этого кнопка была бы
+ * ложью. Слот берёт из очереди только строки не старше суток (`STALE_HOURS` в
+ * `drain-post-slots`), а снимают публикацию обычно на следующий день — со
+ * старым временем возвращённая строка не вышла бы НИКОГДА, причём молча.
+ * Смысл колонки при этом сохраняется: это момент, когда строка встала в
+ * очередь, а возврат — ровно постановка в очередь заново. Заодно строка
+ * встаёт в хвост FIFO, а не впереди свежих новостей.
  */
-export function buildRequeuePatch(): {
+export function buildRequeuePatch(at: Date): {
   status: ChannelStatus;
   postedAt: null;
   postRef: null;
+  createdAt: Date;
 } {
-  return { status: "queued", postedAt: null, postRef: null };
+  return { status: "queued", postedAt: null, postRef: null, createdAt: at };
 }
 
 export type PublicationRow = {
@@ -333,7 +342,7 @@ export const adminPostingRoute = new Hono<AppEnv>()
 
     const [updated] = await db
       .update(channels)
-      .set(buildRequeuePatch())
+      .set(buildRequeuePatch(new Date()))
       .where(and(eq(channels.id, id), eq(channels.status, "rejected")))
       .returning({ id: channels.id, status: channels.status });
 

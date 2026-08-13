@@ -20,3 +20,4 @@ export * from "./review-cards";
 export * from "./billing";
 export * from "./knowledge";
 export * from "./creations";
+export * from "./plans";

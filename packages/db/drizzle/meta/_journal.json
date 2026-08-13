@@ -218,6 +218,20 @@
       "when": 1781880972448,
       "tag": "0030_kb_imports",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1781881972448,
+      "tag": "0031_content_plan",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1781882972448,
+      "tag": "0032_agent_kind_plan",
+      "breakpoints": true
     }
   ]
 }

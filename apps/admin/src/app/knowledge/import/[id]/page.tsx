@@ -1,9 +1,11 @@
-import { type KbImport, type KbProposal, fetchKnowledgeImport } from "@/lib/api";
+import { type KbImport, type KbProposal, fetchKnowledgeImport, fetchMyRole } from "@/lib/api";
+import { can } from "@x10/config";
 import { AlertCircle, ArrowLeft, Check, Globe, Loader2, X } from "lucide-react";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { acceptAllProposals, acceptProposal, rejectProposal } from "../../actions";
+import { AutoRefresh } from "../../auto-refresh";
 
 export const metadata = { title: "Разбор сайта — ProAgent AI Admin" };
 
@@ -42,7 +44,16 @@ async function Content({ params }: { params: Promise<{ id: string }> }) {
   // билд запёк бы карточку «недоступно» в статичную оболочку навсегда.
   await connection();
   const { id } = await params;
-  const data = await fetchKnowledgeImport(id);
+  // Оба запроса разом: ждать их по очереди значит удвоить ожидание на ровном
+  // месте, а роль нужна до первой отрисовки кнопок.
+  const [data, role] = await Promise.all([fetchKnowledgeImport(id), fetchMyRole()]);
+  /**
+   * 🔴 Приёмка меняет базу знаний, поэтому идёт под `catalog.manage` — то же
+   * право проверяет сервер. Прятать кнопку — не защита, а честность: кнопка,
+   * которая отвечает отказом, читается как поломка системы, а не как отсутствие
+   * прав.
+   */
+  const canManage = can(role, "catalog.manage");
 
   if (!data) {
     return (
@@ -78,7 +89,12 @@ async function Content({ params }: { params: Promise<{ id: string }> }) {
         </p>
       </header>
 
-      {(item.status === "queued" || item.status === "running") && <Progress item={item} />}
+      {(item.status === "queued" || item.status === "running") && (
+        <>
+          <AutoRefresh />
+          <Progress item={item} />
+        </>
+      )}
       {item.status === "failed" && <Failure item={item} />}
 
       {item.notes && item.notes.length > 0 && <Notes notes={item.notes} />}
@@ -91,20 +107,26 @@ async function Content({ params }: { params: Promise<{ id: string }> }) {
               на {shelfCount(documents)}{" "}
               {plural(shelfCount(documents), "полке", "полках", "полках")}
             </span>
-            <form action={acceptAllProposals}>
-              <input type="hidden" name="importId" value={item.id} />
-              <button
-                type="submit"
-                className="rounded-xl bg-gold px-4 py-2 text-[13px] font-bold text-ink"
-              >
-                Принять всё
-              </button>
-            </form>
+            {canManage ? (
+              <form action={acceptAllProposals}>
+                <input type="hidden" name="importId" value={item.id} />
+                <button
+                  type="submit"
+                  className="rounded-xl bg-gold px-4 py-2 text-[13px] font-bold text-ink"
+                >
+                  Принять всё
+                </button>
+              </form>
+            ) : (
+              <span className="text-[12.5px] text-haze">
+                Принимать материалы может владелец или редактор
+              </span>
+            )}
           </div>
 
           <div className="space-y-6">
             {groupByShelf(documents).map((group) => (
-              <ShelfGroup key={group.slug} group={group} importId={item.id} />
+              <ShelfGroup key={group.slug} group={group} importId={item.id} canManage={canManage} />
             ))}
           </div>
         </>
@@ -198,7 +220,11 @@ function Notes({ notes }: { notes: string[] }) {
 
 type Group = { slug: string; title: string; documents: KbProposal[] };
 
-function ShelfGroup({ group, importId }: { group: Group; importId: string }) {
+function ShelfGroup({
+  group,
+  importId,
+  canManage,
+}: { group: Group; importId: string; canManage: boolean }) {
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 border-fence border-b pb-2">
@@ -210,14 +236,18 @@ function ShelfGroup({ group, importId }: { group: Group; importId: string }) {
 
       <div className="space-y-3">
         {group.documents.map((doc) => (
-          <Proposal key={doc.id} doc={doc} importId={importId} />
+          <Proposal key={doc.id} doc={doc} importId={importId} canManage={canManage} />
         ))}
       </div>
     </section>
   );
 }
 
-function Proposal({ doc, importId }: { doc: KbProposal; importId: string }) {
+function Proposal({
+  doc,
+  importId,
+  canManage,
+}: { doc: KbProposal; importId: string; canManage: boolean }) {
   return (
     <article className="rounded-2xl border border-fence bg-card p-5">
       <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
@@ -239,28 +269,30 @@ function Proposal({ doc, importId }: { doc: KbProposal; importId: string }) {
           {doc.charCount.toLocaleString("ru-RU")} знаков
         </span>
 
-        <div className="flex items-center gap-2">
-          <form action={rejectProposal}>
-            <input type="hidden" name="id" value={doc.id} />
-            <input type="hidden" name="importId" value={importId} />
-            <button
-              type="submit"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-fence px-3 py-1.5 text-[12.5px] font-semibold text-haze hover:text-paper"
-            >
-              <X size={13} strokeWidth={2} /> Отклонить
-            </button>
-          </form>
-          <form action={acceptProposal}>
-            <input type="hidden" name="id" value={doc.id} />
-            <input type="hidden" name="importId" value={importId} />
-            <button
-              type="submit"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-success/45 bg-success/[0.08] px-3 py-1.5 text-[12.5px] font-semibold text-success"
-            >
-              <Check size={13} strokeWidth={2.5} /> Принять
-            </button>
-          </form>
-        </div>
+        {canManage && (
+          <div className="flex items-center gap-2">
+            <form action={rejectProposal}>
+              <input type="hidden" name="id" value={doc.id} />
+              <input type="hidden" name="importId" value={importId} />
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-fence px-3 py-1.5 text-[12.5px] font-semibold text-haze hover:text-paper"
+              >
+                <X size={13} strokeWidth={2} /> Отклонить
+              </button>
+            </form>
+            <form action={acceptProposal}>
+              <input type="hidden" name="id" value={doc.id} />
+              <input type="hidden" name="importId" value={importId} />
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-success/45 bg-success/[0.08] px-3 py-1.5 text-[12.5px] font-semibold text-success"
+              >
+                <Check size={13} strokeWidth={2.5} /> Принять
+              </button>
+            </form>
+          </div>
+        )}
       </div>
     </article>
   );

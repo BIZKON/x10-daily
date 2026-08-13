@@ -76,16 +76,71 @@ export async function loadExtractShelves(db: Database): Promise<ExtractShelf[]> 
 }
 
 /**
+ * Какой статус сносит повторный обход.
+ *
+ * 🔴 Вынесено константой не ради красоты: это и есть решение владельца от
+ * 12.08 — непринятое ещё не знание, терять там нечего, а принятое человеком
+ * обход переписывать не вправе. Проверять вместо неё текст SQL бессмысленно:
+ * такой тест подтверждал бы и вывернутый наизнанку смысл (грабля сессии 34).
+ */
+export const REPLACEABLE_STATUS = "proposed" as const;
+
+/** Строка материала в том виде, в каком она ложится в базу. */
+export type ProposalRow = {
+  shelfId: string;
+  title: string;
+  body: string;
+  source: "url";
+  status: typeof REPLACEABLE_STATUS;
+  sourceUrl: string | null;
+  charCount: number;
+  importId: string;
+};
+
+/**
+ * Разложить предложения агента по полкам клиента.
+ *
+ * Чистая функция: сюда стекаются все решения о том, ЧТО ляжет в базу, и их
+ * видно целиком, без поддельной базы вокруг. Документ на полку, которой нет,
+ * молча отбрасывается — модель вернёт такой слаг, и это обычный день, а не
+ * повод отменить весь обход, за который уже заплачено.
+ */
+export function buildProposalRows(
+  documents: readonly KnowledgeProposal[],
+  shelves: readonly { id: string; slug: string }[],
+  importId: string,
+): ProposalRow[] {
+  const idBySlug = new Map(shelves.map((s) => [s.slug, s.id]));
+
+  const rows: ProposalRow[] = [];
+  for (const doc of documents) {
+    const shelfId = idBySlug.get(doc.shelfSlug);
+    if (!shelfId) continue;
+    rows.push({
+      shelfId,
+      title: doc.title,
+      body: doc.body,
+      source: "url",
+      status: REPLACEABLE_STATUS,
+      sourceUrl: doc.sourceUrl,
+      // Длину считает сервер: она производное от текста, и присланному числу
+      // здесь верить незачем.
+      charCount: doc.body.length,
+      importId,
+    });
+  }
+  return rows;
+}
+
+/**
  * Записать найденное как ПРЕДЛОЖЕНИЯ и закрыть задание.
  *
  * 🔴 Статус `proposed`, а не `ready`. Это и есть главное решение спеки:
  * `loadKnowledge` выбирает только `ready`, поэтому непринятое предложение
  * физически не может уехать в промпт агента, даже если про него забыли.
  *
- * 🔴 Прежние непринятые предложения сносятся (решение владельца 12.08).
- * Непринятое ещё не знание, терять там нечего, а две копии одного и того же
- * превращают разбор в сверку. Принятое (`ready`) не трогаем никогда: оно уже
- * знание человека, и обход не вправе его переписывать.
+ * 🔴 Прежние непринятые предложения сносятся ДО записи новых. Наоборот нельзя:
+ * собственная же уборка удалила бы только что записанное.
  */
 export async function saveProposals(
   db: Database,
@@ -96,26 +151,12 @@ export async function saveProposals(
     .select({ id: kbShelves.id, slug: kbShelves.slug })
     .from(kbShelves)
     .where(eq(kbShelves.enabled, true));
-  const idBySlug = new Map(shelves.map((s) => [s.slug, s.id]));
 
   await db
     .delete(kbDocuments)
-    .where(and(eq(kbDocuments.status, "proposed"), isNotNull(kbDocuments.importId)));
+    .where(and(eq(kbDocuments.status, REPLACEABLE_STATUS), isNotNull(kbDocuments.importId)));
 
-  const rows = payload.documents
-    .map((d) => ({ shelfId: idBySlug.get(d.shelfSlug), doc: d }))
-    .filter((r): r is { shelfId: string; doc: KnowledgeProposal } => Boolean(r.shelfId))
-    .map(({ shelfId, doc }) => ({
-      shelfId,
-      title: doc.title,
-      body: doc.body,
-      source: "url" as const,
-      status: "proposed" as const,
-      sourceUrl: doc.sourceUrl,
-      charCount: doc.body.length,
-      importId,
-    }));
-
+  const rows = buildProposalRows(payload.documents, shelves, importId);
   if (rows.length > 0) await db.insert(kbDocuments).values(rows);
 
   await db

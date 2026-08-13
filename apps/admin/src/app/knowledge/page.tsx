@@ -1,9 +1,17 @@
-import { type KbImport, type KbShelf, fetchKnowledge, fetchLatestKnowledgeImport } from "@/lib/api";
+import {
+  type KbImport,
+  type KbShelf,
+  fetchKnowledge,
+  fetchLatestKnowledgeImport,
+  fetchMyRole,
+} from "@/lib/api";
+import { can } from "@x10/config";
 import { BookOpen, Check, ChevronRight, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AnswerForm } from "./answer-form";
+import { AutoRefresh } from "./auto-refresh";
 import { ImportForm } from "./import-form";
 
 export const metadata = { title: "База знаний — ProAgent AI Admin" };
@@ -52,7 +60,17 @@ async function Content() {
   await connection();
   // Оба запроса разом: последний обход нужен обоим режимам экрана, а ждать их
   // по очереди значит удвоить ожидание на ровном месте.
-  const [data, lastImport] = await Promise.all([fetchKnowledge(), fetchLatestKnowledgeImport()]);
+  const [data, lastImport, role] = await Promise.all([
+    fetchKnowledge(),
+    fetchLatestKnowledgeImport(),
+    fetchMyRole(),
+  ]);
+  /**
+   * 🔴 Наполнение базы знаний идёт под `catalog.manage` — то же право проверяет
+   * сервер. Наблюдателю знание о бизнесе видеть можно, менять нельзя, и форма,
+   * которая отвечает отказом, читалась бы как поломка, а не как отсутствие прав.
+   */
+  const canManage = can(role, "catalog.manage");
 
   if (!data) {
     return (
@@ -67,13 +85,14 @@ async function Content() {
 
   const { items, progress } = data;
   return progress.mode === "survey" ? (
-    <Survey shelves={items} lastImport={lastImport} />
+    <Survey shelves={items} lastImport={lastImport} canManage={canManage} />
   ) : (
     <Shelves
       shelves={items}
       filled={progress.filled}
       required={progress.required}
       lastImport={lastImport}
+      canManage={canManage}
     />
   );
 }
@@ -87,14 +106,17 @@ async function Content() {
 function ImportState({ item }: { item: KbImport }) {
   if (item.status === "queued" || item.status === "running") {
     return (
-      <Link
-        href={`/knowledge/import/${item.id}`}
-        className="mb-4 flex items-center gap-2.5 rounded-2xl border border-fence bg-card p-4 hover:border-gold/50"
-      >
-        <Loader2 size={15} className="animate-spin text-gold" />
-        <span className="text-[13.5px] text-paper">Читаем ваш сайт</span>
-        <span className="ml-auto text-[13px] text-gold">Посмотреть ход →</span>
-      </Link>
+      <>
+        <AutoRefresh />
+        <Link
+          href={`/knowledge/import/${item.id}`}
+          className="mb-4 flex items-center gap-2.5 rounded-2xl border border-fence bg-card p-4 hover:border-gold/50"
+        >
+          <Loader2 size={15} className="animate-spin text-gold" />
+          <span className="text-[13.5px] text-paper">Читаем ваш сайт</span>
+          <span className="ml-auto text-[13px] text-gold">Посмотреть ход →</span>
+        </Link>
+      </>
     );
   }
 
@@ -138,7 +160,11 @@ function ImportState({ item }: { item: KbImport }) {
  * пустую форму загрузки. Вопросы лежат в самих полках (`kb_shelves.question`),
  * поэтому анкета — это другое представление тех же данных, а не вторая труба.
  */
-function Survey({ shelves, lastImport }: { shelves: KbShelf[]; lastImport: KbImport | null }) {
+function Survey({
+  shelves,
+  lastImport,
+  canManage,
+}: { shelves: KbShelf[]; lastImport: KbImport | null; canManage: boolean }) {
   const required = shelves.filter((s) => s.required);
   const done = required.filter((s) => s.documents > 0).length;
 
@@ -165,13 +191,15 @@ function Survey({ shelves, lastImport }: { shelves: KbShelf[]; lastImport: KbImp
       {/* 🔴 Кнопка стоит ВЫШЕ вопросов, а не под ними. Час в анкете — та самая
           причина, по которой на проде лежал один материал: до конца опроса не
           доходят. Пусть первым предложением будет «возьмите с моего сайта». */}
-      <div className="mb-5">
-        <ImportForm />
-      </div>
+      {canManage && (
+        <div className="mb-5">
+          <ImportForm />
+        </div>
+      )}
 
       <div className="space-y-3">
         {shelves.map((s, i) => (
-          <Question key={s.id} shelf={s} index={i + 1} />
+          <Question key={s.id} shelf={s} index={i + 1} canManage={canManage} />
         ))}
       </div>
 
@@ -194,7 +222,11 @@ function Progress({ done, total }: { done: number; total: number }) {
   );
 }
 
-function Question({ shelf, index }: { shelf: KbShelf; index: number }) {
+function Question({
+  shelf,
+  index,
+  canManage,
+}: { shelf: KbShelf; index: number; canManage: boolean }) {
   const answered = shelf.documents > 0;
   return (
     <section
@@ -233,8 +265,12 @@ function Question({ shelf, index }: { shelf: KbShelf; index: number }) {
             · посмотреть и дополнить
             <ChevronRight size={14} strokeWidth={2} />
           </Link>
-        ) : (
+        ) : canManage ? (
           <AnswerForm slug={shelf.slug} fallbackTitle={shelf.title} />
+        ) : (
+          <span className="text-[13px] text-haze">
+            Пока пусто. Заполнить может владелец или редактор
+          </span>
         )}
       </div>
     </section>
@@ -252,11 +288,13 @@ function Shelves({
   filled,
   required,
   lastImport,
+  canManage,
 }: {
   shelves: KbShelf[];
   filled: number;
   required: number;
   lastImport: KbImport | null;
+  canManage: boolean;
 }) {
   return (
     <div>
@@ -277,9 +315,11 @@ function Shelves({
 
       {lastImport && <ImportState item={lastImport} />}
 
-      <div className="mb-5">
-        <ImportForm />
-      </div>
+      {canManage && (
+        <div className="mb-5">
+          <ImportForm />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {shelves.map((s) => (

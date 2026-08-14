@@ -74,29 +74,43 @@ export const adminPartnersRoute = new Hono<AppEnv>()
     const db = getDb(env.DATABASE_URL);
     await requirePermission(c, db, "partners.manage");
 
-    const rows = await db
-      .select({
-        id: partners.id,
-        name: partners.name,
-        slug: partners.slug,
-        contact: partners.contact,
-        status: partners.status,
-        ratePercent: partners.ratePercent,
-        parentId: partners.parentId,
-        joinedAt: partners.joinedAt,
-        accruedRub: sql<string>`coalesce((
-          select sum(${partnerAccruals.amountRub}) from ${partnerAccruals}
-          where ${partnerAccruals.partnerId} = ${partners.id}
-        ), 0)`,
-        paidRub: sql<string>`coalesce((
-          select sum(${partnerPayouts.amountRub}) from ${partnerPayouts}
-          where ${partnerPayouts.partnerId} = ${partners.id}
-        ), 0)`,
-      })
-      .from(partners)
-      .orderBy(desc(partners.joinedAt))
-      .limit(200);
+    // 🔴 Суммы берём ОТДЕЛЬНЫМИ группировками, а не коррелированным подзапросом
+    // внутри select. Живой прогон 14.08: подзапрос в drizzle тихо возвращал
+    // ноль при верных данных в базе — тот же SQL руками считал правильно.
+    // Группировка предсказуема, читается глазами и стоит два запроса вместо N.
+    const [rows, accruedRows, paidRows] = await Promise.all([
+      db
+        .select({
+          id: partners.id,
+          name: partners.name,
+          slug: partners.slug,
+          contact: partners.contact,
+          status: partners.status,
+          ratePercent: partners.ratePercent,
+          parentId: partners.parentId,
+          joinedAt: partners.joinedAt,
+        })
+        .from(partners)
+        .orderBy(desc(partners.joinedAt))
+        .limit(200),
+      db
+        .select({
+          partnerId: partnerAccruals.partnerId,
+          total: sql<string>`sum(${partnerAccruals.amountRub})`,
+        })
+        .from(partnerAccruals)
+        .groupBy(partnerAccruals.partnerId),
+      db
+        .select({
+          partnerId: partnerPayouts.partnerId,
+          total: sql<string>`sum(${partnerPayouts.amountRub})`,
+        })
+        .from(partnerPayouts)
+        .groupBy(partnerPayouts.partnerId),
+    ]);
 
+    const accruedBy = new Map(accruedRows.map((r) => [r.partnerId, num(r.total)]));
+    const paidBy = new Map(paidRows.map((r) => [r.partnerId, num(r.total)]));
     const byId = new Map(rows.map((r) => [r.id, r.name]));
     return c.json({
       items: rows.map((r) => ({
@@ -108,9 +122,9 @@ export const adminPartnersRoute = new Hono<AppEnv>()
         ratePercent: num(r.ratePercent),
         mentorName: r.parentId ? (byId.get(r.parentId) ?? null) : null,
         joinedAt: iso(r.joinedAt),
-        accruedRub: num(r.accruedRub),
-        paidRub: num(r.paidRub),
-        dueRub: num(r.accruedRub) - num(r.paidRub),
+        accruedRub: accruedBy.get(r.id) ?? 0,
+        paidRub: paidBy.get(r.id) ?? 0,
+        dueRub: (accruedBy.get(r.id) ?? 0) - (paidBy.get(r.id) ?? 0),
       })),
     });
   })
@@ -141,7 +155,7 @@ export const adminPartnersRoute = new Hono<AppEnv>()
       .limit(1);
     if (!partner) return c.json({ error: "not_found", id }, 404);
 
-    const [deals, accruals, payouts, everyone] = await Promise.all([
+    const [deals, accruals, payouts, everyone, paidRows] = await Promise.all([
       db
         .select({
           id: partnerDeals.id,
@@ -152,10 +166,6 @@ export const adminPartnersRoute = new Hono<AppEnv>()
           ratePercent: partnerDeals.ratePercent,
           status: partnerDeals.status,
           createdAt: partnerDeals.createdAt,
-          paidRub: sql<string>`coalesce((
-            select sum(${dealPayments.amountRub}) from ${dealPayments}
-            where ${dealPayments.dealId} = ${partnerDeals.id}
-          ), 0)`,
         })
         .from(partnerDeals)
         .where(eq(partnerDeals.partnerId, id))
@@ -186,8 +196,23 @@ export const adminPartnersRoute = new Hono<AppEnv>()
         .orderBy(desc(partnerPayouts.paidAt))
         .limit(100),
       // Для выбора наставника: список всех, кроме самого партнёра.
-      db.select({ id: partners.id, name: partners.name }).from(partners).limit(200),
+      db
+        .select({ id: partners.id, name: partners.name })
+        .from(partners)
+        .limit(200),
+      // Оплаченное по сделкам — отдельной группировкой, по той же причине.
+      db
+        .select({
+          dealId: dealPayments.dealId,
+          total: sql<string>`sum(${dealPayments.amountRub})`,
+        })
+        .from(dealPayments)
+        .innerJoin(partnerDeals, eq(partnerDeals.id, dealPayments.dealId))
+        .where(eq(partnerDeals.partnerId, id))
+        .groupBy(dealPayments.dealId),
     ]);
+
+    const paidByDeal = new Map(paidRows.map((r) => [r.dealId, num(r.total)]));
 
     const accrued = accruals.reduce((s, a) => s + num(a.amountRub), 0);
     const paid = payouts.reduce((s, p) => s + num(p.amountRub), 0);
@@ -213,7 +238,7 @@ export const adminPartnersRoute = new Hono<AppEnv>()
         clientContact: d.clientContact,
         package: d.package,
         amountRub: num(d.amountRub),
-        paidRub: num(d.paidRub),
+        paidRub: paidByDeal.get(d.id) ?? 0,
         ratePercent: num(d.ratePercent),
         status: d.status,
         createdAt: iso(d.createdAt),

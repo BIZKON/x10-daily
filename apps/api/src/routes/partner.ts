@@ -202,7 +202,7 @@ export const partnerRoute = new Hono<AppEnv>()
 
     if (!me) return c.json({ error: "not_partner" }, 404);
 
-    const [dealRows, accrualRows, payoutRows, invitedRows] = await Promise.all([
+    const [dealRows, accrualRows, payoutRows, invitedRows, paidRows, soldRows] = await Promise.all([
       db
         .select({
           id: partnerDeals.id,
@@ -213,10 +213,6 @@ export const partnerRoute = new Hono<AppEnv>()
           status: partnerDeals.status,
           signedAt: partnerDeals.signedAt,
           createdAt: partnerDeals.createdAt,
-          paidRub: sql<string>`coalesce((
-            select sum(${dealPayments.amountRub}) from ${dealPayments}
-            where ${dealPayments.dealId} = ${partnerDeals.id}
-          ), 0)`,
         })
         .from(partnerDeals)
         .where(eq(partnerDeals.partnerId, me.id))
@@ -253,18 +249,32 @@ export const partnerRoute = new Hono<AppEnv>()
           id: partners.id,
           name: partners.name,
           joinedAt: partners.joinedAt,
-          soldRub: sql<string>`coalesce((
-            select sum(${dealPayments.amountRub})
-            from ${dealPayments}
-            join ${partnerDeals} on ${partnerDeals.id} = ${dealPayments.dealId}
-            where ${partnerDeals.partnerId} = ${partners.id}
-          ), 0)`,
         })
         .from(partners)
         .where(eq(partners.parentId, me.id))
         .orderBy(desc(partners.joinedAt))
         .limit(50),
+      // 🔴 Суммы — отдельными группировками. Коррелированный подзапрос в
+      // drizzle тихо возвращал ноль при верных данных (живой прогон 14.08):
+      // кабинет показывал бы партнёру нули по оплаченным сделкам.
+      db
+        .select({ dealId: dealPayments.dealId, total: sql<string>`sum(${dealPayments.amountRub})` })
+        .from(dealPayments)
+        .innerJoin(partnerDeals, eq(partnerDeals.id, dealPayments.dealId))
+        .where(eq(partnerDeals.partnerId, me.id))
+        .groupBy(dealPayments.dealId),
+      db
+        .select({
+          partnerId: partnerDeals.partnerId,
+          total: sql<string>`sum(${dealPayments.amountRub})`,
+        })
+        .from(dealPayments)
+        .innerJoin(partnerDeals, eq(partnerDeals.id, dealPayments.dealId))
+        .groupBy(partnerDeals.partnerId),
     ]);
+
+    const paidByDeal = new Map(paidRows.map((r) => [r.dealId, num(r.total)]));
+    const soldByPartner = new Map(soldRows.map((r) => [r.partnerId, num(r.total)]));
 
     const balance = partnerBalance(
       accrualRows.map((a) => ({ amountRub: num(a.amountRub) })),
@@ -292,7 +302,7 @@ export const partnerRoute = new Hono<AppEnv>()
         clientName: d.clientName,
         package: d.package,
         amountRub: num(d.amountRub),
-        paidRub: num(d.paidRub),
+        paidRub: paidByDeal.get(d.id) ?? 0,
         ratePercent: num(d.ratePercent),
         status: d.status,
         signedAt: iso(d.signedAt),
@@ -316,7 +326,7 @@ export const partnerRoute = new Hono<AppEnv>()
         id: p.id,
         name: p.name,
         joinedAt: iso(p.joinedAt),
-        soldRub: num(p.soldRub),
+        soldRub: soldByPartner.get(p.id) ?? 0,
       })),
     });
   });

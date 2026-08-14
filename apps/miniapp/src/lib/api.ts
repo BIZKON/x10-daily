@@ -390,3 +390,91 @@ export async function postProgress(
   });
   return Boolean(res?.ok);
 }
+
+/* ── Партнёрская программа (спека 14.08) ─────────────────────────────────── */
+
+export type ApiPartnerProgram = {
+  partnerRatePercent: number;
+  mentorRatePercent: number;
+  mentorMonths: number;
+  terms: string[];
+};
+
+export type ApiPartnerDeal = {
+  id: string;
+  clientName: string;
+  package: "manual" | "line";
+  amountRub: number;
+  paidRub: number;
+  ratePercent: number;
+  status: string;
+  signedAt: string | null;
+  createdAt: string;
+};
+
+export type ApiPartnerCabinet = {
+  partner: {
+    id: string;
+    name: string;
+    slug: string | null;
+    status: string;
+    ratePercent: number;
+    hasMentor: boolean;
+    joinedAt: string | null;
+    kpUrl: string | null;
+  };
+  balance: { accruedRub: number; paidRub: number; dueRub: number };
+  program: ApiPartnerProgram;
+  deals: ApiPartnerDeal[];
+  accruals: Array<{
+    id: string;
+    amountRub: number;
+    level: number;
+    reason: string;
+    ratePercent: number;
+    createdAt: string | null;
+  }>;
+  payouts: Array<{ id: string; amountRub: number; paidAt: string | null; method: string | null }>;
+  invited: Array<{ id: string; name: string; joinedAt: string | null; soldRub: number }>;
+};
+
+/**
+ * Условия программы плюс «участвую ли я».
+ *
+ * `null` — раздел в этом экземпляре выключен или человек не вошёл. Экран тогда
+ * просто не показывает партнёрский блок: у клиента завода нашей программы быть
+ * не должно.
+ */
+export async function fetchPartnerProgram(): Promise<{
+  program: ApiPartnerProgram;
+  isPartner: boolean;
+  status: string | null;
+} | null> {
+  const res = await fetchAuthed("/v1/partner/program");
+  if (!res || !res.ok) return null;
+  return (await res.json()) as {
+    program: ApiPartnerProgram;
+    isPartner: boolean;
+    status: string | null;
+  };
+}
+
+/** Кабинет партнёра. `null` — не партнёр либо раздел выключен. */
+export async function fetchPartnerCabinet(): Promise<ApiPartnerCabinet | null> {
+  const res = await fetchAuthed("/v1/partner/me");
+  if (!res || !res.ok) return null;
+  return (await res.json()) as ApiPartnerCabinet;
+}
+
+/** Регистрация в программе. Возвращает текст ошибки или null при успехе. */
+export async function joinPartnerProgram(ref?: string): Promise<string | null> {
+  const res = await postAuthed("/v1/partner/join", ref ? { ref } : {});
+  if (!res) return "Нет связи с сервером. Попробуйте ещё раз.";
+  if (res.ok) return null;
+  try {
+    const j = (await res.json()) as { message?: string; error?: string };
+    return j.message ?? j.error ?? `Ошибка ${res.status}`;
+  } catch {
+    return `Ошибка ${res.status}`;
+  }
+}

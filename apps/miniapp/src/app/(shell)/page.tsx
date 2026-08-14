@@ -1,6 +1,7 @@
 import { CategoryChips } from "@/components/category-chips";
 import { FeedCard } from "@/components/feed-card";
 import { HeroDigest } from "@/components/hero-digest";
+import { PartnerInvite } from "@/components/partner-invite";
 import { TopBar } from "@/components/top-bar";
 import { HOME_CATEGORIES, loadDailyFeed } from "@/lib/feed";
 import { connection } from "next/server";
@@ -56,6 +57,15 @@ async function DailyFeed() {
         <li key={item.id}>
           {/* Первая карточка — LCP-элемент экрана: грузим её обложку с приоритетом. */}
           <FeedCard item={item} priority={i === 0} />
+          {/* Приглашение — после третьей карточки: выше оно спорит с главным
+              материалом дня, ниже его просто не долистают. Компонент сам решит,
+              показываться ли: у клиента завода и у действующего партнёра он
+              возвращает null. */}
+          {i === 2 && (
+            <div className="mt-3.5">
+              <PartnerInvite variant="feed" />
+            </div>
+          )}
         </li>
       ))}
     </ul>

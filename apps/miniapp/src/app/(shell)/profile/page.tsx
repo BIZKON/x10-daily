@@ -1,3 +1,4 @@
+import { PartnerInvite } from "@/components/partner-invite";
 import { PreferenceToggles } from "@/components/profile/preference-toggles";
 import { TopBar } from "@/components/top-bar";
 import { PROFILE_MENU } from "@/lib/feed";
@@ -51,6 +52,14 @@ export default function ProfilePage() {
 
       <Suspense fallback={<PrefsSkeleton />}>
         <PreferencesSection />
+      </Suspense>
+
+      {/* Приглашение в программу — над меню: кто дошёл до профиля, тот уже
+          вовлечён. Компонент сам решает, показываться ли. */}
+      <Suspense fallback={null}>
+        <div className="px-4 pt-6">
+          <PartnerInvite variant="profile" />
+        </div>
       </Suspense>
 
       <section className="flex flex-col gap-2 p-4 pt-6">

@@ -92,6 +92,13 @@ export const PERMISSIONS = {
   "cost.view": ["owner", "editor"],
   /** Команда: роли и приглашения. */
   "team.manage": ["owner"],
+  /**
+   * Партнёрская программа: сделки, платежи клиентов, выплаты.
+   *
+   * Только владелец: это чужие деньги и обязательства наружу. Редактор ведёт
+   * выпуск, а не расчёты с партнёрами.
+   */
+  "partners.manage": ["owner"],
 } as const satisfies Record<string, readonly TeamRole[]>;
 
 export type Permission = keyof typeof PERMISSIONS;

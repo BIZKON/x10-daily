@@ -8,6 +8,7 @@ import { adminRoute } from "./routes/admin";
 import { adminContentRoute } from "./routes/admin-content";
 import { adminCreateRoute } from "./routes/admin-create";
 import { adminKnowledgeRoute } from "./routes/admin-knowledge";
+import { adminPartnersRoute } from "./routes/admin-partners";
 import { adminPlanRoute } from "./routes/admin-plan";
 import { adminPostingRoute } from "./routes/admin-posting";
 import { adminSourcesRoute } from "./routes/admin-sources";
@@ -21,6 +22,7 @@ import { engagementRoute } from "./routes/engagement";
 import { eventsRoute } from "./routes/events";
 import { feedRoute } from "./routes/feed";
 import { healthRoute } from "./routes/health";
+import { partnerRoute } from "./routes/partner";
 import { pipelineRoute } from "./routes/pipeline";
 import { profileRoute } from "./routes/profile";
 import { telegramWebhookRoute } from "./routes/telegram-webhook";
@@ -129,6 +131,7 @@ export function createApp() {
   app.route("/v1/admin", adminPlanRoute);
   app.route("/v1/admin", adminTeamRoute);
   app.route("/v1/admin", adminPostingRoute);
+  app.route("/v1/admin", adminPartnersRoute);
   app.route("/v1/telegram", telegramWebhookRoute);
   app.route("/v1/admin/upload", uploadRoute);
   app.route("/v1/events", eventsRoute);
@@ -137,6 +140,7 @@ export function createApp() {
   // Engagement POST'ы — mounted прямо в /v1 (paths типа /v1/articles/:id/reactions).
   app.route("/v1", engagementRoute);
   app.route("/v1/profile", profileRoute);
+  app.route("/v1/partner", partnerRoute);
 
   app.notFound((c) => c.json({ error: "not_found", path: c.req.path }, 404));
 

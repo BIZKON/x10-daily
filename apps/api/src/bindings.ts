@@ -40,6 +40,8 @@ export interface AppBindings {
   NEXT_PUBLIC_POSTHOG_HOST?: string;
   /** Comma-separated origins для CORS (HIGH-1). Wildcards `https://*.vercel.app`. */
   X10_ALLOWED_ORIGINS?: string;
+  /** Партнёрская программа: "1" — включена. По умолчанию выключена. */
+  X10_PARTNERS_ENABLED?: string;
 
   // ---- Secrets ----
   DATABASE_URL: string;

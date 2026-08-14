@@ -88,7 +88,9 @@ const { partners } = JSON.parse(fs.readFileSync(CONFIG, "utf8"));
 
 const seen = new Set();
 for (const p of partners) {
-  for (const field of ["slug", "name", "role", "tg", "phone"]) {
+  // Телефон НЕ обязателен: у партнёра может быть только Telegram, и это
+  // нормально — кнопка просто не рисуется. Обязателен способ связи вообще.
+  for (const field of ["slug", "name", "role", "tg"]) {
     if (!p[field]) throw new Error(`Партнёр ${p.slug ?? "?"}: не заполнено поле «${field}»`);
   }
   // Одинаковый slug молча затёр бы чужую страницу: два партнёра — один адрес.
@@ -104,27 +106,36 @@ for (const p of partners) {
       '<img src="{{PERSON_PHOTO}}" width="400" height="400" alt="{{PERSON_NAME}}" loading="lazy" decoding="async">',
       photo
         ? `<img src="${photo.uri}" width="${PHOTO_PX}" height="${PHOTO_PX}" alt="${esc(p.name)}" loading="lazy" decoding="async">`
-        : `<div class="ph-stub" aria-hidden="true">${esc(initials(p.name))}</div>`,
+        // Заглушка — родная для шаблона `.avatar .ini`: она уже вписана в круг.
+        // Своя разметка вылезала за рамку аватара.
+        : `<span class="ini" aria-hidden="true">${esc(initials(p.name))}</span>`,
     )
     .replaceAll("{{PERSON_NAME}}", esc(p.name))
     .replaceAll("{{PERSON_ROLE}}", esc(p.role))
     .replaceAll("{{TG_URL}}", esc(p.tg))
-    .replaceAll("{{PHONE_LABEL}}", esc(p.phone))
-    .replaceAll("{{PHONE_HREF}}", esc(String(p.phone).replace(/[^\d+]/g, "")))
+    .replaceAll("{{PHONE_LABEL}}", esc(p.phone ?? ""))
+    .replaceAll("{{PHONE_HREF}}", esc(String(p.phone ?? "").replace(/[^\d+]/g, "")))
     .replaceAll("{{PAGE_URL}}", `${BASE_URL}/${p.slug}/`);
+
+  // Без телефона кнопку убираем целиком: пустая ссылка «tel:» на телефоне
+  // открывает набор пустого номера, а рядом с Telegram висела бы дырка.
+  const withPhone = p.phone
+    ? page
+    : page.replace(/\s*<a class="act[^"]*\btel\b[^"]*"[^>]*>[^<]*<\/a>/g, "");
 
   // Незаменённый плейсхолдер — это дыра в документе, который уйдёт клиенту.
   // Лучше уронить сборку, чем отправить страницу с «{{...}}» на видном месте.
-  const left = page.match(/\{\{[A-Z_]+\}\}/g);
+  const left = withPhone.match(/\{\{[A-Z_]+\}\}/g);
   if (left) throw new Error(`${p.slug}: не подставлено ${[...new Set(left)].join(", ")}`);
 
   const dir = path.join(LANDING, p.slug);
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, "index.html"), page);
+  fs.writeFileSync(path.join(dir, "index.html"), withPhone);
 
-  const size = Math.round(Buffer.byteLength(page) / 1024);
-  const photoNote = photo ? `фото ${photo.kb} КБ` : "БЕЗ ФОТО (заглушка с инициалами)";
-  console.log(`✓ /kp/${p.slug}/  — ${p.name}, ${size} КБ, ${photoNote}`);
+  const size = Math.round(Buffer.byteLength(withPhone) / 1024);
+  const photoNote = photo ? `фото ${photo.kb} КБ` : "без фото (кружок с инициалами)";
+  const phoneNote = p.phone ? p.phone : "только Telegram";
+  console.log(`✓ /kp/${p.slug}/  — ${p.name}, ${phoneNote}, ${size} КБ, ${photoNote}`);
 }
 
 console.log(`\nГотово: ${partners.length} страниц. Выкатить — ./deploy.sh`);

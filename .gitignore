@@ -124,4 +124,9 @@ graphify-out/
 landing/partners/*.jpg
 landing/partners/*.jpeg
 landing/partners/*.png
-landing/partner-*/
+landing/kp/partners.json
+# Собранные страницы: каталог на партнёра. Версионируется только исходное —
+# шаблон, образец конфига и основной КП (landing/index.html).
+landing/*/
+!landing/kp/
+!landing/partners/

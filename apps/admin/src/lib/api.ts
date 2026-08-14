@@ -1067,3 +1067,93 @@ export async function fetchPublications(params: {
     return null;
   }
 }
+
+/* ── Партнёрская программа (спека 14.08) ─────────────────────────────────── */
+
+export type AdminPartner = {
+  id: string;
+  name: string;
+  slug: string | null;
+  contact: string | null;
+  status: string;
+  ratePercent: number;
+  mentorName: string | null;
+  joinedAt: string | null;
+  accruedRub: number;
+  paidRub: number;
+  dueRub: number;
+};
+
+export type AdminPartnerDeal = {
+  id: string;
+  clientName: string;
+  clientContact: string | null;
+  package: "manual" | "line";
+  amountRub: number;
+  paidRub: number;
+  ratePercent: number;
+  status: string;
+  createdAt: string | null;
+};
+
+export type AdminPartnerCard = {
+  partner: {
+    id: string;
+    name: string;
+    slug: string | null;
+    contact: string | null;
+    status: string;
+    ratePercent: number;
+    parentId: string | null;
+    mentorName: string | null;
+    joinedAt: string | null;
+  };
+  balance: { accruedRub: number; paidRub: number; dueRub: number };
+  deals: AdminPartnerDeal[];
+  accruals: Array<{
+    id: string;
+    amountRub: number;
+    level: number;
+    reason: string;
+    createdAt: string | null;
+  }>;
+  payouts: Array<{
+    id: string;
+    amountRub: number;
+    paidAt: string | null;
+    method: string | null;
+    note: string | null;
+  }>;
+  candidates: Array<{ id: string; name: string }>;
+  maxInstallmentMonths: number;
+};
+
+/** Партнёры с балансами. `null` — api не ответил или нет прав. */
+export async function fetchPartners(): Promise<{ items: AdminPartner[] } | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  try {
+    const res = await fetchWithTimeout(`${base}/v1/admin/partners`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as { items: AdminPartner[] };
+  } catch {
+    return null;
+  }
+}
+
+/** Карточка партнёра: сделки, начисления, выплаты. */
+export async function fetchPartnerCard(id: string): Promise<AdminPartnerCard | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  try {
+    const res = await fetchWithTimeout(`${base}/v1/admin/partners/${encodeURIComponent(id)}`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as AdminPartnerCard;
+  } catch {
+    return null;
+  }
+}

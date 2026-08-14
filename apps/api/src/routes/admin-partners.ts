@@ -116,6 +116,128 @@ export const adminPartnersRoute = new Hono<AppEnv>()
   })
 
   /**
+   * GET /v1/admin/partners/:id
+   * Карточка партнёра: сделки с оплаченным, начисления, выплаты.
+   */
+  .get("/partners/:id", zValidator("param", idParam), async (c) => {
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    await requirePermission(c, db, "partners.manage");
+    const { id } = c.req.valid("param");
+
+    const [partner] = await db
+      .select({
+        id: partners.id,
+        name: partners.name,
+        slug: partners.slug,
+        contact: partners.contact,
+        status: partners.status,
+        ratePercent: partners.ratePercent,
+        parentId: partners.parentId,
+        joinedAt: partners.joinedAt,
+      })
+      .from(partners)
+      .where(eq(partners.id, id))
+      .limit(1);
+    if (!partner) return c.json({ error: "not_found", id }, 404);
+
+    const [deals, accruals, payouts, everyone] = await Promise.all([
+      db
+        .select({
+          id: partnerDeals.id,
+          clientName: partnerDeals.clientName,
+          clientContact: partnerDeals.clientContact,
+          package: partnerDeals.package,
+          amountRub: partnerDeals.amountRub,
+          ratePercent: partnerDeals.ratePercent,
+          status: partnerDeals.status,
+          createdAt: partnerDeals.createdAt,
+          paidRub: sql<string>`coalesce((
+            select sum(${dealPayments.amountRub}) from ${dealPayments}
+            where ${dealPayments.dealId} = ${partnerDeals.id}
+          ), 0)`,
+        })
+        .from(partnerDeals)
+        .where(eq(partnerDeals.partnerId, id))
+        .orderBy(desc(partnerDeals.createdAt))
+        .limit(100),
+      db
+        .select({
+          id: partnerAccruals.id,
+          amountRub: partnerAccruals.amountRub,
+          level: partnerAccruals.level,
+          reason: partnerAccruals.reason,
+          createdAt: partnerAccruals.createdAt,
+        })
+        .from(partnerAccruals)
+        .where(eq(partnerAccruals.partnerId, id))
+        .orderBy(desc(partnerAccruals.createdAt))
+        .limit(100),
+      db
+        .select({
+          id: partnerPayouts.id,
+          amountRub: partnerPayouts.amountRub,
+          paidAt: partnerPayouts.paidAt,
+          method: partnerPayouts.method,
+          note: partnerPayouts.note,
+        })
+        .from(partnerPayouts)
+        .where(eq(partnerPayouts.partnerId, id))
+        .orderBy(desc(partnerPayouts.paidAt))
+        .limit(100),
+      // Для выбора наставника: список всех, кроме самого партнёра.
+      db.select({ id: partners.id, name: partners.name }).from(partners).limit(200),
+    ]);
+
+    const accrued = accruals.reduce((s, a) => s + num(a.amountRub), 0);
+    const paid = payouts.reduce((s, p) => s + num(p.amountRub), 0);
+
+    return c.json({
+      partner: {
+        id: partner.id,
+        name: partner.name,
+        slug: partner.slug,
+        contact: partner.contact,
+        status: partner.status,
+        ratePercent: num(partner.ratePercent),
+        parentId: partner.parentId,
+        mentorName: partner.parentId
+          ? (everyone.find((p) => p.id === partner.parentId)?.name ?? null)
+          : null,
+        joinedAt: iso(partner.joinedAt),
+      },
+      balance: { accruedRub: accrued, paidRub: paid, dueRub: accrued - paid },
+      deals: deals.map((d) => ({
+        id: d.id,
+        clientName: d.clientName,
+        clientContact: d.clientContact,
+        package: d.package,
+        amountRub: num(d.amountRub),
+        paidRub: num(d.paidRub),
+        ratePercent: num(d.ratePercent),
+        status: d.status,
+        createdAt: iso(d.createdAt),
+      })),
+      accruals: accruals.map((a) => ({
+        id: a.id,
+        amountRub: num(a.amountRub),
+        level: a.level,
+        reason: a.reason,
+        createdAt: iso(a.createdAt),
+      })),
+      payouts: payouts.map((p) => ({
+        id: p.id,
+        amountRub: num(p.amountRub),
+        paidAt: iso(p.paidAt),
+        method: p.method,
+        note: p.note,
+      })),
+      candidates: everyone.filter((p) => p.id !== id),
+      maxInstallmentMonths: MAX_INSTALLMENT_MONTHS,
+    });
+  })
+
+  /**
    * POST /v1/admin/partners/:id/deals
    * Заводит сделку. 🔴 Ставка КОПИРУЕТСЯ в сделку — правка настроек партнёра
    * не должна переписывать уже случившиеся договорённости.

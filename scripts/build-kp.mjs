@@ -34,6 +34,12 @@ const BASE_URL = "https://app.pro-agent-ai.ru/kp";
 /** Размер портрета в странице. Больше не нужно: он рисуется максимум 120px. */
 const PHOTO_PX = 400;
 
+/**
+ * Где искать лицо, если для снимка не указано своё: по горизонтали посередине,
+ * по вертикали чуть выше центра — на портретах лицо почти всегда там.
+ */
+const DEFAULT_FACE = { x: 0.5, y: 0.38 };
+
 const esc = (s) =>
   String(s ?? "")
     .replaceAll("&", "&amp;")
@@ -52,29 +58,49 @@ function initials(name) {
 }
 
 /**
- * Фото партнёра как data-URI.
+ * Фото партнёра как data-URI: квадрат ВОКРУГ ЛИЦА.
  *
- * Обрезаем в квадрат по короткой стороне и жмём: снимок с телефона весит
- * мегабайты, а внутри страницы это утроилось бы в base64 — КП открывалось бы
- * на мобильном интернете полминуты.
+ * 🔴 Раньше квадрат резался по центру КАДРА, а круг аватара вырезался из него
+ * со сдвигом вверх — и лицо, стоящее на снимке не по центру, упиралось в край:
+ * у одного портрета срезало макушку. Теперь центр квадрата — это центр лица
+ * (поле `face`, доля ширины и высоты снимка), а круг берётся ровно по центру.
+ *
+ * Сторона квадрата — меньшая сторона снимка: больше взять неоткуда, а лицо в
+ * неё укладывается с запасом. Смещение прижимается к границам кадра, чтобы в
+ * кадр не попала пустота.
+ *
+ * Уменьшение нужно всё равно: снимок с телефона весит мегабайты, а внутри
+ * страницы это утроилось бы в base64 — КП открывалось бы полминуты.
  */
-function photoDataUri(file) {
+function photoDataUri(file, face) {
   const src = path.join(PHOTOS, file);
   if (!fs.existsSync(src)) return null;
 
   const tmp = path.join(PHOTOS, `.build-${file.replace(/\.[^.]+$/, "")}.jpg`);
   let out = src;
   try {
+    const dims = execFileSync("sips", ["-g", "pixelWidth", "-g", "pixelHeight", src], {
+      encoding: "utf8",
+    });
+    const w = Number(dims.match(/pixelWidth:\s*(\d+)/)?.[1]);
+    const h = Number(dims.match(/pixelHeight:\s*(\d+)/)?.[1]);
+    if (!w || !h) throw new Error("не удалось прочитать размеры");
+
+    const side = Math.min(w, h);
+    const clamp = (v, max) => Math.max(0, Math.min(Math.round(v), max));
+    const offX = clamp(face.x * w - side / 2, w - side);
+    const offY = clamp(face.y * h - side / 2, h - side);
+
     execFileSync("sips", [
       "-s", "format", "jpeg",
       "-s", "formatOptions", "72",
-      "-Z", String(PHOTO_PX * 2),
-      "--cropToHeightWidth", String(PHOTO_PX), String(PHOTO_PX),
+      "-c", String(side), String(side), "--cropOffset", String(offY), String(offX),
+      "-Z", String(PHOTO_PX),
       src, "--out", tmp,
     ], { stdio: "ignore" });
     out = tmp;
-  } catch {
-    console.warn(`  ⚠ sips не отработал на ${file} — вшиваю файл как есть`);
+  } catch (e) {
+    console.warn(`  ⚠ ${file}: кадрирование не отработало (${e.message}) — вшиваю как есть`);
   }
 
   const b64 = fs.readFileSync(out).toString("base64");
@@ -97,7 +123,13 @@ for (const p of partners) {
   if (seen.has(p.slug)) throw new Error(`Повторяется адрес: ${p.slug}`);
   seen.add(p.slug);
 
-  const photo = p.photo ? photoDataUri(p.photo) : null;
+  // `face` — где на снимке лицо, долями ширины и высоты. Подбирается глазами
+  // один раз на фото: автоматического распознавания лиц здесь нет и не нужно.
+  const face = {
+    x: p.face?.x ?? DEFAULT_FACE.x,
+    y: p.face?.y ?? DEFAULT_FACE.y,
+  };
+  const photo = p.photo ? photoDataUri(p.photo, face) : null;
   const page = template
     // 🔴 Портрет заменяется ПЕРВЫМ, до имени: в теге есть alt="{{PERSON_NAME}}",
     // и подстановка имени раньше сломала бы точное совпадение — фото молча не
@@ -105,7 +137,8 @@ for (const p of partners) {
     .replaceAll(
       '<img src="{{PERSON_PHOTO}}" width="400" height="400" alt="{{PERSON_NAME}}" loading="lazy" decoding="async">',
       photo
-        ? `<img src="${photo.uri}" width="${PHOTO_PX}" height="${PHOTO_PX}" alt="${esc(p.name)}" loading="lazy" decoding="async">`
+        // Кадр уже квадратный и по лицу — круг берём ровно по центру.
+        ? `<img src="${photo.uri}" width="${PHOTO_PX}" height="${PHOTO_PX}" alt="${esc(p.name)}" loading="lazy" decoding="async" style="object-position:center">`
         // Заглушка — родная для шаблона `.avatar .ini`: она уже вписана в круг.
         // Своя разметка вылезала за рамку аватара.
         : `<span class="ini" aria-hidden="true">${esc(initials(p.name))}</span>`,

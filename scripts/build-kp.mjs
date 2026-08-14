@@ -17,6 +17,9 @@
  * Зависимостей нет: чистый Node плюс системный `sips` (macOS) для обрезки
  * фото. Нет `sips` — фото уходит как есть, сборка не падает.
  *
+ * Собирает И основное КП (landing/index.html), и партнёрские версии: источник
+ * текста один на всех, правка цены расходится по всем ссылкам сразу.
+ *
  * Запуск:  node scripts/build-kp.mjs
  */
 import { execFileSync } from "node:child_process";
@@ -27,7 +30,16 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const LANDING = path.join(ROOT, "landing");
 const TEMPLATE = path.join(LANDING, "kp", "template.html");
-const CONFIG = path.join(LANDING, "kp", "partners.json");
+/**
+ * Два конфига, и это не случайность. `main.json` — основное КП, лежит в гите:
+ * его контакты и так напечатаны в документе, который читает любой открывший
+ * ссылку. `partners.json` — партнёрские версии, в гит НЕ попадает: там личные
+ * телефоны живых людей, а репозиторий публичный.
+ */
+const CONFIGS = [
+  path.join(LANDING, "kp", "main.json"),
+  path.join(LANDING, "kp", "partners.json"),
+];
 const PHOTOS = path.join(LANDING, "partners");
 const BASE_URL = "https://app.pro-agent-ai.ru/kp";
 
@@ -110,7 +122,15 @@ function photoDataUri(file, face) {
 }
 
 const template = fs.readFileSync(TEMPLATE, "utf8");
-const { partners } = JSON.parse(fs.readFileSync(CONFIG, "utf8"));
+const partners = CONFIGS.filter((f) => fs.existsSync(f)).flatMap(
+  (f) => JSON.parse(fs.readFileSync(f, "utf8")).partners ?? [],
+);
+if (partners.length === 0) {
+  throw new Error(
+    "Нечего собирать: нет ни main.json, ни partners.json. " +
+      "Скопируйте образец: cp landing/kp/partners.example.json landing/kp/partners.json",
+  );
+}
 
 const seen = new Set();
 for (const p of partners) {
@@ -148,7 +168,8 @@ for (const p of partners) {
     .replaceAll("{{TG_URL}}", esc(p.tg))
     .replaceAll("{{PHONE_LABEL}}", esc(p.phone ?? ""))
     .replaceAll("{{PHONE_HREF}}", esc(String(p.phone ?? "").replace(/[^\d+]/g, "")))
-    .replaceAll("{{PAGE_URL}}", `${BASE_URL}/${p.slug}/`);
+    // Основное КП живёт в корне и адресуется без имени в пути.
+    .replaceAll("{{PAGE_URL}}", p.url ?? `${BASE_URL}/${p.slug}/`);
 
   // Без телефона кнопку убираем целиком: пустая ссылка «tel:» на телефоне
   // открывает набор пустого номера, а рядом с Telegram висела бы дырка.
@@ -161,14 +182,18 @@ for (const p of partners) {
   const left = withPhone.match(/\{\{[A-Z_]+\}\}/g);
   if (left) throw new Error(`${p.slug}: не подставлено ${[...new Set(left)].join(", ")}`);
 
-  const dir = path.join(LANDING, p.slug);
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, "index.html"), withPhone);
+  // `out` задаёт путь относительно landing/ — им основное КП кладётся в корень,
+  // где его и ищет Caddy. Партнёрам достаётся каталог по их адресу.
+  const rel = p.out ?? path.join(p.slug, "index.html");
+  const dest = path.join(LANDING, rel);
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.writeFileSync(dest, withPhone);
 
   const size = Math.round(Buffer.byteLength(withPhone) / 1024);
   const photoNote = photo ? `фото ${photo.kb} КБ` : "без фото (кружок с инициалами)";
   const phoneNote = p.phone ? p.phone : "только Telegram";
-  console.log(`✓ /kp/${p.slug}/  — ${p.name}, ${phoneNote}, ${size} КБ, ${photoNote}`);
+  const where = p.out ? "/kp (основное)" : `/kp/${p.slug}/`;
+  console.log(`✓ ${where}  — ${p.name}, ${phoneNote}, ${size} КБ, ${photoNote}`);
 }
 
 console.log(`\nГотово: ${partners.length} страниц. Выкатить — ./deploy.sh`);

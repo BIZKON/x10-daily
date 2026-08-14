@@ -124,6 +124,10 @@ graphify-out/
 landing/partners/*.jpg
 landing/partners/*.jpeg
 landing/partners/*.png
+# Исключение: фото основного КП. Оно и так напечатано в документе, который
+# читает любой открывший ссылку, а без него основное КП не собрать на чистой
+# копии репозитория.
+!landing/partners/stolbova.jpg
 landing/kp/partners.json
 # Собранные страницы: каталог на партнёра. Версионируется только исходное —
 # шаблон, образец конфига и основной КП (landing/index.html).

@@ -212,7 +212,7 @@ x10-daily/                  ← техническое имя репо (исто
 | Dev-фикстуры | `scripts/seed.ts` (id совпадают с `apps/admin/src/lib/mocks.ts`) |
 | Деплой prod | `./deploy.sh`, `docker-compose.prod.yml`, `caddy/Caddyfile.prod` |
 | **Состояние на конец последней сессии** | **`docs/handoffs/handoff-session-37.md`** |
-| Коммерческое предложение (что читает клиент) | `landing/index.html` → https://app.pro-agent-ai.ru/kp |
+| Коммерческое предложение (что читает клиент) | `landing/kp/template.html` — ЕДИНЫЙ источник текста. `landing/index.html` и партнёрские версии СОБИРАЮТСЯ из него: `node scripts/build-kp.mjs`. Руками не править |
 | Исторические handoffs сессий | `docs/handoffs/` |
 | Архив стратегии X10-эпохи | `docs/strategy/` (НЕ канон нового бренда) |
 | Старый CF/Neon deploy-гайд | `docs/DEPLOY.md` (архив, не применять) |

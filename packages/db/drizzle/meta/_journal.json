@@ -239,6 +239,13 @@
       "when": 1781883972448,
       "tag": "0033_channels_format_status",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1781883972449,
+      "tag": "0034_partners",
+      "breakpoints": true
     }
   ]
 }

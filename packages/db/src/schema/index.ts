@@ -21,3 +21,4 @@ export * from "./billing";
 export * from "./knowledge";
 export * from "./creations";
 export * from "./plans";
+export * from "./partners";

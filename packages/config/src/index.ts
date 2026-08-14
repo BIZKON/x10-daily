@@ -13,6 +13,10 @@ export {
   TEMPLATE_LIMITS,
   PLAN_CATEGORIES,
   POST_SLOT_STALE_HOURS,
+  PARTNER_RATE_PERCENT,
+  MENTOR_RATE_PERCENT,
+  MENTOR_BONUS_MONTHS,
+  MAX_INSTALLMENT_MONTHS,
   type ModelTier,
   type TemplateKind,
 } from "./constants";

@@ -116,3 +116,12 @@ bun.lockb
 
 # Graphify generated knowledge graph (rebuilt by git post-commit hook)
 graphify-out/
+
+# Партнёрские версии КП: фото и телефоны реальных людей.
+# 🔴 Репозиторий публичный (аккаунт под санкционным флагом — приватные репо
+# создавать нельзя), поэтому персональные данные в него не кладём. Страницы
+# собираются локально `node scripts/build-kp.mjs` и уезжают на VM отдельно.
+landing/partners/*.jpg
+landing/partners/*.jpeg
+landing/partners/*.png
+landing/partner-*/

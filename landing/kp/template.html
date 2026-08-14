@@ -1,0 +1,1051 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Персональный контент-завод — коммерческое предложение</title>
+<meta name="description" content="Система производства контента под ваш бренд, на вашем сервере в России. Два режима: линия готовит и выпускает поток сама или вы создаёте текст, картинку и ролик по запросу и публикуете вручную.">
+<meta name="robots" content="noindex, nofollow">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{PAGE_URL}}">
+<meta property="og:title" content="Контент выходит сам — или ровно так, как скажете вы">
+<meta property="og:description" content="Система производства контента под ваш бренд, на вашем сервере в России. Два режима: линия готовит и выпускает поток сама или вы создаёте текст, картинку и ролик по запросу и публикуете вручную.">
+<meta property="og:image" content="https://app.pro-agent-ai.ru/opengraph-image.jpg">
+<meta property="og:locale" content="ru_RU">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#127981;</text></svg>">
+<style>
+  :root{
+    color-scheme: light;
+    --ground:#FCFBFF; --card:#FFFFFF;
+    --ink:#16162E; --ink-soft:#585878; --ink-faint:#8C8CAB; --line:#E9E6F5;
+    --violet:#7C3AED; --pink:#EC4899; --amber:#F59E0B;
+    --cyan:#0891B2; --emerald:#059669; --rose:#E11D48;
+    --f-violet:#F4EEFF; --f-cyan:#E2F7FB; --f-emerald:#E4F8F0; --f-amber:#FFF4E0; --f-rose:#FFEDF1;
+    --display: system-ui, -apple-system, "Segoe UI Variable Display", "Segoe UI", Roboto, sans-serif;
+    --body: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1100px 520px at 10% -8%, #F6EEFF 0%, transparent 62%),
+      radial-gradient(900px 460px at 94% 2%, #E3F7FB 0%, transparent 56%),
+      var(--ground);
+    color:var(--ink); font-family:var(--body); font-size:16px; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:40px 20px 80px;}
+  .grad{
+    background:linear-gradient(96deg,var(--violet) 0%,var(--pink) 52%,var(--amber) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .masthead{padding:20px 0 6px;}
+  .stamp{
+    display:inline-flex;gap:8px;font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--violet);background:var(--f-violet);
+    padding:6px 12px;border-radius:999px;margin-bottom:20px;font-weight:600;
+  }
+  .masthead h1{
+    font-family:var(--display);font-weight:800;font-size:clamp(34px,6.2vw,64px);
+    line-height:1.02;letter-spacing:-.032em;margin:0 0 14px;text-wrap:balance;
+  }
+  .masthead p{margin:0;max-width:64ch;color:var(--ink-soft);font-size:17.5px;}
+
+  .slide{
+    background:var(--card);border:1px solid var(--line);border-radius:22px;
+    padding:clamp(24px,3.4vw,44px);margin-top:22px;
+    box-shadow:0 1px 2px rgba(22,22,46,.04), 0 14px 40px -22px rgba(90,60,180,.20);
+  }
+  .slide-no{
+    font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.14em;
+    color:var(--ink-faint);text-transform:uppercase;margin-bottom:10px;
+  }
+  .slide h3{
+    font-family:var(--display);font-weight:800;font-size:clamp(25px,4vw,41px);
+    line-height:1.08;letter-spacing:-.028em;margin:0 0 8px;text-wrap:balance;
+  }
+  .lede{font-size:17.5px;color:var(--ink-soft);margin:0 0 26px;max-width:68ch;}
+  .slide h4{
+    font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-faint);margin:32px 0 13px;
+  }
+
+  .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(228px,1fr));gap:14px;}
+  .col{border-radius:16px;padding:20px;border:1px solid var(--line);}
+  .col.a{background:var(--f-violet);border-color:#EADDFF;}
+  .col.b{background:var(--f-cyan);border-color:#C9EDF4;}
+  .col.c{background:var(--f-amber);border-color:#FBE3B8;}
+  .col.d{background:var(--f-emerald);border-color:#C6EFDD;}
+  .col .cap{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:9px;}
+  .col.a .cap{color:var(--violet);} .col.b .cap{color:var(--cyan);}
+  .col.c .cap{color:#B45309;} .col.d .cap{color:var(--emerald);}
+  .col h5{font-family:var(--display);font-size:18.5px;font-weight:750;margin:0 0 9px;letter-spacing:-.015em;}
+  .col p{margin:0;font-size:14px;color:var(--ink-soft);line-height:1.55;}
+  .col ul{margin:0;padding-left:17px;font-size:14px;color:var(--ink-soft);line-height:1.6;}
+  .col li{margin-bottom:4px;}
+
+  .figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:24px;}
+  .fig{border-radius:14px;padding:16px 18px;background:var(--f-cyan);border:1px solid #C9EDF4;}
+  .fig .v{font-family:var(--mono);font-weight:700;font-size:clamp(22px,3.1vw,30px);letter-spacing:-.02em;color:var(--cyan);font-variant-numeric:tabular-nums;line-height:1.1;}
+  .fig .l{font-size:13px;color:var(--ink-soft);margin-top:5px;line-height:1.35;}
+  .fig.v2{background:var(--f-amber);border-color:#FBE3B8;} .fig.v2 .v{color:#B45309;}
+  .fig.v3{background:var(--f-violet);border-color:#EADDFF;} .fig.v3 .v{color:var(--violet);}
+  .fig.v4{background:var(--f-emerald);border-color:#C6EFDD;} .fig.v4 .v{color:var(--emerald);}
+
+
+  /* ── герой ─────────────────────────────────────────── */
+  .hero{position:relative;overflow:hidden;border-radius:28px;margin:8px 0 26px;
+    padding:clamp(38px,6vw,84px) clamp(24px,4vw,64px) clamp(34px,5vw,64px);
+    background:#fff;border:1px solid var(--line);
+    box-shadow:0 2px 4px rgba(22,22,46,.03), 0 30px 80px -40px rgba(120,60,200,.35);}
+  .blob{position:absolute;border-radius:50%;filter:blur(58px);opacity:.55;pointer-events:none;}
+  .blob1{width:520px;height:520px;left:-160px;top:-220px;
+    background:radial-gradient(circle,#C4B5FD,transparent 68%);animation:drift1 22s ease-in-out infinite;}
+  .blob2{width:460px;height:460px;right:-140px;top:-160px;
+    background:radial-gradient(circle,#FBCFE8,transparent 68%);animation:drift2 26s ease-in-out infinite;}
+  .blob3{width:400px;height:400px;right:14%;bottom:-240px;
+    background:radial-gradient(circle,#A5F3FC,transparent 68%);animation:drift3 30s ease-in-out infinite;}
+  @keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(60px,50px) scale(1.12)}}
+  @keyframes drift2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-50px,64px) scale(1.08)}}
+  @keyframes drift3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,-56px) scale(1.14)}}
+
+  .hero .inner{position:relative;z-index:1;}
+  .hero h1{font-family:var(--display);font-weight:800;
+    font-size:clamp(38px,7.4vw,80px);line-height:1;letter-spacing:-.035em;
+    margin:0 0 18px;text-wrap:balance;}
+  .hero h1 .grad{background-size:200% 100%;animation:shift 9s ease-in-out infinite;}
+  @keyframes shift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+  .hero .sub{margin:0 0 26px;max-width:56ch;font-size:clamp(17px,2vw,21px);
+    color:var(--ink-soft);line-height:1.5;}
+
+  .chips{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:30px;}
+  .chip{font-size:13.5px;font-weight:650;padding:9px 16px;border-radius:999px;
+    background:#fff;border:1px solid var(--line);color:var(--ink);
+    box-shadow:0 2px 10px -6px rgba(90,60,180,.35);}
+  .chip.k1{background:var(--f-violet);border-color:#EADDFF;}
+  .chip.k2{background:var(--f-cyan);border-color:#C9EDF4;}
+  .chip.k3{background:var(--f-amber);border-color:#FBE3B8;}
+  .chip.k4{background:var(--f-emerald);border-color:#C6EFDD;}
+  .chip.k5{background:var(--f-rose);border-color:#FBCDD8;}
+
+  /* ── ОДНА шкала для всех кнопок страницы ────────────────
+     Аудит 09.08.2026 показал три разные высоты (52 / 54 / 78) и два разных
+     паддинга у четырёх кнопок. Кнопка на лендинге — это один объект с одними
+     размерами, где бы она ни стояла. Высота фиксируется min-height, а не
+     паддингом: иконка и перенос строки иначе двигают её на пиксели. */
+  .act{display:inline-flex;align-items:center;justify-content:center;gap:9px;
+    text-decoration:none;font-weight:700;font-size:16px;line-height:1.2;
+    min-height:54px;padding:0 26px;border-radius:14px;border:1px solid transparent;
+    text-align:center;
+    transition:transform .18s ease, box-shadow .18s ease, background .18s ease;}
+  .act:focus-visible{outline:3px solid var(--violet);outline-offset:3px;}
+  .act svg{flex:0 0 auto;}
+  .act-primary{background:linear-gradient(120deg,var(--violet),var(--pink));color:#fff;
+    box-shadow:0 12px 30px -14px rgba(190,60,150,.85);}
+  .act-primary:hover{transform:translateY(-2px);box-shadow:0 18px 38px -14px rgba(190,60,150,.95);}
+  .act-ghost{background:#fff;border-color:var(--line);color:var(--ink);}
+  .act-ghost:hover{transform:translateY(-2px);box-shadow:0 12px 26px -16px rgba(22,22,46,.5);}
+  /* На тёмном градиенте: белая — основная, прозрачная — вторичная. */
+  .act-light{background:#fff;color:var(--violet);border-color:#fff;}
+  .act-light:hover{transform:translateY(-2px);box-shadow:0 14px 30px -14px rgba(0,0,0,.5);}
+  .act-dim{background:rgba(20,10,40,.24);border-color:rgba(255,255,255,.30);color:#fff;}
+  .act-dim:hover{background:rgba(20,10,40,.36);transform:translateY(-2px);}
+
+  .cta{display:flex;flex-wrap:wrap;gap:11px;align-items:center;}
+  /* Телефон — вспомогательное действие, но кегль у него тот же: цифры,
+     которые набирают с экрана, мельчить нельзя. */
+  .cta .tel{font-variant-numeric:tabular-nums;}
+  @media (max-width:560px){
+    .cta{display:grid;grid-template-columns:1fr;gap:10px;}
+    .cta .act{width:100%;}
+  }
+
+  /* ── появление при прокрутке ───────────────────────── */
+  .rise{opacity:0;transform:translateY(22px);
+    transition:opacity .7s cubic-bezier(.2,.7,.3,1), transform .7s cubic-bezier(.2,.7,.3,1);}
+  .rise.in{opacity:1;transform:none;}
+  .slide:hover{box-shadow:0 1px 2px rgba(22,22,46,.04), 0 22px 54px -26px rgba(90,60,180,.30);}
+  .slide{transition:box-shadow .3s ease;}
+  .p, .col, .row, .mode, .tier{transition:transform .2s ease;}
+  .p:hover, .col:hover, .mode:hover, .tier:hover{transform:translateY(-3px);}
+
+  @media (prefers-reduced-motion: reduce){
+    .blob{animation:none;}
+    .hero h1 .grad{animation:none;}
+    .rise{opacity:1;transform:none;transition:none;}
+    .cta a:hover,.p:hover,.col:hover,.mode:hover,.tier:hover{transform:none;}
+  }
+
+
+  /* ── липкая кнопка связи ───────────────────────────────
+     Лендинг отличается от презентации тем, что действие доступно в любой точке
+     прокрутки, а не только в начале и в конце. Показываем только на узких
+     экранах: на компьютере страница обозрима, а полоса внизу мешала бы. */
+  .dock{position:fixed;left:0;right:0;bottom:0;z-index:30;
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+    background:rgba(252,251,255,.92);backdrop-filter:blur(10px);
+    border-top:1px solid var(--line);
+    transform:translateY(110%);transition:transform .28s cubic-bezier(.2,.7,.3,1);
+    display:none;}
+  .dock.show{transform:none;}
+  .dock .act{width:100%;}
+  @media (max-width:720px){
+    .dock{display:block;}
+    body{padding-bottom:84px;}
+  }
+  @media (prefers-reduced-motion: reduce){ .dock{transition:none;} }
+
+  /* ── контакты ──────────────────────────────────────── */
+  .contacts{display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:center;}
+  @media (max-width:860px){ .contacts{grid-template-columns:auto 1fr;} .contacts .links{grid-column:1/-1;} }
+  @media (max-width:460px){
+    .contacts{grid-template-columns:1fr;justify-items:stretch;}
+    .contacts .avatar{justify-self:start;}
+    .links{min-width:0;}
+  }
+  /* Круглый портрет. Пока фото нет — инициалы, замена в одну строку: подставить
+     data-URI в background-image у .avatar и убрать .avatar .ini. */
+  .avatar{width:104px;height:104px;border-radius:50%;flex:0 0 auto;
+    background:rgba(255,255,255,.22);background-size:cover;background-position:center 18%;
+    border:3px solid rgba(255,255,255,.9);box-shadow:0 10px 30px -12px rgba(0,0,0,.45);
+    display:grid;place-items:center;overflow:hidden;}
+  .avatar .ini{font-family:var(--display);font-weight:800;font-size:34px;color:#fff;letter-spacing:.02em;}
+  .avatar img{width:100%;height:100%;object-fit:cover;object-position:center 18%;display:block;}
+  .person .role{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;
+    text-transform:uppercase;color:rgba(255,255,255,.8);margin-bottom:7px;}
+  .person .name{font-family:var(--display);font-size:clamp(24px,3.4vw,34px);font-weight:800;
+    letter-spacing:-.022em;color:#fff;margin-bottom:4px;line-height:1.1;}
+  .person .pos{font-size:15px;color:rgba(255,255,255,.9);}
+  .links{display:flex;flex-direction:column;gap:10px;min-width:260px;}
+  .links .act{width:100%;}
+  .links .act:focus-visible{outline:3px solid #fff;outline-offset:3px;}
+
+  /* схема линии */
+  figure.line{margin:0 0 30px;}
+  figure.line svg{width:100%;max-width:100%;height:auto;display:block;color:var(--ink);}
+  figure.line figcaption{margin-top:12px;font-size:13.5px;color:var(--ink-soft);line-height:1.5;}
+  .sv-box{fill:#FDFCFF;stroke:currentColor;stroke-opacity:.22;}
+  .sv-fmt{fill:var(--f-cyan);stroke:#BEE9F2;}
+  .sv-gate{fill:url(#gateGrad);stroke:none;}
+  .sv-out{fill:var(--f-emerald);stroke:#C6EFDD;}
+  .sv-t{font-family:var(--display);font-size:13.5px;font-weight:750;fill:currentColor;}
+  .sv-s{font-size:11.5px;fill:currentColor;fill-opacity:.62;}
+  .sv-a{font-size:11px;fill:currentColor;fill-opacity:.55;font-family:var(--mono);}
+  .sv-w{font-family:var(--display);font-size:13.5px;font-weight:750;fill:#fff;}
+  .sv-ws{font-size:11.5px;fill:#fff;fill-opacity:.9;}
+  .sv-l{stroke:currentColor;stroke-opacity:.32;stroke-width:1.5;fill:none;}
+  .sv-group{fill:none;stroke:currentColor;stroke-opacity:.18;stroke-dasharray:5 5;}
+  .sv-gate-v{fill:url(#gateGradV);stroke:none;}
+  figure.line .line-tall{display:none;}
+  /* В вертикальной схеме поле уже (380 против 1020), значит на экране она
+     сжимается сильнее — кегль внутри viewBox поднимаем, чтобы после сжатия
+     подписи остались в читаемых 11–13 px, а не в восьми. */
+  .line-tall .sv-t{font-size:17.5px;}
+  .line-tall .sv-s{font-size:15px;}
+  .line-tall .sv-a{font-size:13.5px;}
+  .line-tall .sv-w{font-size:18px;}
+  .line-tall .sv-ws{font-size:15px;}
+  @media (max-width:760px){
+    figure.line .line-wide{display:none;}
+    figure.line .line-tall{display:block;}
+  }
+
+
+  /* производство */
+  .prod{display:grid;grid-template-columns:repeat(auto-fit,minmax(246px,1fr));gap:13px;}
+  .p{border-radius:16px;padding:19px 20px;border:1px solid var(--line);background:#FDFCFF;position:relative;overflow:hidden;}
+  .p::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:linear-gradient(180deg,var(--violet),var(--pink));}
+  .p h5{font-family:var(--display);font-size:18px;font-weight:750;margin:0 0 7px;letter-spacing:-.015em;}
+  .p .txt{font-size:14px;color:var(--ink-soft);line-height:1.5;margin-bottom:11px;}
+  .p .price{
+    display:inline-block;font-family:var(--mono);font-size:12.5px;font-weight:700;
+    background:var(--f-emerald);color:#047857;padding:5px 11px;border-radius:8px;
+  }
+  .p.hl::before{background:linear-gradient(180deg,var(--amber),var(--pink));}
+  .p.hl .price{background:var(--f-amber);color:#B45309;}
+
+  /* площадки */
+  .mx{display:grid;gap:9px;}
+  .row{display:grid;grid-template-columns:170px 128px 1fr;gap:14px;align-items:center;
+    padding:13px 16px;border-radius:13px;border:1px solid var(--line);background:#FDFCFF;}
+  .row .n{font-weight:680;font-size:15.5px;}
+  .row .w{font-size:13.5px;color:var(--ink-soft);line-height:1.42;}
+  .pill{display:inline-block;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:999px;white-space:nowrap;text-align:center;}
+  .ok{background:var(--emerald);color:#fff;}
+  .set{background:linear-gradient(120deg,var(--violet),var(--pink));color:#fff;}
+  .ext{background:var(--f-cyan);color:#0E7490;border:1px solid #BEE9F2;}
+  .row.is-ok{background:linear-gradient(96deg,#EAFBF3,#FDFCFF 55%);border-color:#C6EFDD;}
+  .row.is-set{background:linear-gradient(96deg,#F7F0FF,#FDFCFF 55%);border-color:#EADDFF;}
+
+  /* кабинет */
+  .app{display:grid;grid-template-columns:190px 1fr;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#fff;}
+  .nav{background:linear-gradient(170deg,#F7F2FF,#EEF8FB);padding:16px 12px;border-right:1px solid var(--line);}
+  .nav .brand{font-family:var(--display);font-weight:800;font-size:14px;margin-bottom:14px;padding-left:8px;}
+  /* Это МАКЕТ панели, а не навигация: пункты — span, не ссылки. Раньше стояли
+     <a href="#">, и нажатие выбрасывало читателя в начало страницы. */
+  .nav span{display:block;padding:8px 10px;border-radius:9px;font-size:13.5px;color:var(--ink-soft);margin-bottom:2px;}
+  .nav span.on{background:#fff;color:var(--violet);font-weight:680;box-shadow:0 1px 3px rgba(90,60,180,.12);}
+
+  /* Пояснения к разделам панели: что означает каждый. */
+  .rooms{display:grid;grid-template-columns:repeat(auto-fit,minmax(266px,1fr));gap:12px;}
+  .room{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:#FDFCFF;}
+  .room b{display:block;font-family:var(--display);font-size:16px;font-weight:750;margin-bottom:5px;}
+  .room span{display:block;font-size:14px;color:var(--ink-soft);line-height:1.5;}
+  .pane{padding:18px 20px 22px;}
+  .pane .ttl{font-family:var(--display);font-weight:750;font-size:17px;margin-bottom:13px;}
+  .item{border:1px solid var(--line);border-radius:13px;padding:14px 15px;margin-bottom:10px;background:#FDFCFF;}
+  .item .meta{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px;}
+  .item .h{font-weight:680;font-size:15px;line-height:1.3;margin-bottom:10px;}
+  .btns{display:flex;gap:7px;flex-wrap:wrap;}
+  .btn{font-size:12.5px;font-weight:650;padding:7px 13px;border-radius:9px;border:1px solid transparent;}
+  .btn-go{background:linear-gradient(120deg,var(--violet),var(--pink));color:#fff;}
+  .btn-alt{background:#fff;border-color:var(--line);color:var(--ink-soft);}
+  .strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:9px;margin-top:13px;}
+  .cell{border-radius:11px;padding:11px 13px;background:var(--f-emerald);border:1px solid #C6EFDD;}
+  .cell .cv{font-family:var(--mono);font-weight:700;font-size:17px;color:var(--emerald);font-variant-numeric:tabular-nums;}
+  .cell .cl{font-size:11.5px;color:var(--ink-soft);margin-top:2px;line-height:1.3;}
+  .cell.w{background:var(--f-amber);border-color:#FBE3B8;} .cell.w .cv{color:#B45309;}
+
+  /* этапы */
+  .steps{display:grid;gap:11px;}
+  .st{display:grid;grid-template-columns:34px 1fr;gap:15px;align-items:start;
+    padding:15px 17px;border-radius:14px;background:#FDFCFF;border:1px solid var(--line);}
+  .st .num{font-family:var(--mono);font-weight:700;font-size:13.5px;color:#fff;
+    background:linear-gradient(140deg,var(--violet),var(--pink));
+    width:30px;height:30px;border-radius:9px;display:grid;place-items:center;}
+  .st b{display:block;font-size:15.5px;font-weight:700;margin-bottom:3px;}
+  .st span{font-size:13.5px;color:var(--ink-soft);line-height:1.45;}
+
+  .band{
+    margin-top:24px;border-radius:18px;padding:26px 28px;
+    background:linear-gradient(122deg,var(--violet),var(--pink) 62%,var(--amber));
+    color:#fff;
+  }
+  .band h4{color:rgba(255,255,255,.82);margin:0 0 10px;}
+  .band .big{font-family:var(--display);font-weight:800;font-size:clamp(21px,3.1vw,30px);letter-spacing:-.02em;line-height:1.18;margin:0 0 10px;text-wrap:balance;}
+  .band p{margin:0;font-size:15px;color:rgba(255,255,255,.94);max-width:70ch;line-height:1.55;}
+
+  .note{margin-top:22px;padding:15px 18px;border-radius:13px;background:var(--f-violet);
+    border:1px solid #EADDFF;font-size:14px;color:#5B21B6;line-height:1.55;}
+  .note b{color:#4C1D95;}
+
+  /* ── два режима работы ─────────────────────────────────
+     Режимы равноправны, поэтому карточки одинаковые по весу и различаются
+     только цветом: фиолетовый — линия, бирюзовый — ручной. Один и тот же
+     цветовой код повторяется в блоке стоимости, чтобы читатель не сверял
+     названия. */
+  .modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;}
+  .mode{border-radius:18px;padding:22px;border:1px solid var(--line);background:#FDFCFF;}
+  .mode.auto{background:linear-gradient(152deg,var(--f-violet),#FDFCFF 60%);border-color:#EADDFF;}
+  .mode.hand{background:linear-gradient(152deg,var(--f-cyan),#FDFCFF 60%);border-color:#C9EDF4;}
+  .tag{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:700;
+    letter-spacing:.1em;text-transform:uppercase;padding:5px 11px;border-radius:999px;margin-bottom:11px;}
+  .t-auto{background:var(--violet);color:#fff;}
+  .t-hand{background:var(--cyan);color:#fff;}
+  .mode h5{font-family:var(--display);font-size:19px;font-weight:750;margin:0 0 9px;letter-spacing:-.015em;}
+  .mode p{margin:0;font-size:14.5px;color:var(--ink-soft);line-height:1.55;}
+  /* Цепочка шагов режима — обычные блоки, а не SVG: правится текстом и сама
+     переносится на узком экране, без второй вертикальной копии. */
+  /* Цепочка шагов режима — всегда сверху вниз, а не в строку. Замер: строке
+     нужно 566 px, а карточка режима даёт 442 даже на широком экране, то есть
+     цепочка всё равно рвалась бы — с висящей стрелкой в конце строки. Вниз
+     она читается как процесс и одинакова на всех экранах. */
+  .flow{display:flex;flex-direction:column;align-items:stretch;gap:3px;margin:15px 0 13px;}
+  .flow i{font-style:normal;font-size:12.5px;font-weight:650;background:#fff;
+    border:1px solid var(--line);border-radius:9px;padding:7px 10px;text-align:center;}
+  .flow u{display:block;text-decoration:none;color:var(--ink-faint);font-size:13px;
+    text-align:center;line-height:1;transform:rotate(90deg);}
+  .mode .who{font-size:13.5px;color:var(--ink-soft);line-height:1.5;
+    border-top:1px solid rgba(22,22,46,.08);padding-top:11px;}
+  .mode .who b{color:var(--ink);}
+
+  /* ── стоимость ─────────────────────────────────────── */
+  .tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(288px,1fr));gap:14px;}
+  .tier{border-radius:18px;padding:24px;border:1px solid var(--line);background:#FDFCFF;}
+  .tier.hand{background:linear-gradient(152deg,var(--f-cyan),#FDFCFF 58%);border-color:#C9EDF4;}
+  .tier.auto{background:linear-gradient(152deg,var(--f-violet),#FDFCFF 58%);border-color:#EADDFF;}
+  .tier .sum{font-family:var(--mono);font-weight:700;letter-spacing:-.02em;
+    font-size:clamp(26px,4.2vw,38px);font-variant-numeric:tabular-nums;line-height:1.1;}
+  .tier.hand .sum{color:var(--cyan);}
+  .tier.auto .sum{color:var(--violet);}
+  .tier .sub-sum{font-size:13px;color:var(--ink-soft);margin:6px 0 15px;}
+  .tier ul{padding-left:18px;font-size:14px;color:var(--ink-soft);line-height:1.5;}
+  .tier li{margin-bottom:7px;}
+  .tier li b{color:var(--ink);font-weight:700;}
+  .tier .plus{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--ink-faint);margin:0 0 9px;}
+  /* Выделенная возможность внутри тарифа — тот же язык, что у крупных выносок
+     .band, только размером с карточку. */
+  .tier .star{border-radius:14px;padding:15px 16px;margin:0 0 16px;
+    background:linear-gradient(122deg,var(--violet),var(--pink) 68%,var(--amber));color:#fff;}
+  .tier .star .lbl{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.1em;
+    text-transform:uppercase;color:rgba(255,255,255,.82);margin-bottom:6px;}
+  .tier .star b{display:block;font-family:var(--display);font-size:16.5px;font-weight:800;
+    letter-spacing:-.015em;line-height:1.2;margin-bottom:6px;}
+  .tier .star span{display:block;font-size:13.5px;line-height:1.5;color:rgba(255,255,255,.95);}
+
+  /* Кнопка сборки плана в макете панели — действие уровня всей панели,
+     поэтому во всю ширину и отдельной полосой под очередью. */
+  .plan{margin-top:13px;padding:14px 15px;border-radius:13px;
+    background:linear-gradient(122deg,#F7F0FF,#FFF6E8);border:1px solid #EADDFF;}
+  .plan .btn{display:inline-block;margin-bottom:8px;}
+  .plan .hint{font-size:12.5px;color:var(--ink-soft);line-height:1.45;}
+
+  /* ── сравнение со знакомыми способами работы ───────────
+     Главное возражение к цене — «то же самое есть в чате за двадцать долларов».
+     Отвечаем не спором, а раскладкой: что каждый способ даёт и что при нём
+     остаётся на человеке. Третья карточка выделена как наш вариант. */
+  .vs{display:grid;grid-template-columns:repeat(auto-fit,minmax(252px,1fr));gap:13px;}
+  .vs .o{border-radius:16px;padding:19px 20px;border:1px solid var(--line);background:#FDFCFF;
+    transition:transform .2s ease;}
+  .vs .o:hover{transform:translateY(-3px);}
+  .vs .o.win{background:linear-gradient(152deg,#F7F0FF,#FDFCFF 58%);border-color:#EADDFF;
+    box-shadow:0 12px 34px -22px rgba(120,60,200,.6);}
+  .vs .o h5{font-family:var(--display);font-size:17px;font-weight:750;margin:0 0 3px;letter-spacing:-.015em;}
+  .vs .o .cost{font-family:var(--mono);font-size:12px;color:var(--ink-faint);margin-bottom:12px;}
+  .vs .o.win .cost{color:var(--violet);font-weight:700;}
+  .vs .o .k{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--ink-faint);margin:12px 0 4px;}
+  .vs .o .k:first-of-type{margin-top:0;}
+  .vs .o .t{font-size:13.5px;color:var(--ink-soft);line-height:1.5;}
+  .vs .o.win .t{color:var(--ink);}
+  @media (prefers-reduced-motion: reduce){ .vs .o:hover{transform:none;} }
+
+
+  /* Кружок с инициалами вместо портрета: пока фото не прислали, блок
+     контактов не должен показывать сломанную картинку. */
+  .ph-stub{width:150px;height:150px;border-radius:50%;display:grid;place-items:center;
+    font-family:var(--display);font-size:46px;font-weight:800;color:#6D28D9;
+    background:linear-gradient(140deg,#EADDFF,#FBE3B8);}
+  footer{margin-top:52px;padding-top:22px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-faint);line-height:1.6;}
+
+  @media (max-width:720px){
+    .row{grid-template-columns:1fr;gap:7px;}
+    .row .pill{justify-self:start;}
+    .app{grid-template-columns:1fr;}
+    /* Не горизонтальный свайп: на телефоне список разделов идёт вниз двумя
+       колонками. Боковая прокрутка внутри страницы прячет половину пунктов и
+       читается как поломка. */
+    .nav{display:grid;grid-template-columns:1fr 1fr;gap:6px;
+      border-right:none;border-bottom:1px solid var(--line);}
+    .nav .brand{grid-column:1/-1;}
+    .nav span{margin-bottom:0;}
+  }
+</style>
+<style>
+  html{-webkit-text-size-adjust:100%;}
+  img,svg{max-width:100%;}
+  h1,h2,h3,h4,h5,p,figure{margin:0;}
+  ul{margin:0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="blob blob1"></div>
+    <div class="blob blob2"></div>
+    <div class="blob blob3"></div>
+    <div class="inner">
+      <div class="stamp rise">Коммерческое предложение</div>
+      <h1 class="rise">Контент выходит сам —<br><span class="grad">или ровно так, как скажете вы</span></h1>
+      <p class="sub rise">Отдельная система под ваш бизнес: пишем её под ваши задачи и разворачиваем на вашем сервере в России. Два режима на выбор — линия сама готовит и выпускает поток публикаций, или вы создаёте текст, картинку и ролик по запросу и публикуете вручную.</p>
+      <div class="chips rise">
+        <span class="chip k1">Тексты</span>
+        <span class="chip k2">Обложки</span>
+        <span class="chip k3">Карусели</span>
+        <span class="chip k4">Ролики 9:16</span>
+        <span class="chip k5">Ведущий в кадре</span>
+      </div>
+      <div class="cta rise">
+        <a class="act act-primary" href="{{TG_URL}}" target="_blank" rel="noopener">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.24 1.07-.88 1.33-1.78.83l-4.92-3.63-2.37 2.29c-.26.26-.48.48-.99.48l.35-5.02 9.13-8.25c.4-.35-.09-.55-.62-.2L6.22 12.02 1.36 10.5c-1.06-.33-1.08-1.06.22-1.57L20.53 2.7c.88-.33 1.65.2 1.37 1.6Z"/></svg>
+          Написать в Telegram
+        </a>
+        <a class="act act-ghost tel" href="tel:{{PHONE_HREF}}">{{PHONE_LABEL}}</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="slide">
+    <div class="slide-no">два способа работать</div>
+    <h3>Режим выбираете <span class="grad">вы, а не мы</span></h3>
+    <p class="lede">Система одна, пользоваться ей можно двумя способами. Форматы, панель, площадки и ваш сервер общие — разница только в том, кто начинает работу: линия или вы. Начать можно с любого режима и перейти на другой без новой разработки.</p>
+
+    <div class="modes">
+      <div class="mode auto">
+        <div class="tag t-auto">Режим 1 · Линия</div>
+        <h5>Работает сама, вы одобряете</h5>
+        <p>Система следит за лентами вашей отрасли, отбирает темы, пишет материал, рисует обложку и собирает ролик. Готовое приходит вам карточкой в рабочую группу: нажимаете «Одобрить» — и оно уходит во все подключённые площадки по расписанию.</p>
+        <div class="flow">
+          <i>линия нашла тему</i><u>→</u><i>собрала материал</i><u>→</u><i>вы одобрили</i><u>→</u><i>вышло везде</i>
+        </div>
+        <div class="who"><b>Кому подходит:</b> тем, кому нужен постоянный поток и кто готов отдать машине поиск тем. Участие человека — минуты в день.</div>
+      </div>
+
+      <div class="mode hand">
+        <div class="tag t-hand">Режим 2 · Ручной</div>
+        <h5>Начинаете вы, система исполняет</h5>
+        <p>Привычное окно диалога. Вы пишете, что нужно — «пост про новый тариф», «карусель из этого документа», «ролик на 30 секунд», — и выбираете формат: текст, изображение или видео. Результат появляется сразу, правите его тут же и сами решаете, публиковать ли и куда. А если не знаете, о чём писать, — одна кнопка собирает контент-план на месяц.</p>
+        <div class="flow">
+          <i>вы дали запрос</i><u>→</u><i>получили материал</i><u>→</u><i>поправили</i><u>→</u><i>опубликовали сами</i>
+        </div>
+        <div class="who"><b>Кому подходит:</b> тем, кто не готов отдавать соцсети под автоматику. Система ничего не ищет и никуда не публикует, пока вы не скажете, — полный контроль остаётся у вас.</div>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>Режимы не исключают друг друга.</b> Можно включить ручной сейчас, а линию — когда убедитесь, что материалы попадают в тон. Можно держать оба: линия ведёт ежедневный поток, срочное и нестандартное вы делаете руками. Переключение — настройка в панели, а не новый проект.
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">чем это отличается от чата</div>
+    <h3>Система уже знает <span class="grad">ваш бизнес</span></h3>
+    <p class="lede">В чате вы каждый раз объясняете заново: кто вы, что продаёте, каким тоном говорите, как должна выглядеть картинка. Здесь это загружено один раз — при настройке. Дальше система работает, зная ваши продукты, цены, кейсы и фирменное оформление, и пересказывать их в каждом запросе не нужно.</p>
+
+    <div class="cols">
+      <div class="col a">
+        <div class="cap">База знаний</div>
+        <h5>Всё о вас — внутри</h5>
+        <p>Продукты и услуги, прайсы, кейсы, частые возражения, регламенты, презентации, документы. Загружаем при настройке и пополняем по ходу работы. Система опирается на ваши материалы, а не сочиняет правдоподобное.</p>
+      </div>
+      <div class="col b">
+        <div class="cap">Голос</div>
+        <h5>Ваш тон, а не общий</h5>
+        <p>Как вы разговариваете с клиентом, какие слова используете и каких не терпите. Чёрный список формулировок. Настроили один раз — соблюдается в каждом материале, а не пока вы помните напомнить.</p>
+      </div>
+      <div class="col c">
+        <div class="cap">Фирменный стиль</div>
+        <h5>Оформление зашито внутрь</h5>
+        <p>Палитра, шрифты, логотип, правила вёрстки слайдов и обложек. Картинка выходит в вашем стиле не потому, что вы удачно описали его в запросе, а потому что иначе система не умеет.</p>
+      </div>
+      <div class="col d">
+        <div class="cap">Режимы</div>
+        <h5>Кнопка вместо промпта</h5>
+        <p>Готовые сценарии под ваши задачи: пост, карусель, ролик, обложка, презентация, коммерческое предложение, документ. Внутри каждого уже прописано, как это делается правильно именно у вас.</p>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>Почему это не то же самое, что чат с подпиской.</b> Чат — это доступ к модели: он не помнит ваш бренд между сессиями, не знает ваш прайс, не умеет ваш фирменный стиль и ничего никуда не публикует. Каждый материал вы собираете сами и заново объясняете контекст. Здесь контекст — часть системы, а не часть запроса. Это разница между инструментом и рабочим местом, настроенным под вас.
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">что вы покупаете</div>
+    <h3>Не подписку, а <span class="grad">систему под себя</span></h3>
+    <p class="lede">Мы не выдаём доступ к общему сервису. Мы разбираемся в вашем бизнесе, пишем систему под ваши задачи и разворачиваем отдельный экземпляр: свой бот, свой канал, своя витрина, своя база — на вашем сервере в России. Вы получаете приложение, которым пользуетесь вы и ваша команда, и наше сопровождение каждый месяц.</p>
+
+    <div class="cols">
+      <div class="col a">
+        <div class="cap">Под вас</div>
+        <h5>Разработка, а не шаблон</h5>
+        <p>Сначала погружаемся в ваш бизнес и ваши материалы, потом собираем систему под ваши задачи: источники отрасли, рубрики, тон голоса, фирменные обложки, расписание. Типовых сборок не отдаём — у каждого клиента свой продукт.</p>
+      </div>
+      <div class="col b">
+        <div class="cap">Ваша команда</div>
+        <h5>Панель управления</h5>
+        <p>Очередь на одобрение, создание по запросу, контент-план, источники, расходы, роли. Четыре уровня доступа, приглашение по ссылке. Каждое поле подписано по-русски.</p>
+      </div>
+      <div class="col c">
+        <div class="cap">Каждый месяц</div>
+        <h5>Сопровождение</h5>
+        <p>Держим ваш сервер, домен, базу и бота. Оплачиваем работу моделей со своего ключа. Чиним, когда площадки меняют правила, — для вас это остаётся незаметным.</p>
+      </div>
+      <div class="col d">
+        <div class="cap">Всегда</div>
+        <h5>Решает человек</h5>
+        <p>В режиме линии ни одна публикация не выходит без подтверждения вашего сотрудника. В ручном режиме система вообще ничего не делает, пока вы не попросите. Кнопка «опубликовать» в обоих случаях за вами.</p>
+      </div>
+    </div>
+
+    <div class="band">
+      <h4>Что это меняет в вашей работе</h4>
+      <p class="big">Раньше на четыре публикации в день уходил рабочий день сотрудника. Теперь — время прочитать и нажать кнопку.</p>
+      <p>Посчитайте свой день: найти тему, написать текст, сделать картинку, нарезать вертикальный ролик, разложить это по площадкам и не забыть про расписание. Ваш специалист по контенту перестаёт быть машинисткой ленты — у него освобождается время на кейсы, смыслы и разговор с аудиторией, то есть на то, что машина не сделает никогда.</p>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">что вы получаете на выходе</div>
+    <h3>Четыре формата <span class="grad">из одного материала</span></h3>
+    <p class="lede">Схема ниже — режим линии: одна тема разворачивается в четыре формата и проходит через одно решение человека. В ручном режиме форматы те же самые, но собираются поштучно и по вашему запросу. Любой формат включается и выключается в настройках: система собирается под то, где живёт ваша аудитория.</p>
+
+
+    <figure class="line">
+      <svg class="line-wide" viewBox="0 0 1020 440" role="img" aria-label="Схема производственной линии: источники, отбор, материал, четыре формата, одобрение человеком, публикация в площадки">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor" fill-opacity=".45"/>
+          </marker>
+          <linearGradient id="gateGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#7C3AED"/><stop offset="100%" stop-color="#EC4899"/>
+          </linearGradient>
+        </defs>
+
+        <rect class="sv-box" x="16" y="186" width="120" height="68" rx="11"/>
+        <text class="sv-t" x="76" y="214" text-anchor="middle">Источники</text>
+        <text class="sv-s" x="76" y="232" text-anchor="middle">ленты вашей отрасли</text>
+
+        <line class="sv-l" x1="136" y1="220" x2="170" y2="220" marker-end="url(#ar)"/>
+        <text class="sv-a" x="153" y="208" text-anchor="middle">5 мин</text>
+
+        <rect class="sv-box" x="176" y="186" width="112" height="68" rx="11"/>
+        <text class="sv-t" x="232" y="214" text-anchor="middle">Отбор</text>
+        <text class="sv-s" x="232" y="232" text-anchor="middle">9 из 10 отсеивает</text>
+
+        <line class="sv-l" x1="288" y1="220" x2="322" y2="220" marker-end="url(#ar)"/>
+
+        <rect class="sv-box" x="328" y="186" width="120" height="68" rx="11"/>
+        <text class="sv-t" x="388" y="214" text-anchor="middle">Материал</text>
+        <text class="sv-s" x="388" y="232" text-anchor="middle">текст и обложка</text>
+
+        <path class="sv-l" d="M448,220 C468,220 468,109 482,109" marker-end="url(#ar)"/>
+        <path class="sv-l" d="M448,220 C468,220 468,183 482,183" marker-end="url(#ar)"/>
+        <path class="sv-l" d="M448,220 C468,220 468,257 482,257" marker-end="url(#ar)"/>
+        <path class="sv-l" d="M448,220 C468,220 468,331 482,331" marker-end="url(#ar)"/>
+        <text class="sv-a" x="466" y="30" text-anchor="middle">один материал — четыре формата</text>
+
+        <rect class="sv-fmt" x="488" y="78" width="164" height="62" rx="11"/>
+        <text class="sv-t" x="570" y="104" text-anchor="middle">Пост</text>
+        <text class="sv-s" x="570" y="122" text-anchor="middle">текст с обложкой</text>
+
+        <rect class="sv-fmt" x="488" y="152" width="164" height="62" rx="11"/>
+        <text class="sv-t" x="570" y="178" text-anchor="middle">Карусель</text>
+        <text class="sv-s" x="570" y="196" text-anchor="middle">до 10 слайдов</text>
+
+        <rect class="sv-fmt" x="488" y="226" width="164" height="62" rx="11"/>
+        <text class="sv-t" x="570" y="252" text-anchor="middle">Ролик</text>
+        <text class="sv-s" x="570" y="270" text-anchor="middle">9:16, озвучка, субтитры</text>
+
+        <rect class="sv-fmt" x="488" y="300" width="164" height="62" rx="11"/>
+        <text class="sv-t" x="570" y="326" text-anchor="middle">Ролик с ведущим</text>
+        <text class="sv-s" x="570" y="344" text-anchor="middle">персонаж говорит текст</text>
+
+        <path class="sv-l" d="M652,109 C676,109 676,220 686,220" marker-end="url(#ar)"/>
+        <path class="sv-l" d="M652,183 C676,183 676,220 686,220" marker-end="url(#ar)"/>
+        <path class="sv-l" d="M652,257 C676,257 676,220 686,220" marker-end="url(#ar)"/>
+        <path class="sv-l" d="M652,331 C676,331 676,220 686,220" marker-end="url(#ar)"/>
+
+        <rect class="sv-gate" x="692" y="176" width="126" height="88" rx="13"/>
+        <text class="sv-w" x="755" y="208" text-anchor="middle">Одобрение</text>
+        <text class="sv-ws" x="755" y="226" text-anchor="middle">решает человек</text>
+        <text class="sv-ws" x="755" y="243" text-anchor="middle">из вашей команды</text>
+
+        <line class="sv-l" x1="818" y1="220" x2="850" y2="220" marker-end="url(#ar)"/>
+        <text class="sv-a" x="834" y="208" text-anchor="middle">слоты</text>
+
+        <rect class="sv-out" x="856" y="140" width="148" height="160" rx="11"/>
+        <text class="sv-t" x="930" y="168" text-anchor="middle">Площадки</text>
+        <text class="sv-s" x="930" y="192" text-anchor="middle">Telegram</text>
+        <text class="sv-s" x="930" y="212" text-anchor="middle">Instagram и Threads</text>
+        <text class="sv-s" x="930" y="232" text-anchor="middle">ВКонтакте</text>
+        <text class="sv-s" x="930" y="252" text-anchor="middle">Дзен</text>
+        <text class="sv-s" x="930" y="272" text-anchor="middle">витрина Mini App</text>
+        <text class="sv-a" x="930" y="292" text-anchor="middle">+ Клипы и Shorts</text>
+      </svg>
+      <svg class="line-tall" viewBox="0 0 380 772" role="img" aria-label="Схема производственной линии: источники, отбор, материал, четыре формата, одобрение человеком, публикация в площадки">
+        <defs>
+          <marker id="arv" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor" fill-opacity=".45"/>
+          </marker>
+          <linearGradient id="gateGradV" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#7C3AED"/><stop offset="100%" stop-color="#EC4899"/>
+          </linearGradient>
+        </defs>
+
+        <rect class="sv-box" x="20" y="8" width="340" height="58" rx="12"/>
+        <text class="sv-t" x="190" y="34" text-anchor="middle">Источники</text>
+        <text class="sv-s" x="190" y="53" text-anchor="middle">ленты вашей отрасли, каждые 5 минут</text>
+        <line class="sv-l" x1="190" y1="66" x2="190" y2="86" marker-end="url(#arv)"/>
+
+        <rect class="sv-box" x="20" y="92" width="340" height="58" rx="12"/>
+        <text class="sv-t" x="190" y="118" text-anchor="middle">Отбор</text>
+        <text class="sv-s" x="190" y="137" text-anchor="middle">отсеивает 9 тем из 10</text>
+        <line class="sv-l" x1="190" y1="150" x2="190" y2="170" marker-end="url(#arv)"/>
+
+        <rect class="sv-box" x="20" y="176" width="340" height="58" rx="12"/>
+        <text class="sv-t" x="190" y="202" text-anchor="middle">Материал</text>
+        <text class="sv-s" x="190" y="221" text-anchor="middle">текст и фирменная обложка</text>
+        <line class="sv-l" x1="190" y1="234" x2="190" y2="252" marker-end="url(#arv)"/>
+
+        <rect class="sv-group" x="20" y="258" width="340" height="244" rx="14"/>
+        <text class="sv-a" x="190" y="278" text-anchor="middle">один материал — четыре формата</text>
+        <rect class="sv-fmt" x="32" y="288" width="316" height="46" rx="10"/>
+        <text class="sv-t" x="190" y="317" text-anchor="middle">Пост — текст с обложкой</text>
+        <rect class="sv-fmt" x="32" y="342" width="316" height="46" rx="10"/>
+        <text class="sv-t" x="190" y="371" text-anchor="middle">Карусель — до 10 слайдов</text>
+        <rect class="sv-fmt" x="32" y="396" width="316" height="46" rx="10"/>
+        <text class="sv-t" x="190" y="425" text-anchor="middle">Ролик 9:16 с озвучкой</text>
+        <rect class="sv-fmt" x="32" y="450" width="316" height="46" rx="10"/>
+        <text class="sv-t" x="190" y="479" text-anchor="middle">Ролик с ведущим в кадре</text>
+        <line class="sv-l" x1="190" y1="502" x2="190" y2="520" marker-end="url(#arv)"/>
+
+        <rect class="sv-gate-v" x="20" y="526" width="340" height="70" rx="14"/>
+        <text class="sv-w" x="190" y="556" text-anchor="middle">Одобрение</text>
+        <text class="sv-ws" x="190" y="577" text-anchor="middle">решает человек из вашей команды</text>
+        <line class="sv-l" x1="190" y1="596" x2="190" y2="614" marker-end="url(#arv)"/>
+
+        <rect class="sv-out" x="20" y="620" width="340" height="144" rx="12"/>
+        <text class="sv-t" x="190" y="648" text-anchor="middle">Площадки</text>
+        <text class="sv-s" x="190" y="672" text-anchor="middle">Telegram · витрина Mini App</text>
+        <text class="sv-s" x="190" y="694" text-anchor="middle">Instagram и Threads</text>
+        <text class="sv-s" x="190" y="716" text-anchor="middle">ВКонтакте · Дзен</text>
+        <text class="sv-a" x="190" y="742" text-anchor="middle">+ Клипы и Shorts</text>
+      </svg>
+      <figcaption>Линия берёт тему один раз и разворачивает её в четыре формата. Все они проходят через одно решение человека — и только после него уходят во все подключённые площадки по расписанию. В ручном режиме первый шаг делаете вы: вместо источников и отбора — ваш запрос, вместо расписания — ваша кнопка.</figcaption>
+    </figure>
+
+    <div class="prod">
+      <div class="p">
+        <h5>Текст</h5>
+        <div class="txt">Отобранная тема, написанная в вашем формате: цифры с источниками, без штампов и хайпа. 250–300 слов, чтение за полминуты.</div>
+        <span class="price">базовый формат линии</span>
+      </div>
+      <div class="p">
+        <h5>Фирменная обложка</h5>
+        <div class="txt">Брендовая картинка с заголовком, нарисованная под материал. Не сток: каждая уникальна и сделана под ваш стиль.</div>
+        <span class="price">к каждому материалу</span>
+      </div>
+      <div class="p">
+        <h5>Карусель</h5>
+        <div class="txt">Пост из 2–10 слайдов, который листают пальцем: разбор по шагам, чек-лист, сравнение до и после. Текст на слайдах рисуем кодом — цифры и знаки всегда точные.</div>
+        <span class="price">подключаемый формат</span>
+      </div>
+      <div class="p hl">
+        <h5>Ролик без ведущего</h5>
+        <div class="txt">20–60 секунд 9:16: брендовые кадры с движением камеры, озвучка на русском, субтитры в кадр. Дешёвый ежедневный формат для Клипов, Reels и Shorts.</div>
+        <span class="price">подключаемый формат</span>
+      </div>
+      <div class="p hl">
+        <h5>Ролик с ведущим</h5>
+        <div class="txt">Ведущий на экране за 30 секунд проговаривает суть материала по-русски. Нарисованный персонаж вашего бренда, а не съёмка: не нужны камера, студия и свет, персонаж не болеет, не увольняется и выглядит одинаково во всех выпусках.</div>
+        <span class="price">подключаемый формат</span>
+      </div>
+      <div class="p">
+        <h5>Витрина в Telegram</h5>
+        <div class="txt">Лента и читалка на вашем домене внутри Telegram. Открывается из поста в один тап, внизу — кнопка заявки на ваш бот.</div>
+        <span class="price">входит в поставку</span>
+      </div>
+    </div>
+
+    <div class="figs">
+      <div class="fig v3"><div class="v">120</div><div class="l">материалов в месяц при четырёх в день</div></div>
+      <div class="fig v4"><div class="v">4</div><div class="l">формата из одного материала, без доплаты за переупаковку</div></div>
+      <div class="fig"><div class="v">9:16</div><div class="l">вертикаль под Клипы, Reels и Shorts из коробки</div></div>
+      <div class="fig v2"><div class="v">1</div><div class="l">кнопка на материал — одобряете один раз, уходит везде</div></div>
+    </div>
+
+    <div class="note">
+      <b>Как работает видео.</b> Ролики считаются по факту выпуска — не получившиеся вам не выставляются. Формат подключается и отключается в настройках: можно ставить ролик только в один слот из четырёх, а остальные оставлять текстовыми. Ролик готовится к вашей проверке за несколько минут после одобрения темы и, как и текст, не уходит в канал без нажатия редактора. В ручном режиме тот же ролик собирается по вашему запросу, когда он вам понадобился, — без расписания и без очереди.<br><br>Ведущий — нарисованный персонаж, а не реальный человек: персональных данных он не затрагивает, согласий не требует. Если захотите ведущего со своим лицом, это отдельная опция с письменным согласием сотрудника.
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">где это выходит</div>
+    <h3>Площадки, <span class="grad">которые мы ведём</span></h3>
+    <p class="lede">Один материал — несколько выходов, из одной очереди и с одним подтверждением. В ручном режиме те же площадки, но материал уходит только когда вы нажмёте: по одной публикации, туда, куда решите. Каналы остаются вашими — вы подключаете их сами из панели и в любой момент отключаете.</p>
+
+    <div class="mx">
+      <div class="row is-ok"><div class="n">Telegram — канал</div><span class="pill ok">в базовой поставке</span><div class="w">Посты с обложкой и форматированием, четыре выхода в день по вашему расписанию</div></div>
+      <div class="row is-ok"><div class="n">Витрина Mini App</div><span class="pill ok">в базовой поставке</span><div class="w">Лента и читалка на вашем домене прямо в Telegram, с кнопкой заявки</div></div>
+      <div class="row is-ok"><div class="n">Дзен</div><span class="pill ok">в базовой поставке</span><div class="w">Подхватывает те же публикации из канала — дополнительный охват без дополнительных затрат</div></div>
+      <div class="row is-set"><div class="n">Instagram</div><span class="pill set">настраиваем под вас</span><div class="w">Лента, карусели до 10 карточек, Reels и Stories по расписанию. Подключение — вход через Instagram, профессиональный аккаунт бесплатно переключается в настройках</div></div>
+      <div class="row is-set"><div class="n">Threads</div><span class="pill set">настраиваем под вас</span><div class="w">Тем же подключением, что и Instagram: до 250 публикаций в сутки, карусели до 20 элементов</div></div>
+      <div class="row is-set"><div class="n">ВКонтакте</div><span class="pill set">настраиваем под вас</span><div class="w">Публикации в ленту сообщества по тем же слотам, ключ выдаёт ваше сообщество</div></div>
+      <div class="row is-set"><div class="n">Карусели в Telegram</div><span class="pill set">настраиваем под вас</span><div class="w">Альбом из нескольких слайдов вместо одной картинки</div></div>
+      <div class="row"><div class="n">VK Клипы и Видео</div><span class="pill ext">по заявке площадки</span><div class="w">Ролики мы производим; право на программную загрузку видео выдаёт сама VK по заявке — дату одобрения назначаем не мы</div></div>
+      <div class="row"><div class="n">YouTube Shorts</div><span class="pill ext">по заявке площадки</span><div class="w">Тот же ролик уходит в Shorts после подтверждения доступа Google</div></div>
+    </div>
+
+    <div class="note">
+      <b>Почему мы честны про две последние строки.</b> Всё, что помечено «настраиваем под вас», зависит только от нас и входит в настройку. Для VK Видео и YouTube требуется разрешение самой площадки — мы подаём заявку и ведём её, но дату одобрения назначает не исполнитель. Мы предпочитаем сказать это заранее, чем сдвигать сроки потом.
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">как вы этим управляете</div>
+    <h3>Панель, в которой <span class="grad">решаете вы</span></h3>
+    <p class="lede">В режиме линии материал приходит карточкой в вашу рабочую группу в Telegram и ждёт в панели: одна кнопка — и он уходит во все подключённые площадки. В ручном режиме вы начинаете с раздела «Создать»: пишете запрос, выбираете формат и получаете результат в том же окне. А если не знаете, с чего начать, — собираете контент-план на месяц одним нажатием.</p>
+
+    <div class="app">
+      <nav class="nav">
+        <div class="brand">Ваш контент-завод</div>
+        <span class="on">Очередь</span>
+        <span>Создать</span>
+        <span>Контент-план</span>
+        <span>Каналы</span>
+        <span>Источники</span>
+        <span>Рубрики</span>
+        <span>Расходы</span>
+        <span>Команда</span>
+      </nav>
+      <div class="pane">
+        <div class="ttl">Ждут вашего решения — 3</div>
+        <div class="item">
+          <div class="meta">Кейсы · сегодня в 15:30 · канал, ВКонтакте, Instagram</div>
+          <div class="h">Склад считает остатки сам: WMS с ИИ сняла ручную сверку</div>
+          <div class="btns">
+            <span class="btn btn-go">Одобрить</span>
+            <span class="btn btn-alt">Перерисовать обложку</span>
+            <span class="btn btn-alt">Переписать</span>
+            <span class="btn btn-alt">Сделать роликом</span>
+          </div>
+        </div>
+        <div class="item">
+          <div class="meta">Практика · сегодня в 18:30 · карусель, 6 слайдов</div>
+          <div class="h">Пилот дата-агента: пошаговая методика для отдела продаж</div>
+          <div class="btns">
+            <span class="btn btn-go">Одобрить</span>
+            <span class="btn btn-alt">Посмотреть слайды</span>
+            <span class="btn btn-alt">Переписать</span>
+          </div>
+        </div>
+        <div class="plan">
+          <span class="btn btn-go">Собрать контент-план на месяц</span>
+          <div class="hint">30 тем с датами и форматами — из того, что уже сработало у вас, и из повестки вашей отрасли. Дальше: делать по одному вручную или включить автовыход.</div>
+        </div>
+
+        <div class="strip">
+          <div class="cell"><div class="cv">36</div><div class="cl">материалов за месяц</div></div>
+          <div class="cell"><div class="cv">8</div><div class="cl">роликов выпущено</div></div>
+          <div class="cell w"><div class="cv">5</div><div class="cl">площадок подключено</div></div>
+          <div class="cell"><div class="cv">4</div><div class="cl">человека в команде</div></div>
+        </div>
+      </div>
+    </div>
+
+    <h4>Что в каждом разделе</h4>
+    <div class="rooms">
+      <div class="room"><b>Очередь</b><span>Материалы, которые ждут вашего решения. Видно тему, слот выхода и площадки. Здесь же кнопки: одобрить, перерисовать обложку, переписать текст.</span></div>
+      <div class="room"><b>Создать</b><span>Ручной режим. Окно запроса: опишите, что нужно, выберите текст, изображение или видео — и получите результат сразу. Отсюда же правите его и публикуете вручную в выбранные площадки.</span></div>
+      <div class="room"><b>Контент-план</b><span>Кнопка «собрать план на месяц» и календарь того, что получилось: тема, дата, формат. Материал можно перенести на другой день или слот, заменить или убрать. Отсюда же включается автовыход по плану — или не включается, и тогда вы делаете темы по одной.</span></div>
+      <div class="room"><b>Каналы</b><span>Ваши площадки: Telegram, ВКонтакте, Instagram, Threads. Подключаются и отключаются здесь же, доступы остаются вашими.</span></div>
+      <div class="room"><b>Источники</b><span>Ленты вашей отрасли, из которых линия берёт темы. Новый источник система сначала проверяет и только потом включает — опечатка в адресе не превратится в поток мусора.</span></div>
+      <div class="room"><b>Рубрики</b><span>Разделы вашего канала и правила для каждого: длина, тон, что можно и чего нельзя. Отсюда линия понимает, о чём вообще писать.</span></div>
+      <div class="room"><b>Расходы</b><span>Сколько стоил каждый материал и сколько осталось на балансе. Суммы видят только те, кому вы это разрешили.</span></div>
+      <div class="room"><b>Команда</b><span>Кто имеет доступ и что может делать: владелец, редактор, автор, наблюдатель. Приглашение по ссылке, отзыв доступа в одно действие.</span></div>
+    </div>
+
+    <div class="note">
+      <b>Из чего собирается контент-план.</b> Из двух вещей, которые мы видим точно: что уже сработало у вас — какие темы и форматы собрали отклик в ваших каналах, — и что происходит в вашей отрасли по лентам, которые вы завели в «Источниках». Это персональнее любого общего рейтинга: «зашло у вас» и «зашло у блогеров» — разные вещи, а платит за результат ваша компания.<br><br>Данные о популярном контенте площадки отдают по-разному, а часть не отдаёт вовсе. Там, где официальный доступ есть, мы его подключаем; там, где нет, — не выдумываем цифры и не обходим правила чужими способами: это риск для ваших аккаунтов, а не преимущество.
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">где живут ваши данные</div>
+    <h3>Ваш сервер <span class="grad">в России</span></h3>
+    <p class="lede">Система разворачивается на отдельном виртуальном сервере, закреплённом за вами, в российском облаке Timeweb Cloud. База, файлы и запросы к моделям остаются внутри страны. Это не приятная деталь, а условие: без неё работать с внутренними документами нельзя.</p>
+
+    <div class="cols">
+      <div class="col a">
+        <div class="cap">Инфраструктура</div>
+        <h5>Всё в российском облаке</h5>
+        <p>Сервер, база и хранилище файлов — в дата-центре Timeweb Cloud в Москве. Модели работают через российский шлюз, а не через зарубежные сервисы напрямую.</p>
+      </div>
+      <div class="col b">
+        <div class="cap">Только ваш</div>
+        <h5>Отдельный экземпляр</h5>
+        <p>Не общий сервис с разделением по клиентам, а своя копия системы: свой сервер, своя база, свой бот, свой домен. Ваши материалы не лежат рядом с чужими.</p>
+      </div>
+      <div class="col c">
+        <div class="cap">Закон</div>
+        <h5>152-ФЗ по месту хранения</h5>
+        <p>Персональные данные обрабатываются и хранятся на территории России — так, как требует закон. Политику обработки и тексты согласий готовим вместе с вами при запуске.</p>
+      </div>
+      <div class="col d">
+        <div class="cap">Особенно в ручном режиме</div>
+        <h5>Работа с чувствительным</h5>
+        <p>В ручном режиме вы приносите свои материалы: прайсы, договоры, описания продуктов, внутренние документы. Они остаются на вашем сервере — ровно поэтому такой режим и делают на своей инфраструктуре, а не в общем чате.</p>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>Что уходит за границу, а что нет.</b> Ваши исходники, база и переписка с системой не покидают Россию. За границу уходит только то, что вы сами отправили в зарубежную соцсеть, — уже одобренный пост, ровно в том виде, в каком его увидят читатели. Разница принципиальная: массовые сервисы генерации забирают за рубеж всё, что вы в них загрузили, включая то, что публиковать вы не собирались.
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">как начинаем</div>
+    <h3>Две недели <span class="grad">настройки под вас</span></h3>
+    <p class="lede">За это время линия перестаёт быть общей и становится вашей: с вашими темами, вашим голосом, вашим оформлением и вашими каналами.</p>
+
+    <div class="steps">
+      <div class="st"><div class="num">1</div><div><b>Погружаемся в ваш бизнес</b><span>Что продаёте, кому, какими словами. Изучаем ваши материалы, собираем список тем и то, о чём писать нельзя. Здесь же выбираем режим — линия, ручной или оба.</span></div></div>
+      <div class="st"><div class="num">2</div><div><b>Собираем источники и рубрикатор</b><span>Ленты вашей отрасли, разделы канала, расписание выходов под вашу аудиторию. В ручном режиме этот шаг короче: источники не нужны, темы приносите вы.</span></div></div>
+      <div class="st"><div class="num">3</div><div><b>Настраиваем голос и оформление</b><span>Тон, длина, структура материала, фирменные обложки и шаблоны слайдов в вашем стиле.</span></div></div>
+      <div class="st"><div class="num">4</div><div><b>Подключаем каналы и команду</b><span>Ваш Telegram-канал, сообщество ВКонтакте, Instagram и Threads. Приглашаем сотрудников, раздаём роли.</span></div></div>
+      <div class="st"><div class="num">5</div><div><b>Обкатываем на живом потоке</b><span>Вы одобряете каждый материал и правите тон, система подстраивается под ваши замечания.</span></div></div>
+      <div class="st"><div class="num">6</div><div><b>Передаём в работу</b><span>Дальше система работает у вас, а мы ведём её каждый месяц: сервер, обновления, новые форматы и площадки.</span></div></div>
+    </div>
+
+    <div class="band">
+      <h4>Что у вас будет через две недели</h4>
+      <p class="big">Работающая система на вашем сервере, с вашими темами, вашим голосом и вашей командой внутри.</p>
+      <p>Не демонстрация и не пилот на чужой площадке: свой домен, свой бот, свои доступы, выданные вашим сотрудникам. С этого момента вы можете вести контент без нас — а мы остаёмся, чтобы держать систему и развивать её.</p>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">сколько это стоит</div>
+    <h3>Цена входа — <span class="grad">за разработку под вас</span></h3>
+    <p class="lede">Мы не продаём коробку и не берём абонентскую плату за доступ. Первая сумма — это разработка и настройка вашей системы: погружение в бизнес, сборка под ваши задачи, подключение каналов и обкатка на живом потоке. Платится один раз.</p>
+
+    <div class="tiers">
+      <div class="tier hand">
+        <div class="tag t-hand">Режим 2 · Ручной</div>
+        <div class="sum">от 120 000 ₽</div>
+        <div class="sub-sum">единоразово, разработка и настройка</div>
+
+        <div class="star">
+          <div class="lbl">Главная кнопка режима</div>
+          <b>Контент-план на месяц — одним нажатием</b>
+          <span>Система собирает месяц тем с датами и форматами: что писать, когда и чем. Основа — то, что уже сработало у вас, и то, что сейчас обсуждают в вашей отрасли. Снимает главный вопрос «а о чём вообще писать и что зайдёт». Дальше вы выбираете: делать по плану вручную, по одному материалу, или включить автовыход — и план будет публиковаться сам.</span>
+        </div>
+
+        <div class="plus">Что ещё вы получаете</div>
+        <ul>
+          <li><b>Своё приложение</b> на вашем сервере в России: свой домен, свой бот, своя база. Не аккаунт в общем сервисе.</li>
+          <li><b>База знаний о вашем бизнесе:</b> продукты, прайсы, кейсы, регламенты, документы — загружаем при настройке. Объяснять контекст в каждом запросе не нужно.</li>
+          <li><b>Ваш голос,</b> зашитый в систему: тон, любимые слова и чёрный список формулировок.</li>
+          <li><b>Фирменный стиль в режимах:</b> обложки, слайды, презентации и документы выходят в вашем оформлении без промптов на десять строк.</li>
+          <li><b>Окно запроса:</b> текст, изображение, видео — по одному, когда понадобилось вам.</li>
+          <li><b>Панель и команда:</b> четыре уровня доступа, приглашение по ссылке, отзыв в одно действие.</li>
+          <li><b>Публикация вручную,</b> по вашему решению и туда, куда решите.</li>
+          <li><b>Сопровождение:</b> сервер, обновления, ответы на вопросы вашей команды.</li>
+        </ul>
+      </div>
+      <div class="tier auto">
+        <div class="tag t-auto">Режим 1 · Линия</div>
+        <div class="sum">от 200 000 ₽</div>
+        <div class="sub-sum">единоразово, разработка и настройка</div>
+        <div class="plus">Всё из ручного режима, и сверх того</div>
+        <ul>
+          <li><b>Система сама находит темы:</b> следит за лентами вашей отрасли и отсеивает девять из десяти, оставляя то, что касается вашего клиента.</li>
+          <li><b>Поток по расписанию:</b> до четырёх выходов в день, в те часы, когда ваша аудитория читает.</li>
+          <li><b>Один материал — четыре формата:</b> пост, карусель, ролик и ролик с ведущим собираются из одной темы, без доплаты за переупаковку.</li>
+          <li><b>Одобрение из телефона:</b> карточка приходит в рабочую группу в Telegram — посмотрели, нажали, вышло во все площадки сразу.</li>
+          <li><b>Контент-план на неделю вперёд</b> с переносом материала на другой день или слот.</li>
+          <li><b>Учёт до копейки:</b> расход на каждый материал виден в панели, ролики без результата не выставляются.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h4>Что вы сравниваете на самом деле</h4>
+    <div class="vs">
+      <div class="o">
+        <h5>Подписка на ИИ-чат</h5>
+        <div class="cost">около 20 долларов в месяц</div>
+        <div class="k">Что вы получаете</div>
+        <div class="t">Доступ к модели. Она умеет писать и рисовать — в общем виде, для всех одинаково.</div>
+        <div class="k">Что остаётся на вас</div>
+        <div class="t">Заново объяснять, кто вы и что продаёте, в каждом новом разговоре. Следить, чтобы тон не уплывал. Самому доводить оформление до фирменного. Вручную раскладывать материал по площадкам и помнить про расписание. У команды — отдельные подписки и никакой общей памяти о бренде. Всё, что вы загрузили, уходит за границу.</div>
+      </div>
+      <div class="o">
+        <h5>Специалист или агентство</h5>
+        <div class="cost">оплата за время, ежемесячно</div>
+        <div class="k">Что вы получаете</div>
+        <div class="t">Человека, который думает: приносит смыслы, разговаривает с аудиторией, ведёт комментарии. Этого не заменит никакая система, и мы этого не обещаем.</div>
+        <div class="k">Что остаётся на вас</div>
+        <div class="t">Механика: набрать, оформить, нарезать, разложить, выложить — это часы каждый день, и они оплачиваются как работа специалиста. Знание о бренде живёт в голове человека и уходит вместе с ним.</div>
+      </div>
+      <div class="o win">
+        <h5>Ваш контент-завод</h5>
+        <div class="cost">разработка один раз, дальше по факту</div>
+        <div class="k">Что вы получаете</div>
+        <div class="t">Систему, которая знает ваш бизнес и не забывает его: продукты, голос, оформление, площадки и правила — внутри, а не в чьей-то памяти и не в вашем следующем запросе.</div>
+        <div class="k">Что остаётся на вас</div>
+        <div class="t">Прочитать и нажать кнопку. Ваш специалист при этом никуда не девается — он перестаёт быть машинисткой ленты и занимается тем, ради чего вы его держите.</div>
+      </div>
+    </div>
+
+    <div class="band">
+      <h4>Из чего складывается остальное</h4>
+      <p class="big">Разработка — единоразово. Сопровождение — ежемесячно. Производство — по факту выпущенных материалов.</p>
+      <p>Сопровождение включает сервер, домен, обновления и реакцию на изменения площадок. Производство считается по факту: расход на каждый материал виден в панели до копейки, а ролики, которые не получились, вам не выставляются. Итоговую смету считаем под ваш состав — сколько площадок подключаем, какие форматы включаем, сколько материалов в день.</p>
+    </div>
+
+    <div class="note">
+      <b>Платить можно частями — от нас, а не от банка.</b> Сумму входа разбиваем на несколько месяцев: без заявки в банк, без скоринга, без залога и без третьей стороны в договоре. График закрепляем письменно, условия обсуждаем индивидуально — они зависят от объёма проекта и сроков запуска.<br><br><b>Почему «от», а не точная цифра.</b> Система пишется под ваши задачи, и объём работы зависит от того, что именно нужно вам: сколько площадок, какие форматы, насколько сложный тон и рубрикатор, сколько материалов заводим в базу знаний. Точную сумму называем после разговора и разбора ваших материалов — до этого любая цифра была бы выдуманной.
+    </div>
+  </section>
+
+  <section class="slide band rise" style="background:linear-gradient(122deg,var(--violet),var(--pink) 62%,var(--amber));border:none;">
+    <div class="contacts">
+      <div class="avatar">
+        <img src="{{PERSON_PHOTO}}" width="400" height="400" alt="{{PERSON_NAME}}" loading="lazy" decoding="async">
+      </div>
+      <div class="person">
+        <div class="role">Ваш контакт по проекту</div>
+        <div class="name">{{PERSON_NAME}}</div>
+        <div class="pos">{{PERSON_ROLE}}</div>
+      </div>
+      <div class="links">
+        <a class="act act-light" href="{{TG_URL}}" target="_blank" rel="noopener">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.24 1.07-.88 1.33-1.78.83l-4.92-3.63-2.37 2.29c-.26.26-.48.48-.99.48l.35-5.02 9.13-8.25c.4-.35-.09-.55-.62-.2L6.22 12.02 1.36 10.5c-1.06-.33-1.08-1.06.22-1.57L20.53 2.7c.88-.33 1.65.2 1.37 1.6Z"/></svg>
+          Написать в Telegram
+        </a>
+        <a class="act act-dim tel" href="tel:{{PHONE_HREF}}">{{PHONE_LABEL}}</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Цифры производства — по фактическому расходу работающей линии. Технические возможности площадок сверены с официальной документацией на август 2026 года. Стоимость указана как порог входа: точная смета — после разбора ваших задач.
+  </footer>
+
+</div>
+
+
+<div class="dock" id="dock">
+  <a class="act act-primary" href="{{TG_URL}}" target="_blank" rel="noopener">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.24 1.07-.88 1.33-1.78.83l-4.92-3.63-2.37 2.29c-.26.26-.48.48-.99.48l.35-5.02 9.13-8.25c.4-.35-.09-.55-.62-.2L6.22 12.02 1.36 10.5c-1.06-.33-1.08-1.06.22-1.57L20.53 2.7c.88-.33 1.65.2 1.37 1.6Z"/></svg>
+    Обсудить проект
+  </a>
+</div>
+
+<script>
+  (function () {
+    var slides = document.querySelectorAll('.slide, figure.line');
+    slides.forEach(function (el) { el.classList.add('rise'); });
+
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || !('IntersectionObserver' in window)) {
+      document.querySelectorAll('.rise').forEach(function (el) { el.classList.add('in'); });
+      return;
+    }
+    // Герой показывается сразу и по очереди — он выше линии сгиба.
+    var hero = document.querySelectorAll('.hero .rise');
+    hero.forEach(function (el, i) {
+      el.style.transitionDelay = (i * 90) + 'ms';
+      requestAnimationFrame(function () { el.classList.add('in'); });
+    });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { rootMargin: '0px 0px -12% 0px', threshold: 0.06 });
+    document.querySelectorAll('.rise:not(.in)').forEach(function (el) { io.observe(el); });
+  })();
+
+  // Липкая кнопка: прячется, пока виден герой (там своя кнопка) и пока виден
+  // блок контактов — иначе она перекрывала бы ровно то действие, к которому
+  // ведёт.
+  (function () {
+    var dock = document.getElementById('dock');
+    var hero = document.querySelector('.hero');
+    var end = document.querySelector('.contacts');
+    if (!dock || !hero || !end || !('IntersectionObserver' in window)) return;
+    var heroVisible = true, endVisible = false;
+    function sync() { dock.classList.toggle('show', !heroVisible && !endVisible); }
+    new IntersectionObserver(function (e) { heroVisible = e[0].isIntersecting; sync(); },
+      { threshold: 0.15 }).observe(hero);
+    new IntersectionObserver(function (e) { endVisible = e[0].isIntersecting; sync(); },
+      { threshold: 0.2 }).observe(end);
+  })();
+</script>
+</body>
+</html>

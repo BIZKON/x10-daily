@@ -3,6 +3,7 @@ import { CLIENT_PRICE_MULTIPLIER, can, usdToRub } from "@x10/config";
 import {
   and,
   articles,
+  balanceEntries,
   clientBalance,
   costAlerts,
   desc,
@@ -10,6 +11,7 @@ import {
   getPostingControl,
   isPostingPaused,
   mskHour,
+  payments,
   pipelineRuns,
   setPostingControl,
   sql,
@@ -18,10 +20,14 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../app";
 import { EDITOR_ROLES, requirePermission, requireRole } from "../auth";
-import { applyRateLimit } from "../rate-limit";
-import { getInngest } from "./pipeline";
 import { getDb } from "../db";
 import { getEnv } from "../env";
+import { markPaymentCanceled, settleProviderPayment } from "../lib/payment-settle";
+import { checkTopupAmount } from "../lib/topup";
+import { YooKassaError, createPayment, getPayment } from "../lib/yookassa";
+import { applyRateLimit } from "../rate-limit";
+import { readCreds } from "./billing";
+import { getInngest } from "./pipeline";
 
 /**
  * Admin endpoints для HumanGate.
@@ -130,41 +136,48 @@ export const adminRoute = new Hono<AppEnv>()
    * от обращений во внутреннюю сеть и сам разбор живут в воркере, у которого
    * для этого есть и денежный гейт, и учёт расхода.
    */
-  .post("/breakdown", zValidator("json", z.object({ url: z.string().min(1).max(2000) })), async (c) => {
-    const env = getEnv(c.env);
-    const db = getDb(env.DATABASE_URL);
-    // Разбор создаёт материал, поэтому право на правку контента, а не на просмотр.
-    const me = await requirePermission(c, db, "content.edit");
+  .post(
+    "/breakdown",
+    zValidator("json", z.object({ url: z.string().min(1).max(2000) })),
+    async (c) => {
+      const env = getEnv(c.env);
+      const db = getDb(env.DATABASE_URL);
+      // Разбор создаёт материал, поэтому право на правку контента, а не на просмотр.
+      const me = await requirePermission(c, db, "content.edit");
 
-    const { url } = c.req.valid("json");
-    let parsed: URL;
-    try {
-      parsed = new URL(url.trim());
-    } catch {
-      return c.json({ error: "Это не похоже на ссылку. Скопируйте адрес целиком, вместе с https://" }, 400);
-    }
-    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-      return c.json({ error: "Поддерживаются только ссылки http и https" }, 400);
-    }
+      const { url } = c.req.valid("json");
+      let parsed: URL;
+      try {
+        parsed = new URL(url.trim());
+      } catch {
+        return c.json(
+          { error: "Это не похоже на ссылку. Скопируйте адрес целиком, вместе с https://" },
+          400,
+        );
+      }
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+        return c.json({ error: "Поддерживаются только ссылки http и https" }, 400);
+      }
 
-    // Разбор платный, поэтому лимит на человека — как у ручного запуска
-    // конвейера. Скомпрометированный аккаунт не зальёт нам счёт.
-    await applyRateLimit(c, c.env.PIPELINE_LIMITER, "breakdown", me.userId);
+      // Разбор платный, поэтому лимит на человека — как у ручного запуска
+      // конвейера. Скомпрометированный аккаунт не зальёт нам счёт.
+      await applyRateLimit(c, c.env.PIPELINE_LIMITER, "breakdown", me.userId);
 
-    const { ids } = await getInngest(env).send({
-      name: "article/link.submitted",
-      data: { url: parsed.toString(), submittedBy: me.userId },
-    });
+      const { ids } = await getInngest(env).send({
+        name: "article/link.submitted",
+        data: { url: parsed.toString(), submittedBy: me.userId },
+      });
 
-    return c.json(
-      {
-        accepted: true,
-        eventIds: ids,
-        hint: "Разбор занимает около минуты. Материал появится в очереди на одобрение.",
-      },
-      202,
-    );
-  })
+      return c.json(
+        {
+          accepted: true,
+          eventIds: ids,
+          hint: "Разбор занимает около минуты. Материал появится в очереди на одобрение.",
+        },
+        202,
+      );
+    },
+  )
 
   /**
    * GET /v1/admin/billing/balance
@@ -210,6 +223,163 @@ export const adminRoute = new Hono<AppEnv>()
       state,
       balanceRub: showMoney ? balanceRub : null,
       lowThresholdRub: showMoney ? lowThresholdRub : null,
+    });
+  })
+
+  /**
+   * POST /v1/admin/billing/topup
+   * Пополнение баланса (Спека 6, шаг 3 — построен 15.08 вместе с магазином).
+   *
+   * Право `cost.view`: кто видит суммы, тот и платит. Труба та же, что у продажи
+   * завода, — различает назначение `purpose='topup'`.
+   *
+   * ⚠️ Строка `payments` создаётся ДО вызова шлюза: её id уходит в
+   * `Idempotence-Key`, поэтому повтор запроса не создаст второй платёж.
+   */
+  .post(
+    "/billing/topup",
+    zValidator("json", z.object({ amountRub: z.number(), payerEmail: z.string().email() })),
+    async (c) => {
+      const env = getEnv(c.env);
+      const db = getDb(env.DATABASE_URL);
+      const me = await requirePermission(c, db, "cost.view");
+
+      const creds = readCreds(env);
+      if (!creds) {
+        return c.json(
+          {
+            error: "store_not_configured",
+            message: "Ключи ЮKassa не заданы — оплата в этой копии выключена.",
+          },
+          503,
+        );
+      }
+
+      const body = c.req.valid("json");
+      const checked = checkTopupAmount(body.amountRub);
+      if (!checked.ok) return c.json({ error: "bad_amount", message: checked.error }, 400);
+
+      const description = `Пополнение баланса ProAgent AI на ${checked.amountRub} ₽`;
+
+      const [row] = await db
+        .insert(payments)
+        .values({
+          purpose: "topup",
+          amountRub: String(checked.amountRub),
+          status: "pending",
+          createdBy: me.userId,
+          payerEmail: body.payerEmail,
+          description,
+        })
+        .returning({ id: payments.id });
+      if (!row) return c.json({ error: "internal" }, 500);
+
+      const domain = env.X10_BASE_DOMAIN ?? "pro-agent-ai.ru";
+
+      try {
+        const created = await createPayment(creds, {
+          paymentId: row.id,
+          amountRub: checked.amountRub,
+          description,
+          returnUrl: `https://admin.${domain}/cost?payment=${row.id}`,
+          payerEmail: body.payerEmail,
+        });
+
+        await db
+          .update(payments)
+          .set({ providerPaymentId: created.providerPaymentId })
+          .where(eq(payments.id, row.id));
+
+        return c.json({ paymentId: row.id, confirmationUrl: created.confirmationUrl }, 201);
+      } catch (err) {
+        // Платёж у шлюза не создался — наша строка остаётся `pending` и никого
+        // не смущает: зачисление идёт только по `credited_at`.
+        console.error("[billing] не удалось создать платёж:", err);
+        return c.json(
+          {
+            error: "provider_error",
+            message:
+              err instanceof YooKassaError && err.status === 401
+                ? "ЮKassa не приняла ключи магазина: проверь, что shopId и секретный ключ взяты с одной страницы ЛК."
+                : "ЮKassa не приняла платёж. Подробности в логах api.",
+          },
+          502,
+        );
+      }
+    },
+  )
+
+  /**
+   * POST /v1/admin/billing/payments/:id/refresh
+   * Перепроверяет платёж у шлюза и зачисляет, если он оплачен.
+   *
+   * Нужен на возврате с оплаты: вебхук приходит за секунды, но иногда позже —
+   * а человек уже смотрит на свой баланс и не видит денег. Зачисляет та же
+   * функция, что и вебхук, поэтому дважды деньги не встанут.
+   */
+  .post("/billing/payments/:id/refresh", async (c) => {
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    await requirePermission(c, db, "cost.view");
+
+    const creds = readCreds(env);
+    if (!creds) return c.json({ error: "store_not_configured" }, 503);
+
+    const id = c.req.param("id");
+    const [row] = await db
+      .select({ providerPaymentId: payments.providerPaymentId, creditedAt: payments.creditedAt })
+      .from(payments)
+      .where(eq(payments.id, id))
+      .limit(1);
+
+    if (!row) return c.json({ error: "not_found" }, 404);
+    if (row.creditedAt) return c.json({ state: "credited" as const });
+    if (!row.providerPaymentId) return c.json({ state: "pending" as const });
+
+    const remote = await getPayment(creds, row.providerPaymentId);
+    if (remote.status === "canceled") {
+      await markPaymentCanceled(db, row.providerPaymentId);
+      return c.json({ state: "canceled" as const });
+    }
+    if (remote.status !== "succeeded" || !remote.paid) {
+      return c.json({ state: "pending" as const });
+    }
+
+    const result = await settleProviderPayment(db, row.providerPaymentId);
+    return c.json({ state: result.ok ? ("credited" as const) : ("pending" as const) });
+  })
+
+  /**
+   * GET /v1/admin/billing/entries
+   * Движения баланса — ответ на вопрос «почему остаток именно такой».
+   */
+  .get("/billing/entries", async (c) => {
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    await requirePermission(c, db, "cost.view");
+
+    const rows = await db
+      .select({
+        id: balanceEntries.id,
+        kind: balanceEntries.kind,
+        amountRub: balanceEntries.amountRub,
+        balanceAfterRub: balanceEntries.balanceAfterRub,
+        note: balanceEntries.note,
+        createdAt: balanceEntries.createdAt,
+      })
+      .from(balanceEntries)
+      .orderBy(desc(balanceEntries.createdAt))
+      .limit(30);
+
+    return c.json({
+      entries: rows.map((r) => ({
+        id: r.id,
+        kind: r.kind,
+        amountRub: Number(r.amountRub),
+        balanceAfterRub: Number(r.balanceAfterRub),
+        note: r.note,
+        createdAt: r.createdAt.toISOString(),
+      })),
     });
   })
 

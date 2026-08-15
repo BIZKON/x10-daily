@@ -173,6 +173,13 @@ x10-daily/                  ← техническое имя репо (исто
 - **Миграции ТОЛЬКО hand-written:** `db:generate` НЕ запускать; новая миграция = SQL-файл в `packages/db/drizzle/` + запись в `meta/_journal.json` вручную. `ADD VALUE` в enum и `SET DEFAULT` новым значением — РАЗНЫМИ файлами (PG запрещает использовать новое enum-значение в транзакции его добавления).
 - **Деплой/рестарт ТОЛЬКО** `./deploy.sh` или `docker compose --env-file .env.production` — иначе crash-loop.
 - **Новый env-ключ воркера** → добавить в `readBindingsFromEnv` (`apps/workers/pipeline/src/bindings.ts`) + в compose.
+- 🔴 **Новый env-ключ api проходит ПЯТЬ слоёв:** схема `packages/config/src/env.ts`
+  → интерфейс `apps/api/src/bindings.ts` → `readBindings` в `apps/api/src/server.ts`
+  (process.env → биндинги) → `getEnv` в `apps/api/src/env.ts` → compose. Пропустишь
+  любой — переменная есть в контейнере (`printenv` подтверждает), а функция молча
+  выключена: 15.08 раздел партнёров отвечал 404 при выставленном флаге. Ни типы, ни
+  сборка этого не видят. Проводка закрыта тестом `apps/api/test/env-wiring.test.ts` —
+  добавляй туда каждый новый ключ.
 - **IPv6 на прод-VM:** api.telegram.org доступен только по IPv6; глобальный адрес — только по DHCPv6. Рестарт systemd-networkd смывает IPv6 → постинг ETIMEDOUT. Самолечение — watchdog `x10-ipv6-ensure.timer` (/2 мин). **`netplan apply` НЕЛЬЗЯ.**
 - **Новый id Inngest-функции** → re-sync PUT на pipeline:8787 из контейнера api (НЕ localhost).
 - **Смена бота** атомарна: новый `TELEGRAM_BOT_TOKEN` + **обновить `TELEGRAM_BOT_USERNAME`** (иначе deep-link кнопка постов канала молча ведёт на старого бота) + бот админом канала + `setChatMenuButton` заново + **настроить Main Mini App в @BotFather у нового бота** (иначе deep-link откроет чат, а не приложение) + redeploy (auth и постинг на одном токене; юзеры в БД валидны только при том же боте).
@@ -211,7 +218,7 @@ x10-daily/                  ← техническое имя репо (исто
 | Источники парсинга (список, adapter_type, правила, pending) | `docs/parsing-sources.md` (канон) + `scripts/seed-sources.sql` |
 | Dev-фикстуры | `scripts/seed.ts` (id совпадают с `apps/admin/src/lib/mocks.ts`) |
 | Деплой prod | `./deploy.sh`, `docker-compose.prod.yml`, `caddy/Caddyfile.prod` |
-| **Состояние на конец последней сессии** | **`docs/handoffs/handoff-session-37.md`** |
+| **Состояние на конец последней сессии** | **`docs/handoffs/handoff-session-38.md`** |
 | Коммерческое предложение (что читает клиент) | `landing/kp/template.html` — ЕДИНЫЙ источник текста. `landing/index.html` и партнёрские версии СОБИРАЮТСЯ из него: `node scripts/build-kp.mjs`. Руками не править |
 | Исторические handoffs сессий | `docs/handoffs/` |
 | Архив стратегии X10-эпохи | `docs/strategy/` (НЕ канон нового бренда) |

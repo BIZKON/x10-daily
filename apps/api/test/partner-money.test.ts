@@ -4,6 +4,8 @@ import {
   accrualsForPayment,
   mentorStillEarns,
   partnerBalance,
+  payoutBreakdown,
+  settlementPlan,
   wouldMakeCycle,
 } from "../src/lib/partner-money";
 
@@ -173,5 +175,120 @@ describe("защита дерева от цикла", () => {
 describe("ставка наставника", () => {
   it("совпадает с решением владельца", () => {
     expect(MENTOR_RATE_PERCENT).toBe(5);
+  });
+});
+
+/* ── Магазин (спека 7) ────────────────────────────────────────────────────── */
+
+describe("settlementPlan — что делать со сделкой после платежа", () => {
+  const paidAt = new Date("2026-08-15T10:00:00Z");
+
+  it("полная оплата закрывает сделку и не назначает следующий срок", () => {
+    const plan = settlementPlan({
+      dealAmountRub: 350000,
+      paidBeforeRub: 0,
+      paymentRub: 350000,
+      installments: 1,
+      paidAt,
+    });
+    expect(plan.fullyPaid).toBe(true);
+    expect(plan.nextDueAt).toBeNull();
+  });
+
+  it("первая половина рассрочки назначает срок второй через месяц", () => {
+    const plan = settlementPlan({
+      dealAmountRub: 350000,
+      paidBeforeRub: 0,
+      paymentRub: 175000,
+      installments: 2,
+      paidAt,
+    });
+    expect(plan.fullyPaid).toBe(false);
+    expect(plan.nextDueAt?.toISOString()).toBe("2026-09-15T10:00:00.000Z");
+  });
+
+  it("вторая половина закрывает сделку и снимает срок", () => {
+    const plan = settlementPlan({
+      dealAmountRub: 350000,
+      paidBeforeRub: 175000,
+      paymentRub: 175000,
+      installments: 2,
+      paidAt,
+    });
+    expect(plan.fullyPaid).toBe(true);
+    expect(plan.nextDueAt).toBeNull();
+  });
+
+  it("🔴 копеечный недобор не держит сделку открытой", () => {
+    // Иначе сделка на 350 000 вечно висит недоплаченной из-за округления
+    // эквайринга, и партнёр видит «ждём деньги», когда клиент всё заплатил.
+    const plan = settlementPlan({
+      dealAmountRub: 350000,
+      paidBeforeRub: 175000,
+      paymentRub: 174999.995,
+      installments: 2,
+      paidAt,
+    });
+    expect(plan.fullyPaid).toBe(true);
+  });
+
+  it("переплата тоже закрывает сделку", () => {
+    const plan = settlementPlan({
+      dealAmountRub: 180000,
+      paidBeforeRub: 0,
+      paymentRub: 200000,
+      installments: 1,
+      paidAt,
+    });
+    expect(plan.fullyPaid).toBe(true);
+    expect(plan.nextDueAt).toBeNull();
+  });
+});
+
+describe("payoutBreakdown — сколько партнёр получит на руки", () => {
+  it("самозанятому платим всё начисленное: налог его", () => {
+    expect(payoutBreakdown(70000, "self_employed")).toEqual({
+      grossRub: 70000,
+      ndflRub: 0,
+      netRub: 70000,
+      statusKnown: true,
+    });
+  });
+
+  it("ИП — так же, налог его", () => {
+    expect(payoutBreakdown(70000, "entrepreneur")).toEqual({
+      grossRub: 70000,
+      ndflRub: 0,
+      netRub: 70000,
+      statusKnown: true,
+    });
+  });
+
+  it("🔴 у физлица удерживаем НДФЛ из его же 20%", () => {
+    // Решение владельца 15.08: 20% — сумма ДО налога. Взносы СФР платим сверх,
+    // но это наш расход, и партнёру он не показывается.
+    expect(payoutBreakdown(70000, "individual")).toEqual({
+      grossRub: 70000,
+      ndflRub: 9100,
+      netRub: 60900,
+      statusKnown: true,
+    });
+  });
+
+  it("статус не спросили — считаем без удержания, но помечаем это", () => {
+    // Показать физлицу «на руки 70 000» и выплатить 60 900 хуже, чем честно
+    // сказать «уточните статус».
+    const b = payoutBreakdown(70000, null);
+    expect(b.netRub).toBe(70000);
+    expect(b.statusKnown).toBe(false);
+  });
+
+  it("копейки округляются до двух знаков", () => {
+    expect(payoutBreakdown(1234.57, "individual")).toEqual({
+      grossRub: 1234.57,
+      ndflRub: 160.49,
+      netRub: 1074.08,
+      statusKnown: true,
+    });
   });
 });

@@ -3,6 +3,7 @@ import {
   integer,
   numeric,
   pgTable,
+  smallint,
   text,
   timestamp,
   uniqueIndex,
@@ -35,6 +36,16 @@ export type DealPackage = (typeof DEAL_PACKAGES)[number];
 export const DEAL_STATUSES = ["negotiating", "awaiting_payment", "signed", "cancelled"] as const;
 export type DealStatus = (typeof DEAL_STATUSES)[number];
 
+export const PAYER_KINDS = ["individual", "company"] as const;
+export type PayerKind = (typeof PAYER_KINDS)[number];
+
+/**
+ * Налоговый статус партнёра (спека 7). С физлицом мы налоговый агент: НДФЛ
+ * удерживаем из его 20%, взносы СФР платим сверх — это наш расход.
+ */
+export const PARTNER_TAX_STATUSES = ["self_employed", "entrepreneur", "individual"] as const;
+export type PartnerTaxStatus = (typeof PARTNER_TAX_STATUSES)[number];
+
 export const ACCRUAL_REASONS = ["sale", "mentor", "refund", "manual"] as const;
 export type AccrualReason = (typeof ACCRUAL_REASONS)[number];
 
@@ -54,6 +65,13 @@ export const partners = pgTable(
     /** Кто пригласил. `null` — пришёл сам. Глубина начислений — один уровень. */
     parentId: uuid("parent_id"),
     status: varchar("status", { length: 16 }).$type<PartnerStatus>().notNull().default("active"),
+    /**
+     * Кто он для налоговой. Пусто — ещё не спрашивали: статус нужен при первом
+     * начислении, а регистрация остаётся в один тап.
+     */
+    taxStatus: varchar("tax_status", { length: 16 }).$type<PartnerTaxStatus>(),
+    /** Нужен для чека НПД от самозанятого и для отчётности по физлицу. */
+    inn: varchar("inn", { length: 12 }),
     /** От этой даты живёт срок наставнических (`MENTOR_BONUS_MONTHS`). */
     joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -70,9 +88,13 @@ export const partnerDeals = pgTable(
   "partner_deals",
   {
     id: id(),
-    partnerId: uuid("partner_id")
-      .notNull()
-      .references(() => partners.id, { onDelete: "restrict" }),
+    /**
+     * 🔴 NULL — продажа владельца без партнёра. Тот же заказ, та же ссылка, тот
+     * же счёт; начислений просто нет. Отдельная ветка кода разошлась бы с этой.
+     */
+    partnerId: uuid("partner_id").references(() => partners.id, { onDelete: "restrict" }),
+    /** Сквозной номер заказа. Он же номер счёта — второго номера не бывает. */
+    dealNo: integer("deal_no").generatedByDefaultAsIdentity(),
     clientName: varchar("client_name", { length: 200 }).notNull(),
     clientContact: varchar("client_contact", { length: 200 }),
     package: varchar("package", { length: 16 }).$type<DealPackage>().notNull(),
@@ -80,6 +102,25 @@ export const partnerDeals = pgTable(
     /** 🔴 Копия ставки на момент сделки — источник истины для начислений. */
     ratePercent: numeric("rate_percent", { precision: 5, scale: 2 }).notNull(),
     status: varchar("status", { length: 16 }).$type<DealStatus>().notNull().default("negotiating"),
+    /**
+     * Код ссылки на оплату: `/pay/<token>`. Одна на весь заказ, а не на каждую
+     * часть: через месяц клиент возвращается по ней же за второй половиной.
+     */
+    payToken: varchar("pay_token", { length: 32 }),
+    /** Частей оплаты: 1 или 2. Потолок держит CHECK в базе. */
+    installments: smallint("installments").notNull().default(1),
+    payerKind: varchar("payer_kind", { length: 16 }).$type<PayerKind>(),
+    /** Реквизиты для счёта юрлицу. Пусто у физлица. */
+    payerName: varchar("payer_name", { length: 200 }),
+    payerInn: varchar("payer_inn", { length: 12 }),
+    payerKpp: varchar("payer_kpp", { length: 9 }),
+    payerAddress: text("payer_address"),
+    /** Почта плательщика: без неё касса не выбьет чек. */
+    payerEmail: varchar("payer_email", { length: 254 }),
+    /** Когда клиент принял оферту. Акцепт без отметки недоказуем. */
+    offerAcceptedAt: timestamp("offer_accepted_at", { withTimezone: true }),
+    /** Срок второй части. Появляется в момент оплаты первой. */
+    nextDueAt: timestamp("next_due_at", { withTimezone: true }),
     signedAt: timestamp("signed_at", { withTimezone: true }),
     note: text("note"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

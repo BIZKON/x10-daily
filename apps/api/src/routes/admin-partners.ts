@@ -18,8 +18,9 @@ import type { AppEnv } from "../app";
 import { requirePermission } from "../auth";
 import { getDb } from "../db";
 import { getEnv } from "../env";
-import { accrualsForPayment, wouldMakeCycle } from "../lib/partner-money";
+import { wouldMakeCycle } from "../lib/partner-money";
 import { normalizeSlug } from "../lib/partner-slug";
+import { settleDealPayment } from "../lib/payment-settle";
 
 /**
  * Партнёрская программа со стороны владельца (спека 14.08).
@@ -324,11 +325,12 @@ export const adminPartnersRoute = new Hono<AppEnv>()
 
   /**
    * POST /v1/admin/deals/:id/payments
-   * Записывает поступивший платёж и НАЧИСЛЯЕТ доли — продавцу и наставнику.
+   * Отмечает поступивший платёж по сделке — безнал со счёта или наличные.
    *
-   * 🔴 Платёж и начисления пишутся ОДНОЙ транзакцией. Иначе деньги клиента
-   * записаны, а доля партнёра нет — расхождение всплывёт через месяц, когда
-   * никто не вспомнит подробностей.
+   * 🔴 Считает ту же `settleDealPayment`, что и вебхук ЮKassa (спека 7): счёт
+   * юрлицу через шлюз не проходит вообще, но комиссия партнёру с него
+   * начисляться обязана. Была бы логика только в вебхуке — безналичная продажа
+   * считалась бы руками, то есть через раз.
    */
   .post(
     "/deals/:id/payments",
@@ -341,102 +343,31 @@ export const adminPartnersRoute = new Hono<AppEnv>()
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
 
-      const [deal] = await db
-        .select({
-          id: partnerDeals.id,
-          partnerId: partnerDeals.partnerId,
-          amountRub: partnerDeals.amountRub,
-          ratePercent: partnerDeals.ratePercent,
-          status: partnerDeals.status,
-        })
-        .from(partnerDeals)
-        .where(eq(partnerDeals.id, id))
-        .limit(1);
-      if (!deal) return c.json({ error: "not_found", id }, 404);
-      if (deal.status === "cancelled") {
-        return c.json(
-          { error: "deal_cancelled", message: "Сделка отменена — начислять нечего." },
-          409,
-        );
-      }
+      const result = await db.transaction((tx) =>
+        settleDealPayment(tx, {
+          dealId: id,
+          amountRub: body.amountRub,
+          paidAt: body.paidAt ? new Date(body.paidAt) : new Date(),
+          note: body.note ?? null,
+        }),
+      );
 
-      const [seller] = await db
-        .select({ id: partners.id, parentId: partners.parentId, joinedAt: partners.joinedAt })
-        .from(partners)
-        .where(eq(partners.id, deal.partnerId))
-        .limit(1);
-      if (!seller) return c.json({ error: "partner_not_found" }, 404);
-
-      const mentor = seller.parentId
-        ? ((
-            await db
-              .select({ id: partners.id, parentId: partners.parentId, status: partners.status })
-              .from(partners)
-              .where(eq(partners.id, seller.parentId))
-              .limit(1)
-          )[0] ?? null)
-        : null;
-
-      const paidAt = body.paidAt ? new Date(body.paidAt) : new Date();
-
-      const result = await db.transaction(async (tx) => {
-        const [payment] = await tx
-          .insert(dealPayments)
-          .values({
-            dealId: deal.id,
-            amountRub: String(body.amountRub),
-            paidAt,
-            note: body.note ?? null,
-          })
-          .returning({ id: dealPayments.id });
-        if (!payment) throw new Error("payment insert failed");
-
-        const rows = accrualsForPayment({
-          payment: { id: payment.id, dealId: deal.id, amountRub: body.amountRub, paidAt },
-          deal: {
-            id: deal.id,
-            partnerId: deal.partnerId,
-            amountRub: num(deal.amountRub),
-            ratePercent: num(deal.ratePercent),
-          },
-          seller: {
-            id: seller.id,
-            parentId: seller.parentId,
-            joinedAt: seller.joinedAt,
-          },
-          // Приостановленный наставник долю не получает: участие заморожено.
-          mentor:
-            mentor && mentor.status === "active"
-              ? { id: mentor.id, parentId: mentor.parentId }
-              : null,
-        });
-
-        await tx.insert(partnerAccruals).values(
-          rows.map((r) => ({
-            partnerId: r.partnerId,
-            paymentId: r.paymentId,
-            level: r.level,
-            ratePercent: String(r.ratePercent),
-            amountRub: String(r.amountRub),
-            reason: r.reason,
-          })),
-        );
-
-        // Первый платёж переводит сделку в «подписана»: деньги пришли — значит
-        // договорились. Статус не понижаем, если он уже выставлен вручную.
-        if (deal.status !== "signed") {
-          await tx
-            .update(partnerDeals)
-            .set({ status: "signed", signedAt: sql`coalesce(${partnerDeals.signedAt}, now())` })
-            .where(eq(partnerDeals.id, deal.id));
+      if (!result.ok) {
+        if (result.reason === "deal_not_found") return c.json({ error: "not_found", id }, 404);
+        if (result.reason === "deal_cancelled") {
+          return c.json(
+            { error: "deal_cancelled", message: "Сделка отменена — начислять нечего." },
+            409,
+          );
         }
-
-        return { paymentId: payment.id, accruals: rows };
-      });
+        return c.json({ error: result.reason }, 409);
+      }
 
       return c.json(
         {
           paymentId: result.paymentId,
+          fullyPaid: result.fullyPaid,
+          nextDueAt: result.nextDueAt ? result.nextDueAt.toISOString() : null,
           accruals: result.accruals.map((r) => ({
             partnerId: r.partnerId,
             level: r.level,

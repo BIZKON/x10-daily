@@ -12,6 +12,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { id, timestamps } from "./_shared";
+import { partnerDeals } from "./partners";
 import { pipelineRuns } from "./pipeline";
 import { users } from "./users";
 
@@ -28,6 +29,10 @@ import { users } from "./users";
 
 /** `topup` — пополнение · `charge` — списание за прогон · `adjust` — ручная правка. */
 export const balanceEntryKind = pgEnum("balance_entry_kind", ["topup", "charge", "adjust"]);
+
+/** Назначение платежа. varchar + CHECK в базе: enum не умеет DROP VALUE. */
+export const PAYMENT_PURPOSES = ["topup", "entry"] as const;
+export type PaymentPurpose = (typeof PAYMENT_PURPOSES)[number];
 
 /** Повторяет статусы ЮKassa — чужую модель здесь не выдумываем. */
 export const paymentStatus = pgEnum("payment_status", ["pending", "succeeded", "canceled"]);
@@ -50,9 +55,25 @@ export const payments = pgTable(
     payerEmail: varchar("payer_email", { length: 254 }),
     /** Момент зачисления на баланс. NULL = деньги ещё не зачислены. */
     creditedAt: timestamp("credited_at", { withTimezone: true }),
+    /**
+     * За что платят (спека 7, миграция 0035): `topup` — пополнение баланса,
+     * `entry` — вход в продукт. Третьим станет ежемесячное сопровождение.
+     *
+     * 🔴 Труба одна на оба назначения. Различает их это поле, а не второй
+     * платёжный код: два кода — это два места, где платёж считается принятым, и
+     * два места, где можно забыть чек 54-ФЗ.
+     */
+    purpose: varchar("purpose", { length: 16 }).$type<PaymentPurpose>().notNull().default("topup"),
+    /** Заказ, за который платят. NULL у пополнения баланса — там заказа нет. */
+    dealId: uuid("deal_id").references(() => partnerDeals.id, { onDelete: "set null" }),
+    /** Что клиент видит в банке и в чеке — одна строка на оба места. */
+    description: text("description"),
     ...timestamps,
   },
-  (t) => [index("payments_status_idx").on(t.status, t.createdAt)],
+  (t) => [
+    index("payments_status_idx").on(t.status, t.createdAt),
+    index("payments_deal_idx").on(t.dealId),
+  ],
 );
 
 /**

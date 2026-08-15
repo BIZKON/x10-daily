@@ -1,4 +1,4 @@
-import { MENTOR_BONUS_MONTHS, MENTOR_RATE_PERCENT } from "@x10/config";
+import { MENTOR_BONUS_MONTHS, MENTOR_RATE_PERCENT, NDFL_RATE_PERCENT } from "@x10/config";
 
 /**
  * Деньги партнёрской программы (спека 14.08).
@@ -151,4 +151,72 @@ export function wouldMakeCycle(
     cursor = parentOf.get(cursor) ?? null;
   }
   return false;
+}
+
+/* ── Магазин (спека 7) ────────────────────────────────────────────────────── */
+
+export type PartnerTaxStatus = "self_employed" | "entrepreneur" | "individual";
+
+/**
+ * Что делать со сделкой после того, как пришёл платёж.
+ *
+ * Отделено от записи в базу намеренно: «оплачено ли полностью» и «когда ждать
+ * остаток» — это решения, а не SQL, и ошибка в них видна только через месяц,
+ * когда клиент не платит вторую часть, потому что срок никто не назначил.
+ */
+export function settlementPlan(args: {
+  dealAmountRub: number;
+  /** Сколько по этой сделке уже было оплачено ДО текущего платежа. */
+  paidBeforeRub: number;
+  paymentRub: number;
+  /** Частей оплаты по договорённости: 1 или 2. */
+  installments: number;
+  paidAt: Date;
+}): { fullyPaid: boolean; nextDueAt: Date | null } {
+  const paidTotal = args.paidBeforeRub + args.paymentRub;
+
+  // 🔴 Допуск в копейку. Без него сделка на 350 000 висит недоплаченной из-за
+  // округления, а партнёр видит «ждём деньги» при полностью заплатившем клиенте.
+  const fullyPaid = paidTotal >= args.dealAmountRub - 0.01;
+
+  if (fullyPaid || args.installments < 2) {
+    return { fullyPaid, nextDueAt: null };
+  }
+
+  // Вторая часть — через месяц от фактической оплаты первой, а не от даты
+  // заказа: отсчёт от того, что произошло, спорить не о чем.
+  const next = new Date(args.paidAt);
+  next.setMonth(next.getMonth() + 1);
+  return { fullyPaid: false, nextDueAt: next };
+}
+
+/**
+ * Сколько партнёр получит на руки и сколько мы удержим.
+ *
+ * Решение владельца 15.08: 20% — сумма ДО налога. С самозанятым и ИП мы просто
+ * платим начисленное, налог их. С физлицом мы налоговый агент: НДФЛ удерживаем
+ * из его же доли.
+ *
+ * ⚠️ Взносы СФР сюда не входят: они наш расход сверх суммы, и партнёру их
+ * видеть незачем — это разговор о том, почему его 70 000 «на самом деле сто
+ * тысяч», который не нужен ни ему, ни нам.
+ */
+export function payoutBreakdown(
+  accruedRub: number,
+  taxStatus: PartnerTaxStatus | null | undefined,
+): { grossRub: number; ndflRub: number; netRub: number; statusKnown: boolean } {
+  const grossRub = round2(accruedRub);
+
+  if (!taxStatus) {
+    // Статус ещё не спрашивали. Показываем сумму как есть, но помечаем — иначе
+    // физлицо увидит «на руки 70 000», а получит 60 900.
+    return { grossRub, ndflRub: 0, netRub: grossRub, statusKnown: false };
+  }
+
+  if (taxStatus !== "individual") {
+    return { grossRub, ndflRub: 0, netRub: grossRub, statusKnown: true };
+  }
+
+  const ndflRub = round2((grossRub * NDFL_RATE_PERCENT) / 100);
+  return { grossRub, ndflRub, netRub: round2(grossRub - ndflRub), statusKnown: true };
 }

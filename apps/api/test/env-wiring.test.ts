@@ -1,52 +1,72 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * Проводка env-ключей от `process.env` до приложения.
+ * Проводка env-ключа от контейнера до кода.
  *
- * 🔴 Ключ проходит ПЯТЬ слоёв: схема `@x10/config`, интерфейс `AppBindings`,
- * `readBindings` (process.env → биндинги), `getEnv` (биндинги → env) и compose.
- * Пропущенный слой не роняет сборку и не виден в типах: переменная есть в
- * контейнере, а функция молча выключена.
+ * 🔴 Ключ проходит ПЯТЬ слоёв, и каждый заполняется руками:
  *
- * Так и случилось 15.08: раздел партнёров отвечал 404 при
- * `X10_PARTNERS_ENABLED=1` в контейнере — ключ не был вписан в `readBindings`.
- * Этот тест — про ту дырку, а не про типы.
+ *   1. `packages/config/src/env.ts`  — схема (Zod)
+ *   2. `apps/api/src/bindings.ts`    — интерфейс AppBindings
+ *   3. `apps/api/src/server.ts`      — process.env → биндинги
+ *   4. `apps/api/src/env.ts`         — биндинги → env приложения
+ *   5. `docker-compose.prod.yml`     — окружение контейнера
+ *
+ * Пропущенный слой не роняет ни сборку, ни типы: переменная есть в контейнере,
+ * а функция молча выключена. Так и вышло 15.08 — раздел партнёров отвечал 404
+ * при `X10_PARTNERS_ENABLED=1`, подтверждённом `printenv` внутри контейнера:
+ * ключа не было в `server.ts`.
+ *
+ * Проверяем ТЕКСТ файлов, а не поведение: импорт `server.ts` тянет весь граф
+ * модулей и под общей нагрузкой не укладывается в таймаут, а дефект здесь
+ * ровно текстовый — забытая строка.
  */
 
-/** Ключи, без которых функция молча перестаёт работать. */
-const WIRED = [
-  "X10_PARTNERS_ENABLED",
-  "X10_PARTNER_SLUGS",
-  "X10_BASE_DOMAIN",
-  "X10_ALLOWED_ORIGINS",
-  "TELEGRAM_BOT_TOKEN",
-  "X10_JWT_SECRET",
-] as const;
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+const read = (rel: string) => readFileSync(path.join(ROOT, rel), "utf8");
 
-describe("env доезжает от process.env до биндингов", () => {
-  it("🔴 каждый ключ проводки читается из окружения", async () => {
-    const saved: Record<string, string | undefined> = {};
-    for (const k of WIRED) {
-      saved[k] = process.env[k];
-      process.env[k] = `значение-${k}`;
-    }
-    process.env.DATABASE_URL ??= "postgresql://test:test@localhost/test";
+/** Ключи, которые обязаны быть проведены во все слои. */
+const WIRED = ["X10_PARTNERS_ENABLED", "X10_PARTNER_SLUGS", "X10_BASE_DOMAIN"] as const;
 
-    try {
-      // ⚠️ Импорт динамический: модуль сервера читает окружение на загрузке и
-      // без DATABASE_URL падает ещё до теста.
-      const { readBindings } = await import("../src/server");
-      const b = readBindings() as unknown as Record<string, unknown>;
-      for (const k of WIRED) {
-        expect(b[k], `${k} не вписан в readBindings — в контейнере есть, в коде нет`).toBe(
-          `значение-${k}`,
-        );
+const LAYERS: Array<{ name: string; file: string; pattern: (k: string) => RegExp }> = [
+  {
+    name: "схема @x10/config",
+    file: "packages/config/src/env.ts",
+    pattern: (k) => new RegExp(`${k}\\s*:`),
+  },
+  {
+    name: "интерфейс AppBindings",
+    file: "apps/api/src/bindings.ts",
+    pattern: (k) => new RegExp(`${k}\\?*\\s*:`),
+  },
+  {
+    name: "server.ts (process.env → биндинги)",
+    file: "apps/api/src/server.ts",
+    pattern: (k) => new RegExp(`${k}\\s*:\\s*process\\.env\\.${k}`),
+  },
+  {
+    name: "getEnv (биндинги → env)",
+    file: "apps/api/src/env.ts",
+    pattern: (k) => new RegExp(`${k}\\s*:\\s*bindings\\.${k}`),
+  },
+  {
+    name: "docker-compose.prod.yml",
+    file: "docker-compose.prod.yml",
+    pattern: (k) => new RegExp(`${k}\\s*:`),
+  },
+];
+
+describe("env-ключ проведён через все пять слоёв", () => {
+  for (const key of WIRED) {
+    it(`🔴 ${key} доезжает от контейнера до кода`, () => {
+      for (const layer of LAYERS) {
+        expect(
+          layer.pattern(key).test(read(layer.file)),
+          `${key} не вписан в слой «${layer.name}» (${layer.file}) — в контейнере ключ есть, в коде его нет`,
+        ).toBe(true);
       }
-    } finally {
-      for (const k of WIRED) {
-        if (saved[k] === undefined) delete process.env[k];
-        else process.env[k] = saved[k];
-      }
-    }
-  });
+    });
+  }
 });

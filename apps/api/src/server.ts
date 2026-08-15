@@ -79,7 +79,13 @@ function buildObjectStorage(env: NodeJS.ProcessEnv): ObjectStorage | undefined {
   return new S3Storage(client, bucket);
 }
 
-function readBindings(): AppBindings {
+/**
+ * Сборка биндингов из process.env.
+ *
+ * Экспортируется ради теста: проводку env-ключа иначе не проверить, а стоит
+ * она дорого — пропущенная строка здесь выключает функцию молча.
+ */
+export function readBindings(): AppBindings {
   const nodeEnv = (process.env.NODE_ENV ?? "development") as AppBindings["NODE_ENV"];
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
@@ -93,6 +99,13 @@ function readBindings(): AppBindings {
     NODE_ENV: nodeEnv,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
     X10_ALLOWED_ORIGINS: process.env.X10_ALLOWED_ORIGINS,
+    // 🔴 Пятый слой env-ключа. Схема, интерфейс биндингов, getEnv и compose —
+    // мало: сюда ключ тоже надо вписать поимённо, иначе в контейнере он есть, а
+    // приложение его не видит. Поймано живым прогоном 15.08: раздел партнёров
+    // отвечал 404 при X10_PARTNERS_ENABLED=1 в контейнере.
+    X10_BASE_DOMAIN: process.env.X10_BASE_DOMAIN,
+    X10_PARTNERS_ENABLED: process.env.X10_PARTNERS_ENABLED,
+    X10_PARTNER_SLUGS: process.env.X10_PARTNER_SLUGS,
 
     DATABASE_URL: databaseUrl,
     DIRECT_DATABASE_URL: process.env.DIRECT_DATABASE_URL,

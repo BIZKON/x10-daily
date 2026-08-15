@@ -40,6 +40,7 @@ export function getEnv(bindings: AppBindings): BaseEnv {
     TELEGRAM_WEBHOOK_SECRET: bindings.TELEGRAM_WEBHOOK_SECRET,
     X10_JWT_SECRET: bindings.X10_JWT_SECRET,
     X10_JWT_TTL_SECONDS: bindings.X10_JWT_TTL_SECONDS,
+    X10_BASE_DOMAIN: bindings.X10_BASE_DOMAIN,
     X10_PARTNERS_ENABLED: bindings.X10_PARTNERS_ENABLED,
     X10_PARTNER_SLUGS: bindings.X10_PARTNER_SLUGS,
   };

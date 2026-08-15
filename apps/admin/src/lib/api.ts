@@ -392,6 +392,33 @@ export async function fetchBillingBanner(): Promise<BillingBannerState | null> {
   return getJson<BillingBannerState>("/v1/admin/billing/balance");
 }
 
+/** Движения баланса: пополнения и списания (Спека 6). */
+export type BalanceEntry = {
+  id: string;
+  kind: "topup" | "charge" | "adjust";
+  amountRub: number;
+  balanceAfterRub: number;
+  note: string | null;
+  createdAt: string;
+};
+
+export type BalanceState = {
+  /** Заданы ли ключи ЮKassa: без них кнопка пополнения бессмысленна. */
+  storeConfigured: boolean;
+  balanceRub: number | null;
+  lowThresholdRub: number | null;
+  /**
+   * Включён ли денежный контур. В НАШЕЙ копии `false`: мы платим шлюзу напрямую,
+   * остаток уходит в минус и показывает накопленную стоимость контента.
+   */
+  billingEnforced: boolean | null;
+  entries: BalanceEntry[];
+};
+
+export async function fetchBalanceEntries(): Promise<BalanceState | null> {
+  return getJson<BalanceState>("/v1/admin/billing/entries");
+}
+
 export async function fetchTeam(): Promise<{
   me: { id: string; role: TeamRole | null };
   items: TeamMember[];

@@ -26,7 +26,7 @@ import { markPaymentCanceled, settleProviderPayment } from "../lib/payment-settl
 import { checkTopupAmount } from "../lib/topup";
 import { YooKassaError, createPayment, getPayment } from "../lib/yookassa";
 import { applyRateLimit } from "../rate-limit";
-import { readCreds } from "./billing";
+import { readCreds, storeConfigured } from "./billing";
 import { getInngest } from "./pipeline";
 
 /**
@@ -351,12 +351,26 @@ export const adminRoute = new Hono<AppEnv>()
 
   /**
    * GET /v1/admin/billing/entries
-   * Движения баланса — ответ на вопрос «почему остаток именно такой».
+   * Остаток и движения — ответ на вопрос «почему остаток именно такой».
+   *
+   * ⚠️ Отдельно от `/billing/balance`: тот отвечает на вопрос «почему конвейер
+   * молчит» и при выключенном денежном контуре молчит сам. Здесь цифра нужна
+   * всегда — в НАШЕЙ копии контур выключен намеренно, и отрицательный остаток
+   * показывает накопленную стоимость контента в клиентских ценах.
    */
   .get("/billing/entries", async (c) => {
     const env = getEnv(c.env);
     const db = getDb(env.DATABASE_URL);
     await requirePermission(c, db, "cost.view");
+
+    const [balance] = await db
+      .select({
+        balanceRub: clientBalance.balanceRub,
+        lowThresholdRub: clientBalance.lowThresholdRub,
+        billingEnforced: clientBalance.billingEnforced,
+      })
+      .from(clientBalance)
+      .limit(1);
 
     const rows = await db
       .select({
@@ -372,6 +386,10 @@ export const adminRoute = new Hono<AppEnv>()
       .limit(30);
 
     return c.json({
+      storeConfigured: storeConfigured(env),
+      balanceRub: balance ? Number(balance.balanceRub) : null,
+      lowThresholdRub: balance ? Number(balance.lowThresholdRub) : null,
+      billingEnforced: balance ? balance.billingEnforced : null,
       entries: rows.map((r) => ({
         id: r.id,
         kind: r.kind,

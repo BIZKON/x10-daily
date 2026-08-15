@@ -1,11 +1,21 @@
 import {
+  type BalanceState,
   type PipelineRunStats,
   type PipelineRunStatsNoMoney,
+  fetchBalanceEntries,
   fetchPipelineRunStats,
 } from "@/lib/api";
-import { AlertTriangle, Ban, CircleCheck, Wallet } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowDownRight,
+  ArrowUpRight,
+  Ban,
+  CircleCheck,
+  Wallet,
+} from "lucide-react";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { TopupForm } from "./topup-form";
 
 export const metadata = { title: "Расходы — ProAgent AI Admin" };
 
@@ -19,9 +29,126 @@ export const metadata = { title: "Расходы — ProAgent AI Admin" };
  */
 export default function CostPage() {
   return (
-    <Suspense fallback={<CostSkeleton />}>
-      <CostContent />
-    </Suspense>
+    <>
+      <header className="mb-6 border-b border-fence pb-5">
+        <h1 className="m-0 flex items-center gap-2 font-display text-2xl font-extrabold">
+          <Wallet size={22} strokeWidth={1.75} /> Расходы
+        </h1>
+        <p className="mt-1.5 text-[13px] leading-[1.55] text-mist">
+          Сколько стоит работа конвейера и что за эти деньги вышло. Дни и месяцы считаются по
+          Москве. Дневной потолок задаётся при подключении и защищает кошелёк: когда он достигнут,
+          конвейер останавливается до следующего дня.
+        </p>
+      </header>
+
+      {/* Баланс отдельной дырой: он лёгкий, и ждать тяжёлых агрегатов ему незачем. */}
+      <Suspense fallback={<div className="mb-6 h-40 animate-pulse rounded-2xl bg-card" />}>
+        <BalanceSection />
+      </Suspense>
+
+      <Suspense fallback={<CostSkeleton />}>
+        <CostContent />
+      </Suspense>
+    </>
+  );
+}
+
+/**
+ * Остаток, пополнение и движения (Спека 6, шаг 5).
+ *
+ * 🔴 `await connection()` ВНУТРИ компонента, а не на уровне страницы: иначе на
+ * билде фетчер вернёт null без обращения к cookies, динамической дыры не
+ * возникнет и «данные недоступны» запечётся в статику навсегда (CLAUDE.md §8).
+ */
+async function BalanceSection() {
+  await connection();
+  const state = await fetchBalanceEntries();
+  if (!state) return null;
+  return <BalanceCard state={state} />;
+}
+
+function BalanceCard({ state }: { state: BalanceState }) {
+  const balance = state.balanceRub;
+  const low = balance !== null && state.lowThresholdRub !== null && balance < state.lowThresholdRub;
+
+  return (
+    <section className="mb-6 rounded-2xl border border-fence bg-card p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h2 className="m-0 font-display text-lg font-extrabold">Баланс</h2>
+        {balance !== null && (
+          <span
+            className={`font-mono text-2xl font-bold ${
+              balance <= 0 ? "text-red" : low ? "text-gold" : "text-paper"
+            }`}
+          >
+            {rub(balance)}
+          </span>
+        )}
+      </div>
+
+      {state.billingEnforced === false && (
+        <p className="mt-2 text-[12.5px] leading-[1.55] text-mist">
+          Денежный контур в этой копии выключен: мы платим шлюзу напрямую и сами себе не переводим.
+          Минус здесь — не долг, а накопленная стоимость нашего контента в клиентских ценах.
+        </p>
+      )}
+
+      {state.storeConfigured ? (
+        <TopupForm />
+      ) : (
+        <p className="mt-3 rounded-xl border border-gold/40 bg-gold/5 px-3.5 py-2.5 text-[12.5px] leading-[1.55] text-mist">
+          Оплата не настроена: в окружении api нет ключей{" "}
+          <code className="font-mono text-paper">YOOKASSA_SHOP_ID</code> и{" "}
+          <code className="font-mono text-paper">YOOKASSA_SECRET_KEY</code>. Оба берутся с одной
+          страницы личного кабинета ЮKassa — у тестового магазина свой shopId.
+        </p>
+      )}
+
+      {state.entries.length > 0 && (
+        <table className="mt-5 w-full border-collapse text-[13px]">
+          <thead>
+            <tr className="border-fence border-b text-left text-mist">
+              <th className="pb-2 font-semibold">Когда</th>
+              <th className="pb-2 font-semibold">Что</th>
+              <th className="pb-2 text-right font-semibold">Сумма</th>
+              <th className="pb-2 text-right font-semibold">Остаток после</th>
+            </tr>
+          </thead>
+          <tbody>
+            {state.entries.map((e) => (
+              <tr key={e.id} className="border-fence/60 border-b last:border-0">
+                <td className="py-2 text-mist">
+                  {new Date(e.createdAt).toLocaleDateString("ru-RU", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </td>
+                <td className="py-2">
+                  <span className="inline-flex items-center gap-1.5">
+                    {e.amountRub >= 0 ? (
+                      <ArrowUpRight size={13} className="text-success" />
+                    ) : (
+                      <ArrowDownRight size={13} className="text-mist" />
+                    )}
+                    {e.kind === "topup" ? "Пополнение" : e.kind === "charge" ? "Работа" : "Правка"}
+                    {e.note ? <span className="text-mist"> · {e.note}</span> : null}
+                  </span>
+                </td>
+                <td
+                  className={`py-2 text-right font-mono ${e.amountRub >= 0 ? "text-success" : "text-paper"}`}
+                >
+                  {e.amountRub >= 0 ? "+" : ""}
+                  {rub(e.amountRub)}
+                </td>
+                <td className="py-2 text-right font-mono text-mist">{rub(e.balanceAfterRub)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
   );
 }
 
@@ -46,17 +173,6 @@ async function CostContent() {
 
   return (
     <>
-      <header className="mb-6 border-b border-fence pb-5">
-        <h1 className="m-0 flex items-center gap-2 font-display text-2xl font-extrabold">
-          <Wallet size={22} strokeWidth={1.75} /> Расходы
-        </h1>
-        <p className="mt-1.5 text-[13px] leading-[1.55] text-mist">
-          Сколько стоит работа конвейера и что за эти деньги вышло. Дни и месяцы считаются по
-          Москве. Дневной потолок задаётся при подключении и защищает кошелёк: когда он достигнут,
-          конвейер останавливается до следующего дня.
-        </p>
-      </header>
-
       {!stats ? (
         <ApiUnavailable />
       ) : stats.money === false ? (

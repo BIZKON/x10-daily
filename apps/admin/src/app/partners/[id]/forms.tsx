@@ -3,7 +3,7 @@
 import { Field } from "@/components/form/field";
 import { Loader2 } from "lucide-react";
 import { useActionState } from "react";
-import { addPayment, addPayout, createDeal, setMentor } from "../actions";
+import { addPayment, addPayout, createDeal, setMentor, updatePartner } from "../actions";
 import { PARTNER_FORM_IDLE, type PartnerFormState } from "../form-state";
 
 /**
@@ -275,6 +275,87 @@ export function MentorForm({
         >
           Сохранить
         </button>
+      </form>
+    </section>
+  );
+}
+
+/**
+ * Карточка партнёра: страница КП и настройки участия.
+ *
+ * Слаг обычно проставляется сам при регистрации — по брони за именем в
+ * Telegram. Эта форма нужна, когда человек зашёл под другим аккаунтом или
+ * страницу решили переназначить.
+ */
+export function ProfileForm({
+  partnerId,
+  slug,
+  name,
+  contact,
+  ratePercent,
+  status,
+  baseUrl,
+}: {
+  partnerId: string;
+  slug: string | null;
+  name: string;
+  contact: string | null;
+  ratePercent: number;
+  status: string;
+  baseUrl: string;
+}) {
+  const [state, action, pending] = useActionState(updatePartner, PARTNER_FORM_IDLE);
+
+  return (
+    <section className="rounded-2xl border border-fence bg-card p-4">
+      <h3 className="m-0 mb-3 font-display text-[15px] font-extrabold">Карточка партнёра</h3>
+      <form action={action} className="space-y-3">
+        <input type="hidden" name="partnerId" value={partnerId} />
+
+        <Field
+          label="Страница КП"
+          hint={slug ? `${baseUrl}/kp/${slug}/` : "страница не привязана"}
+          help="Имя его версии коммерческого предложения — то, что стоит в адресе после /kp/. Латиница, цифры и дефис. Партнёр отправляет эту ссылку клиенту, и на ней его фото и контакты. Обычно проставляется сама при регистрации; правьте, если человек зашёл под другим аккаунтом. Занятый адрес система не даст назначить дважды."
+        >
+          <input
+            name="slug"
+            defaultValue={slug ?? ""}
+            maxLength={64}
+            className={input}
+            placeholder="ivanov"
+          />
+        </Field>
+
+        <Field
+          label="Имя"
+          help="Как партнёр подписан у нас в списке. На его странице КП имя берётся из конфигурации лендинга, здесь — только для админки."
+        >
+          <input name="name" defaultValue={name} maxLength={160} className={input} />
+        </Field>
+
+        <Field label="Контакт" help="Telegram или телефон — чтобы было куда написать про выплату.">
+          <input name="contact" defaultValue={contact ?? ""} maxLength={200} className={input} />
+        </Field>
+
+        <Field
+          label="Ставка, %"
+          help="Доля с продаж. Меняется только для БУДУЩИХ сделок: в каждой уже заведённой лежит своя копия ставки, и отчёт по ним не изменится задним числом."
+        >
+          <input name="ratePercent" defaultValue={String(ratePercent)} className={input} />
+        </Field>
+
+        <Field
+          label="Участие"
+          help="Приостановленный партнёр не видит кабинет и не получает наставнических долей. Начисленное сохраняется — приостановка не отменяет обязательств."
+        >
+          <select name="status" defaultValue={status} className={input}>
+            <option value="active">Активен</option>
+            <option value="paused">Приостановлен</option>
+          </select>
+        </Field>
+
+        <Submit pending={pending}>{pending ? "Сохраняем" : "Сохранить"}</Submit>
+        <Result state={state} />
       </form>
     </section>
   );

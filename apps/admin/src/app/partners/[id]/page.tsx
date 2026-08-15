@@ -1,9 +1,9 @@
 import { type AdminPartnerCard, type AdminPartnerDeal, fetchPartnerCard } from "@/lib/api";
-import { ArrowLeft, HandCoins } from "lucide-react";
+import { ArrowLeft, HandCoins, Link as LinkIcon } from "lucide-react";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { DealForm, MentorForm, PaymentForm, PayoutForm } from "./forms";
+import { DealForm, MentorForm, PaymentForm, PayoutForm, ProfileForm } from "./forms";
 
 export const metadata = { title: "Партнёр — ProAgent AI Admin" };
 
@@ -22,6 +22,9 @@ export default function PartnerCardPage({ params }: { params: Promise<{ id: stri
     </Suspense>
   );
 }
+
+/** Домен витрины: отсюда собирается ссылка на версию КП партнёра. */
+const KP_BASE = process.env.X10_APP_PUBLIC_URL ?? "https://app.pro-agent-ai.ru";
 
 const rub = (v: number) =>
   `${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(v)} ₽`;
@@ -82,6 +85,21 @@ async function Content({ params }: { params: Promise<{ id: string }> }) {
           {partner.mentorName ? ` · привёл ${partner.mentorName}` : " · пришёл сам"}
           {partner.status === "paused" ? " · участие приостановлено" : ""}
         </p>
+        {partner.slug ? (
+          <a
+            href={`${KP_BASE}/kp/${partner.slug}/`}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-gold transition hover:underline"
+          >
+            <LinkIcon size={13} strokeWidth={1.75} /> {KP_BASE}/kp/{partner.slug}/
+          </a>
+        ) : (
+          <p className="mt-2 text-[12.5px] text-haze">
+            Страница КП не привязана — партнёру нечего отправить клиенту. Проставьте адрес в
+            карточке справа.
+          </p>
+        )}
       </header>
 
       <section className="mb-5 flex flex-wrap gap-6 rounded-2xl border border-fence bg-card p-5">

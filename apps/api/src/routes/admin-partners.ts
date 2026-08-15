@@ -19,6 +19,7 @@ import { requirePermission } from "../auth";
 import { getDb } from "../db";
 import { getEnv } from "../env";
 import { accrualsForPayment, wouldMakeCycle } from "../lib/partner-money";
+import { normalizeSlug } from "../lib/partner-slug";
 
 /**
  * Партнёрская программа со стороны владельца (спека 14.08).
@@ -59,6 +60,15 @@ const payoutSchema = z.object({
 });
 
 const mentorSchema = z.object({ parentId: z.string().uuid().nullable() });
+
+const profileSchema = z.object({
+  /** Адрес его версии КП: `/kp/<slug>/`. Пусто — персональной страницы нет. */
+  slug: z.string().trim().max(64).nullable().optional(),
+  name: z.string().trim().min(2).max(160).optional(),
+  contact: z.string().trim().max(200).nullable().optional(),
+  ratePercent: z.coerce.number().min(0).max(100).optional(),
+  status: z.enum(["active", "paused"]).optional(),
+});
 
 const num = (v: unknown): number => Number(v ?? 0);
 const iso = (v: Date | string | null): string | null =>
@@ -474,6 +484,65 @@ export const adminPartnersRoute = new Hono<AppEnv>()
         .returning({ id: partnerPayouts.id });
 
       return c.json({ id: created?.id }, 201);
+    },
+  )
+
+  /**
+   * PATCH /v1/admin/partners/:id
+   * Правка карточки: страница КП, имя, контакт, ставка, участие.
+   */
+  .patch(
+    "/partners/:id",
+    zValidator("param", idParam),
+    zValidator("json", profileSchema),
+    async (c) => {
+      const env = getEnv(c.env);
+      const db = getDb(env.DATABASE_URL);
+      await requirePermission(c, db, "partners.manage");
+      const { id } = c.req.valid("param");
+      const body = c.req.valid("json");
+
+      const patch: Record<string, unknown> = {};
+      if (body.name !== undefined) patch.name = body.name;
+      if (body.contact !== undefined) patch.contact = body.contact || null;
+      if (body.status !== undefined) patch.status = body.status;
+      // 🔴 Ставка правится только для БУДУЩИХ сделок: в уже заведённых лежит
+      // своя копия, и прошлое от этой правки не меняется.
+      if (body.ratePercent !== undefined) patch.ratePercent = String(body.ratePercent);
+
+      if (body.slug !== undefined) {
+        const slug = normalizeSlug(body.slug);
+        if (slug) {
+          // Один и тот же адрес у двоих — это чужая страница с чужими
+          // контактами в руках партнёра. Отбиваем до записи.
+          const [taken] = await db
+            .select({ id: partners.id })
+            .from(partners)
+            .where(eq(partners.slug, slug))
+            .limit(1);
+          if (taken && taken.id !== id) {
+            return c.json(
+              {
+                error: "slug_taken",
+                message: `Страница /kp/${slug}/ уже привязана к другому партнёру.`,
+              },
+              409,
+            );
+          }
+        }
+        patch.slug = slug;
+      }
+
+      if (Object.keys(patch).length === 0) return c.json({ error: "empty_patch" }, 400);
+
+      const [updated] = await db
+        .update(partners)
+        .set(patch)
+        .where(eq(partners.id, id))
+        .returning({ id: partners.id, slug: partners.slug, name: partners.name });
+
+      if (!updated) return c.json({ error: "not_found", id }, 404);
+      return c.json(updated);
     },
   )
 

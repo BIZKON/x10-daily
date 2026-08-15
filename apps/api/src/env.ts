@@ -41,6 +41,7 @@ export function getEnv(bindings: AppBindings): BaseEnv {
     X10_JWT_SECRET: bindings.X10_JWT_SECRET,
     X10_JWT_TTL_SECONDS: bindings.X10_JWT_TTL_SECONDS,
     X10_PARTNERS_ENABLED: bindings.X10_PARTNERS_ENABLED,
+    X10_PARTNER_SLUGS: bindings.X10_PARTNER_SLUGS,
   };
   cached = loadEnv(source, { requiredKeys: API_REQUIRED_KEYS });
   return cached;

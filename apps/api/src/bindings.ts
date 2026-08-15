@@ -42,6 +42,8 @@ export interface AppBindings {
   X10_ALLOWED_ORIGINS?: string;
   /** Партнёрская программа: "1" — включена. По умолчанию выключена. */
   X10_PARTNERS_ENABLED?: string;
+  /** Бронь партнёрских страниц: `username:slug` через запятую. */
+  X10_PARTNER_SLUGS?: string;
 
   // ---- Secrets ----
   DATABASE_URL: string;

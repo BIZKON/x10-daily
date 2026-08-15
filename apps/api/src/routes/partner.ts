@@ -20,6 +20,7 @@ import { extractSession } from "../auth";
 import { getDb } from "../db";
 import { getEnv } from "../env";
 import { partnerBalance } from "../lib/partner-money";
+import { reservedSlugFor } from "../lib/partner-slug";
 
 /**
  * Партнёрский кабинет в мини-аппе (спека 14.08).
@@ -162,6 +163,22 @@ export const partnerRoute = new Hono<AppEnv>()
       }
     }
 
+    // 🔴 Партнёрские версии КП разосланы ДО первого входа человека в
+    // приложение. Бронь привязывает его страницу прямо здесь: иначе партнёр
+    // открыл бы кабинет без ссылки и решил, что программа не работает.
+    // Слаг мог занять кто-то другой — тогда оставляем пустым, а владелец
+    // разберётся в карточке: чужая страница хуже отсутствующей.
+    const wanted = reservedSlugFor(env.X10_PARTNER_SLUGS, user?.username);
+    let slug: string | null = null;
+    if (wanted) {
+      const [taken] = await db
+        .select({ id: partners.id })
+        .from(partners)
+        .where(eq(partners.slug, wanted))
+        .limit(1);
+      if (!taken) slug = wanted;
+    }
+
     const [created] = await db
       .insert(partners)
       .values({
@@ -170,11 +187,25 @@ export const partnerRoute = new Hono<AppEnv>()
         contact: user?.username ? `@${user.username}` : null,
         ratePercent: String(PARTNER_RATE_PERCENT),
         parentId,
+        slug,
       })
-      .returning({ id: partners.id, name: partners.name, joinedAt: partners.joinedAt });
+      .returning({
+        id: partners.id,
+        name: partners.name,
+        slug: partners.slug,
+        joinedAt: partners.joinedAt,
+      });
 
     if (!created) return c.json({ error: "create_failed" }, 500);
-    return c.json({ id: created.id, name: created.name, joinedAt: iso(created.joinedAt) }, 201);
+    return c.json(
+      {
+        id: created.id,
+        name: created.name,
+        slug: created.slug,
+        joinedAt: iso(created.joinedAt),
+      },
+      201,
+    );
   })
 
   /**

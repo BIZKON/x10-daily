@@ -130,3 +130,32 @@ export async function setMentor(form: FormData) {
 
   revalidatePath(`/partners/${partnerId}`);
 }
+
+/**
+ * Правка карточки партнёра: его страница КП, имя, контакт, ставка, участие.
+ *
+ * 🔴 Слаг связывает человека с документом, который уже разослан клиентам.
+ * Занятый адрес сервер отбивает: чужая страница в руках партнёра хуже, чем её
+ * отсутствие.
+ */
+export async function updatePartner(
+  _prev: PartnerFormState,
+  form: FormData,
+): Promise<PartnerFormState> {
+  const partnerId = String(form.get("partnerId") ?? "").trim();
+  if (!partnerId) return { status: "error", message: "Не указан партнёр." };
+
+  const rate = String(form.get("ratePercent") ?? "").trim();
+  const res = await adminMutate("PATCH", `/v1/admin/partners/${encodeURIComponent(partnerId)}`, {
+    slug: String(form.get("slug") ?? "").trim(),
+    name: String(form.get("name") ?? "").trim() || undefined,
+    contact: String(form.get("contact") ?? "").trim(),
+    ratePercent: rate ? Number(rate.replace(",", ".")) : undefined,
+    status: String(form.get("status") ?? "") || undefined,
+  });
+  if (!res.ok) return { status: "error", message: res.error };
+
+  revalidatePath(`/partners/${partnerId}`);
+  revalidatePath("/partners");
+  return { status: "ok", message: "Сохранено." };
+}

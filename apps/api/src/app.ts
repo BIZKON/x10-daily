@@ -17,6 +17,7 @@ import { adminVisualRoute } from "./routes/admin-visual";
 import { articlesRoute } from "./routes/articles";
 import { authRoute } from "./routes/auth";
 import { authorsRoute } from "./routes/authors";
+import { billingRoute } from "./routes/billing";
 import { digestsRoute } from "./routes/digests";
 import { engagementRoute } from "./routes/engagement";
 import { eventsRoute } from "./routes/events";
@@ -133,6 +134,9 @@ export function createApp() {
   app.route("/v1/admin", adminPostingRoute);
   app.route("/v1/admin", adminPartnersRoute);
   app.route("/v1/telegram", telegramWebhookRoute);
+  // Публичный вебхук ЮKassa: без сессии и CSRF — шлюз их не носит. Защита в
+  // самом маршруте: перепроверка платежа у шлюза и поиск строки в нашей базе.
+  app.route("/v1/billing", billingRoute);
   app.route("/v1/admin/upload", uploadRoute);
   app.route("/v1/events", eventsRoute);
   app.route("/v1/authors", authorsRoute);

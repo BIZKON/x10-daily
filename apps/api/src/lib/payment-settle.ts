@@ -298,3 +298,21 @@ export async function settleProviderPayment(
     return { ok: true, purpose: "entry", dealResult } as const;
   });
 }
+
+/**
+ * Отмечает платёж отменённым.
+ *
+ * Только пока он не зачтён: `credited_at IS NULL` защищает от гонки, где
+ * «отменён» приходит после «оплачен» и стирает факт полученных денег.
+ */
+export async function markPaymentCanceled(
+  db: Database,
+  providerPaymentId: string,
+): Promise<boolean> {
+  const [row] = await db
+    .update(payments)
+    .set({ status: "canceled" })
+    .where(and(eq(payments.providerPaymentId, providerPaymentId), isNull(payments.creditedAt)))
+    .returning({ id: payments.id });
+  return Boolean(row);
+}

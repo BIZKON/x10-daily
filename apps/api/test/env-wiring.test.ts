@@ -28,7 +28,16 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../.
 const read = (rel: string) => readFileSync(path.join(ROOT, rel), "utf8");
 
 /** Ключи, которые обязаны быть проведены во все слои. */
-const WIRED = ["X10_PARTNERS_ENABLED", "X10_PARTNER_SLUGS", "X10_BASE_DOMAIN"] as const;
+const WIRED = [
+  "X10_PARTNERS_ENABLED",
+  "X10_PARTNER_SLUGS",
+  "X10_BASE_DOMAIN",
+  // Магазин (спека 7). Ключи вписывает владелец в .env.production: платёжные
+  // секреты в репозитории не живут. Проводка обязана быть в коде заранее —
+  // иначе ключи в контейнере окажутся, а оплата молча не заработает.
+  "YOOKASSA_SHOP_ID",
+  "YOOKASSA_SECRET_KEY",
+] as const;
 
 const LAYERS: Array<{ name: string; file: string; pattern: (k: string) => RegExp }> = [
   {

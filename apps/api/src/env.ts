@@ -43,6 +43,8 @@ export function getEnv(bindings: AppBindings): BaseEnv {
     X10_BASE_DOMAIN: bindings.X10_BASE_DOMAIN,
     X10_PARTNERS_ENABLED: bindings.X10_PARTNERS_ENABLED,
     X10_PARTNER_SLUGS: bindings.X10_PARTNER_SLUGS,
+    YOOKASSA_SHOP_ID: bindings.YOOKASSA_SHOP_ID,
+    YOOKASSA_SECRET_KEY: bindings.YOOKASSA_SECRET_KEY,
   };
   cached = loadEnv(source, { requiredKeys: API_REQUIRED_KEYS });
   return cached;

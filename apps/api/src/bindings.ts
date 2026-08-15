@@ -73,6 +73,12 @@ export interface AppBindings {
   X10_JWT_SECRET?: string;
   X10_JWT_TTL_SECONDS?: string;
 
+  // ---- Магазин ЮKassa (спека 7) ----
+  /** shopId магазина. Пусто — оплата выключена. */
+  YOOKASSA_SHOP_ID?: string;
+  /** Секретный ключ того же магазина. Пара из разных магазинов = 401. */
+  YOOKASSA_SECRET_KEY?: string;
+
   // ---- S3 storage (Timeweb) — настраивается в S16 ----
   S3_ENDPOINT?: string;
   S3_REGION?: string;

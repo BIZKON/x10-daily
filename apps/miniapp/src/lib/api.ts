@@ -478,3 +478,82 @@ export async function joinPartnerProgram(ref?: string): Promise<string | null> {
     return `Ошибка ${res.status}`;
   }
 }
+
+/* ── Страница оплаты (спека 7) ────────────────────────────────────────────── */
+
+export type ApiPayOrder = {
+  dealNo: number;
+  clientName: string;
+  state: "awaiting" | "partially_paid" | "paid" | "cancelled";
+  package: { key: string; title: string; summary: string; includes: readonly string[] };
+  amountRub: number;
+  paidRub: number;
+  dueNowRub: number;
+  installments: number;
+  nextDueAt: string | null;
+  payerKind: "individual" | "company" | null;
+  payerName: string | null;
+  payerEmail: string | null;
+  seller: {
+    legalName: string;
+    shortName: string;
+    inn: string;
+    ogrnip: string;
+    phone: string;
+    email: string;
+    vatNote: string;
+  };
+  cardAvailable: boolean;
+};
+
+/**
+ * Заказ по коду ссылки. Без сессии: платит клиент, входа по Telegram у него нет.
+ *
+ * `null` — код неизвестен или api недоступен. Страница в обоих случаях говорит
+ * одно и то же: ссылка не открылась, напишите тому, кто её прислал. Разница
+ * между «нет заказа» и «нет связи» посторонему человеку ничего не даёт.
+ */
+export async function fetchPayOrder(token: string): Promise<ApiPayOrder | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(`${base}/v1/pay/${encodeURIComponent(token)}`, {
+      signal: ctrl.signal,
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as ApiPayOrder;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+/** Публичный POST страницы оплаты. Ответ отдаём как есть — форма разберёт. */
+export async function postPay(
+  token: string,
+  path: "start" | "company",
+  body: unknown,
+): Promise<{ ok: boolean; status: number; data: unknown }> {
+  const base = getBaseUrl();
+  if (!base) return { ok: false, status: 0, data: null };
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(`${base}/v1/pay/${encodeURIComponent(token)}/${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body ?? {}),
+      signal: ctrl.signal,
+    });
+    const data = await res.json().catch(() => null);
+    return { ok: res.ok, status: res.status, data };
+  } catch {
+    return { ok: false, status: 0, data: null };
+  } finally {
+    clearTimeout(t);
+  }
+}

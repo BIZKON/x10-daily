@@ -18,6 +18,7 @@ export {
   MENTOR_BONUS_MONTHS,
   MAX_INSTALLMENT_MONTHS,
   PACKAGE_PRICES_RUB,
+  PACKAGE_INFO,
   NDFL_RATE_PERCENT,
   type ModelTier,
   type TemplateKind,

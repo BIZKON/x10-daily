@@ -37,6 +37,9 @@ const WIRED = [
   // иначе ключи в контейнере окажутся, а оплата молча не заработает.
   "YOOKASSA_SHOP_ID",
   "YOOKASSA_SECRET_KEY",
+  // Служебный чат владельца: уведомления о заказах. Ключ жил в схеме и в
+  // compose, но в api проведён не был — отправка молча не работала.
+  "TG_OPS_CHAT_ID",
 ] as const;
 
 const LAYERS: Array<{ name: string; file: string; pattern: (k: string) => RegExp }> = [

@@ -1,6 +1,14 @@
 import { zValidator } from "@hono/zod-validator";
-import { MENTOR_BONUS_MONTHS, MENTOR_RATE_PERCENT, PARTNER_RATE_PERCENT } from "@x10/config";
 import {
+  MAX_INSTALLMENT_MONTHS,
+  MENTOR_BONUS_MONTHS,
+  MENTOR_RATE_PERCENT,
+  PACKAGE_INFO,
+  PACKAGE_PRICES_RUB,
+  PARTNER_RATE_PERCENT,
+} from "@x10/config";
+import {
+  DEAL_PACKAGES,
   and,
   dealPayments,
   desc,
@@ -21,6 +29,8 @@ import { getDb } from "../db";
 import { getEnv } from "../env";
 import { partnerBalance } from "../lib/partner-money";
 import { reservedSlugFor } from "../lib/partner-slug";
+import { generatePayToken } from "../lib/pay-token";
+import { sendMessage } from "../lib/telegram-call";
 
 /**
  * Партнёрский кабинет в мини-аппе (спека 14.08).
@@ -85,6 +95,27 @@ const joinSchema = z.object({
   /** Кто пригласил: slug партнёра из ссылки-приглашения. */
   ref: z.string().trim().max(64).optional(),
 });
+
+/**
+ * Заказ от партнёра.
+ *
+ * 🔴 Партнёр выбирает ПАКЕТ, а не сумму: цена берётся из прайса. Иначе через
+ * ссылку на оплату завод продаётся за сколько угодно, а фиксированная цена, на
+ * которой стоит всё КП, перестаёт быть фиксированной. Скидка — заявка владельцу.
+ */
+const orderSchema = z.object({
+  clientName: z.string().trim().min(2).max(200),
+  clientContact: z.string().trim().max(200).optional(),
+  package: z.enum(DEAL_PACKAGES),
+  /** Частей оплаты: 1 или 2. Больше — только по согласованию с владельцем. */
+  installments: z.number().int().min(1).max(MAX_INSTALLMENT_MONTHS).default(1),
+  note: z.string().trim().max(500).optional(),
+});
+
+/** Адрес страницы оплаты. Один на весь заказ, вне зависимости от частей. */
+export function payUrlFor(env: { X10_BASE_DOMAIN?: string }, token: string): string {
+  return `https://app.${env.X10_BASE_DOMAIN ?? "pro-agent-ai.ru"}/pay/${token}`;
+}
 
 const num = (v: unknown): number => Number(v ?? 0);
 const iso = (v: Date | string | null): string | null =>
@@ -242,6 +273,9 @@ export const partnerRoute = new Hono<AppEnv>()
           amountRub: partnerDeals.amountRub,
           ratePercent: partnerDeals.ratePercent,
           status: partnerDeals.status,
+          installments: partnerDeals.installments,
+          payToken: partnerDeals.payToken,
+          nextDueAt: partnerDeals.nextDueAt,
           signedAt: partnerDeals.signedAt,
           createdAt: partnerDeals.createdAt,
         })
@@ -336,6 +370,11 @@ export const partnerRoute = new Hono<AppEnv>()
         paidRub: paidByDeal.get(d.id) ?? 0,
         ratePercent: num(d.ratePercent),
         status: d.status,
+        installments: d.installments,
+        // Ссылка, которую партнёр отдаёт клиенту. Одна на весь заказ: через
+        // месяц клиент вернётся по ней же за второй половиной.
+        payUrl: d.payToken ? payUrlFor(env, d.payToken) : null,
+        nextDueAt: iso(d.nextDueAt),
         signedAt: iso(d.signedAt),
         createdAt: iso(d.createdAt),
       })),
@@ -360,4 +399,111 @@ export const partnerRoute = new Hono<AppEnv>()
         soldRub: soldByPartner.get(p.id) ?? 0,
       })),
     });
+  })
+
+  /**
+   * POST /v1/partner/deals
+   * Партнёр заводит клиента на оплату и сразу получает ссылку.
+   *
+   * Подтверждения владельца не требуется (решение 15.08): суммы фиксированы
+   * прайсом, злоупотребить нечем, а ожидание «когда посмотрят» приходилось бы
+   * ровно на момент, когда клиент готов платить. Владелец видит заказ
+   * уведомлением и в админке.
+   */
+  .post("/deals", zValidator("json", orderSchema), async (c) => {
+    const env = requireEnabled(c);
+    const claims = await extractSession(c);
+    const db = getDb(env.DATABASE_URL);
+    const body = c.req.valid("json");
+
+    const [me] = await db
+      .select({
+        id: partners.id,
+        name: partners.name,
+        status: partners.status,
+        ratePercent: partners.ratePercent,
+      })
+      .from(partners)
+      .where(eq(partners.userId, claims.userId))
+      .limit(1);
+
+    if (!me) return c.json({ error: "not_partner" }, 404);
+    if (me.status !== "active") {
+      return c.json(
+        { error: "partner_paused", message: "Участие приостановлено — свяжитесь с нами." },
+        409,
+      );
+    }
+
+    const amountRub = PACKAGE_PRICES_RUB[body.package];
+    const payToken = generatePayToken();
+
+    const [deal] = await db
+      .insert(partnerDeals)
+      .values({
+        partnerId: me.id,
+        clientName: body.clientName,
+        clientContact: body.clientContact ?? null,
+        package: body.package,
+        amountRub: String(amountRub),
+        // 🔴 Ставка КОПИРУЕТСЯ: поднимем процент через полгода — этот заказ
+        // обязан считаться по сегодняшнему.
+        ratePercent: me.ratePercent,
+        status: "awaiting_payment",
+        installments: body.installments,
+        payToken,
+        note: body.note ?? null,
+      })
+      .returning({ id: partnerDeals.id, dealNo: partnerDeals.dealNo });
+
+    if (!deal) return c.json({ error: "internal" }, 500);
+
+    const payUrl = payUrlFor(env, payToken);
+    const firstRub = body.installments > 1 ? Math.round(amountRub / body.installments) : amountRub;
+
+    // Уведомление владельцу. Молча: сбой отправки не должен ронять заказ —
+    // ссылка партнёру важнее нашего сообщения.
+    void notifyOwner(
+      env,
+      `<b>Новый заказ № ${deal.dealNo}</b>\n` +
+        `${PACKAGE_INFO[body.package].title} — ${amountRub.toLocaleString("ru-RU")} ₽` +
+        (body.installments > 1
+          ? ` (двумя платежами по ${firstRub.toLocaleString("ru-RU")} ₽)`
+          : "") +
+        `\nКлиент: ${body.clientName}\nПартнёр: ${me.name}`,
+    );
+
+    return c.json(
+      {
+        dealId: deal.id,
+        dealNo: deal.dealNo,
+        amountRub,
+        firstPaymentRub: firstRub,
+        installments: body.installments,
+        payUrl,
+      },
+      201,
+    );
   });
+
+/**
+ * Сообщение владельцу в служебный чат.
+ *
+ * ⚠️ Ошибку глотаем намеренно: заказ уже создан, ссылка партнёру выдана, и
+ * падать из-за недоставленного уведомления значит ломать продажу ради оповещения
+ * о ней. Сбой виден в логах.
+ */
+async function notifyOwner(
+  env: { TELEGRAM_BOT_TOKEN?: string; TG_OPS_CHAT_ID?: string },
+  text: string,
+): Promise<void> {
+  const token = env.TELEGRAM_BOT_TOKEN;
+  const chatId = Number(env.TG_OPS_CHAT_ID ?? "");
+  if (!token || !Number.isFinite(chatId) || chatId === 0) return;
+
+  try {
+    await sendMessage({ token }, chatId, text);
+  } catch (err) {
+    console.error("[partner] уведомление о заказе не ушло:", err);
+  }
+}

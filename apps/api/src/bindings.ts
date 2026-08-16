@@ -73,6 +73,14 @@ export interface AppBindings {
   X10_JWT_SECRET?: string;
   X10_JWT_TTL_SECONDS?: string;
 
+  /**
+   * Служебный чат владельца: уведомления о заказах и оплатах (спека 7).
+   *
+   * 🔴 Ключ давно есть в схеме config и в compose, но в api проведён не был —
+   * то есть отправка отсюда молча не работала бы. Проверено 15.08.
+   */
+  TG_OPS_CHAT_ID?: string;
+
   // ---- Магазин ЮKassa (спека 7) ----
   /** shopId магазина. Пусто — оплата выключена. */
   YOOKASSA_SHOP_ID?: string;

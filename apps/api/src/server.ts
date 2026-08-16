@@ -106,6 +106,7 @@ export function readBindings(): AppBindings {
     X10_BASE_DOMAIN: process.env.X10_BASE_DOMAIN,
     X10_PARTNERS_ENABLED: process.env.X10_PARTNERS_ENABLED,
     X10_PARTNER_SLUGS: process.env.X10_PARTNER_SLUGS,
+    TG_OPS_CHAT_ID: process.env.TG_OPS_CHAT_ID,
     YOOKASSA_SHOP_ID: process.env.YOOKASSA_SHOP_ID,
     YOOKASSA_SECRET_KEY: process.env.YOOKASSA_SECRET_KEY,
 

@@ -5,6 +5,7 @@ import { BadgeCheck, Check, Copy, HandCoins, Users, Wallet } from "lucide-react"
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { JoinButton } from "./join-button";
+import { OrderForm } from "./order-form";
 
 export const metadata = { title: "Партнёрам — ИИ работает на вас" };
 
@@ -163,6 +164,10 @@ function Cabinet({ data }: { data: ApiPartnerCabinet }) {
         </section>
       )}
 
+      {/* Главное действие партнёра. Стоит выше списка: завести заказ важнее, чем
+          пересмотреть старые. */}
+      <OrderForm />
+
       {/* Онбординг вместо пустого экрана: новичок должен понимать, что делать. */}
       {empty ? (
         <section className="mt-3 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-5">
@@ -269,6 +274,27 @@ function DealCard({ deal }: { deal: ApiPartnerDeal }) {
           {earned > 0 ? `+${rub(earned)}` : "—"}
         </span>
       </div>
+
+      {/* Ссылка нужна ровно до полной оплаты: дальше это мусор на карточке. */}
+      {deal.payUrl && deal.paidRub < deal.amountRub && (
+        <div className="mt-2.5 flex items-center gap-2 rounded-lg bg-black/25 px-2.5 py-2">
+          <code className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-gold">
+            {deal.payUrl}
+          </code>
+          <Copy size={13} strokeWidth={1.75} className="shrink-0 text-white/35" />
+        </div>
+      )}
+
+      {deal.nextDueAt && deal.paidRub < deal.amountRub && (
+        <div className="mt-1.5 text-[11.5px] text-white/45">
+          Вторая часть — до{" "}
+          {new Date(deal.nextDueAt).toLocaleDateString("ru-RU", {
+            day: "2-digit",
+            month: "long",
+          })}
+          . Напомнить о ней стоит вам: клиент общается с вами, а не с нами.
+        </div>
+      )}
     </article>
   );
 }

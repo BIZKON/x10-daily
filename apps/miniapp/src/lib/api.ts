@@ -408,6 +408,11 @@ export type ApiPartnerDeal = {
   paidRub: number;
   ratePercent: number;
   status: string;
+  installments: number;
+  /** Ссылка, которую партнёр отдаёт клиенту. Одна на весь заказ. */
+  payUrl: string | null;
+  /** Срок второй части рассрочки. Появляется после первой оплаты. */
+  nextDueAt: string | null;
   signedAt: string | null;
   createdAt: string;
 };
@@ -464,6 +469,33 @@ export async function fetchPartnerCabinet(): Promise<ApiPartnerCabinet | null> {
   const res = await fetchAuthed("/v1/partner/me");
   if (!res || !res.ok) return null;
   return (await res.json()) as ApiPartnerCabinet;
+}
+
+/** Заводит клиента на оплату. Возвращает ссылку либо текст ошибки. */
+export async function createPartnerOrder(body: {
+  clientName: string;
+  clientContact?: string;
+  package: "manual" | "line";
+  installments: number;
+}): Promise<{ payUrl: string; dealNo: number; firstPaymentRub: number } | { error: string }> {
+  const res = await postAuthed("/v1/partner/deals", body);
+  if (!res) return { error: "Нет связи с сервером. Попробуйте ещё раз." };
+  const data = (await res.json().catch(() => null)) as {
+    payUrl?: string;
+    dealNo?: number;
+    firstPaymentRub?: number;
+    message?: string;
+    error?: string;
+  } | null;
+
+  if (!res.ok || !data?.payUrl) {
+    return { error: data?.message ?? data?.error ?? `Ошибка ${res.status}` };
+  }
+  return {
+    payUrl: data.payUrl,
+    dealNo: data.dealNo ?? 0,
+    firstPaymentRub: data.firstPaymentRub ?? 0,
+  };
 }
 
 /** Регистрация в программе. Возвращает текст ошибки или null при успехе. */

@@ -8,3 +8,16 @@
 export type JoinState = { status: "idle" | "error"; message: string };
 
 export const JOIN_IDLE: JoinState = { status: "idle", message: "" };
+
+/**
+ * Заказ заведён: ссылка на оплату и что сказать клиенту.
+ *
+ * Успех здесь — не сообщение, а ссылка: партнёр отдаёт её прямо из этого
+ * состояния, не перезагружая экран и не ища заказ в списке.
+ */
+export type OrderState =
+  | { status: "idle" }
+  | { status: "error"; message: string }
+  | { status: "created"; payUrl: string; dealNo: number; firstPaymentRub: number };
+
+export const ORDER_IDLE: OrderState = { status: "idle" };

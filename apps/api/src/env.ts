@@ -44,6 +44,10 @@ export function getEnv(bindings: AppBindings): BaseEnv {
     X10_PARTNERS_ENABLED: bindings.X10_PARTNERS_ENABLED,
     X10_PARTNER_SLUGS: bindings.X10_PARTNER_SLUGS,
     TG_OPS_CHAT_ID: bindings.TG_OPS_CHAT_ID,
+    X10_BANK_NAME: bindings.X10_BANK_NAME,
+    X10_BANK_BIK: bindings.X10_BANK_BIK,
+    X10_BANK_ACCOUNT: bindings.X10_BANK_ACCOUNT,
+    X10_BANK_CORR_ACCOUNT: bindings.X10_BANK_CORR_ACCOUNT,
     YOOKASSA_SHOP_ID: bindings.YOOKASSA_SHOP_ID,
     YOOKASSA_SECRET_KEY: bindings.YOOKASSA_SECRET_KEY,
   };

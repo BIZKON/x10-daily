@@ -63,5 +63,6 @@ export async function saveCompany(_prev: PayFormState, form: FormData): Promise<
   }
 
   revalidatePath(`/pay/${token}`);
-  return { status: "idle", message: "" };
+  // Ссылка на документ, а не «сохранено»: клиент вводил реквизиты ради счёта.
+  return { status: "invoice", message: "", invoiceUrl: `/pay/${token}/invoice` };
 }

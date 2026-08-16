@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { AppEnv } from "../app";
 import { getDb } from "../db";
 import { getEnv } from "../env";
+import { amountInWords } from "../lib/amount-in-words";
 import { dueNowRub } from "../lib/partner-money";
 import { isPayToken } from "../lib/pay-token";
 import { YooKassaError, createPayment } from "../lib/yookassa";
@@ -48,6 +49,26 @@ const companySchema = z.object({
 
 const num = (v: unknown): number => Number(v ?? 0);
 
+/**
+ * Банковские реквизиты продавца или null, если не настроены.
+ *
+ * 🔴 Все четыре обязательны: счёт с тремя реквизитами из четырёх не пройдёт в
+ * банке клиента, но выглядит заполненным — и ошибку заметят на второй день.
+ */
+function readBank(env: {
+  X10_BANK_NAME?: string;
+  X10_BANK_BIK?: string;
+  X10_BANK_ACCOUNT?: string;
+  X10_BANK_CORR_ACCOUNT?: string;
+}): { name: string; bik: string; account: string; corrAccount: string } | null {
+  const name = env.X10_BANK_NAME?.trim();
+  const bik = env.X10_BANK_BIK?.trim();
+  const account = env.X10_BANK_ACCOUNT?.trim();
+  const corrAccount = env.X10_BANK_CORR_ACCOUNT?.trim();
+  if (!name || !bik || !account || !corrAccount) return null;
+  return { name, bik, account, corrAccount };
+}
+
 /** Реквизиты продавца — то же, что печатается в счёте и в чеке. */
 function sellerView() {
   return {
@@ -74,6 +95,9 @@ async function loadOrder(db: ReturnType<typeof getDb>, token: string) {
       installments: partnerDeals.installments,
       payerKind: partnerDeals.payerKind,
       payerName: partnerDeals.payerName,
+      payerInn: partnerDeals.payerInn,
+      payerKpp: partnerDeals.payerKpp,
+      payerAddress: partnerDeals.payerAddress,
       payerEmail: partnerDeals.payerEmail,
       nextDueAt: partnerDeals.nextDueAt,
     })
@@ -145,6 +169,57 @@ export const payRoute = new Hono<AppEnv>()
       seller: sellerView(),
       /** Настроена ли оплата картой. Нет ключей — остаётся счёт. */
       cardAvailable: Boolean(readCreds(env)),
+    });
+  })
+
+  /**
+   * GET /v1/pay/:token/invoice
+   * Данные счёта на оплату. Номер счёта — номер заказа: второго номера у одного
+   * заказа не бывает, иначе бухгалтерия клиента спросит, какой из них верный.
+   */
+  .get("/:token/invoice", zValidator("param", tokenParam), async (c) => {
+    const { token } = c.req.valid("param");
+    if (!isPayToken(token)) return c.json({ error: "not_found" }, 404);
+
+    await applyRateLimit(c, c.env.ENGAGEMENT_LIMITER, "pay-invoice");
+
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    const order = await loadOrder(db, token);
+    if (!order) return c.json({ error: "not_found" }, 404);
+
+    const { deal, paidRub } = order;
+    const amountRub = num(deal.amountRub);
+    const info = PACKAGE_INFO[deal.package as DealPackage];
+    const due = dueNowRub({ amountRub, paidRub, installments: deal.installments });
+
+    const bank = readBank(env);
+
+    return c.json({
+      // Реквизиты банка могут быть не заданы: тогда счёт не выставляем, а
+      // страница честно предлагает карту. Пустой счёт хуже отсутствующего —
+      // по нему нельзя заплатить, но выглядит он как настоящий.
+      bankConfigured: Boolean(bank),
+      dealNo: deal.dealNo,
+      issuedAt: new Date().toISOString(),
+      seller: { ...sellerView(), address: MERCHANT.postalAddress, bank },
+      buyer: {
+        name: deal.payerName ?? deal.clientName,
+        inn: deal.payerInn,
+        kpp: deal.payerKpp,
+        address: deal.payerAddress,
+      },
+      item: {
+        description: `${info.title}: разработка и настройка системы автоматической подготовки контента`,
+        amountRub,
+      },
+      amountRub,
+      paidRub,
+      dueNowRub: due,
+      dueInWords: amountInWords(due),
+      installments: deal.installments,
+      nextDueAt: deal.nextDueAt ? deal.nextDueAt.toISOString() : null,
+      vatNote: VAT_NOTE,
     });
   })
 

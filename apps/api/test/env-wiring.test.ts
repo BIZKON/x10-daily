@@ -40,6 +40,12 @@ const WIRED = [
   // Служебный чат владельца: уведомления о заказах. Ключ жил в схеме и в
   // compose, но в api проведён не был — отправка молча не работала.
   "TG_OPS_CHAT_ID",
+  // Банковские реквизиты для счёта юрлицу. В env, а не в legal.ts: репозиторий
+  // публичный, а у копии клиента реквизиты будут свои.
+  "X10_BANK_NAME",
+  "X10_BANK_BIK",
+  "X10_BANK_ACCOUNT",
+  "X10_BANK_CORR_ACCOUNT",
 ] as const;
 
 const LAYERS: Array<{ name: string; file: string; pattern: (k: string) => RegExp }> = [

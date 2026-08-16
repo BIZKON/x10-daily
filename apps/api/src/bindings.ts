@@ -81,6 +81,13 @@ export interface AppBindings {
    */
   TG_OPS_CHAT_ID?: string;
 
+  // ---- Банковские реквизиты для счёта (спека 7) ----
+  /** Пусто — счёт не выставляется, остаётся оплата картой. */
+  X10_BANK_NAME?: string;
+  X10_BANK_BIK?: string;
+  X10_BANK_ACCOUNT?: string;
+  X10_BANK_CORR_ACCOUNT?: string;
+
   // ---- Магазин ЮKassa (спека 7) ----
   /** shopId магазина. Пусто — оплата выключена. */
   YOOKASSA_SHOP_ID?: string;

@@ -589,3 +589,49 @@ export async function postPay(
     clearTimeout(t);
   }
 }
+
+export type ApiInvoice = {
+  bankConfigured: boolean;
+  dealNo: number;
+  issuedAt: string;
+  seller: {
+    legalName: string;
+    shortName: string;
+    inn: string;
+    ogrnip: string;
+    phone: string;
+    email: string;
+    vatNote: string;
+    address: string;
+    bank: { name: string; bik: string; account: string; corrAccount: string } | null;
+  };
+  buyer: { name: string; inn: string | null; kpp: string | null; address: string | null };
+  item: { description: string; amountRub: number };
+  amountRub: number;
+  paidRub: number;
+  dueNowRub: number;
+  dueInWords: string;
+  installments: number;
+  nextDueAt: string | null;
+  vatNote: string;
+};
+
+/** Данные счёта на оплату. `null` — код неизвестен или api недоступен. */
+export async function fetchInvoice(token: string): Promise<ApiInvoice | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(`${base}/v1/pay/${encodeURIComponent(token)}/invoice`, {
+      signal: ctrl.signal,
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as ApiInvoice;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}

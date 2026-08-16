@@ -183,6 +183,15 @@ export function PayForm({
             </p>
           )}
 
+          {companyState.status === "invoice" && (
+            <a
+              href={companyState.invoiceUrl}
+              className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-2xl border-[1.5px] border-[#7C3AED] bg-white px-5 py-3 font-display text-[14.5px] font-extrabold text-[#7C3AED]"
+            >
+              <FileText size={15} /> Открыть счёт № заказа
+            </a>
+          )}
+
           <p className="mt-2.5 text-[11.5px] leading-snug text-[#6B6478]">
             Счёт откроется здесь же — его можно скачать и передать в бухгалтерию. Оплата по счёту
             идёт без комиссии, деньги приходят за один–три рабочих дня.

@@ -93,6 +93,11 @@ services:
       X10_PARTNER_SLUGS: "${X10_PARTNER_SLUGS:-}"
       # Магазин ЮKassa (спека 7). Пусто — оплата выключена, маршруты отвечают
       # «оплата не настроена». Ключи живут только в .env.production.
+      # Банковские реквизиты для счёта юрлицу. Пусто — счёт не выставляется.
+      X10_BANK_NAME: "${X10_BANK_NAME:-}"
+      X10_BANK_BIK: "${X10_BANK_BIK:-}"
+      X10_BANK_ACCOUNT: "${X10_BANK_ACCOUNT:-}"
+      X10_BANK_CORR_ACCOUNT: "${X10_BANK_CORR_ACCOUNT:-}"
       YOOKASSA_SHOP_ID: "${YOOKASSA_SHOP_ID:-}"
       YOOKASSA_SECRET_KEY: "${YOOKASSA_SECRET_KEY:-}"
       S3_ENDPOINT: "${S3_ENDPOINT:-}"

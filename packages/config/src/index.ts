@@ -21,6 +21,7 @@ export {
   PACKAGE_INFO,
   NDFL_RATE_PERCENT,
   formatDealNo,
+  partnerEarningRub,
   type ModelTier,
   type TemplateKind,
   type PackageKey,

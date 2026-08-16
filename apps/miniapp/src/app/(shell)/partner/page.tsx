@@ -1,7 +1,8 @@
 import { TopBar } from "@/components/top-bar";
 import { fetchPartnerCabinet, fetchPartnerProgram } from "@/lib/api";
 import type { ApiPartnerCabinet, ApiPartnerDeal, ApiPartnerProgram } from "@/lib/api";
-import { BadgeCheck, Check, Copy, HandCoins, Users, Wallet } from "lucide-react";
+import { partnerEarningRub } from "@x10/config";
+import { BadgeCheck, Check, ChevronRight, Copy, HandCoins, Users, Wallet } from "lucide-react";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { JoinButton } from "./join-button";
@@ -63,12 +64,14 @@ function Offer({ program, status }: { program: ApiPartnerProgram; status: string
         <div className="mb-2 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-gold">
           <HandCoins size={14} strokeWidth={2} /> Партнёрская программа
         </div>
+        {/* 🔴 Деньгами, а не процентом: «20%» человек не переводит в рубли на
+            ходу. Цифра считается от прайса — правка цены пересчитает её сама. */}
         <h1 className="m-0 font-display text-[26px] font-extrabold leading-tight">
-          Зарабатывайте от {program.partnerRatePercent}% на рекомендациях
+          {rub(partnerEarningRub())} с одного клиента
         </h1>
         <p className="mt-2 text-[14.5px] leading-relaxed text-white/70">
-          Вы рекомендуете систему, которая ведёт контент за команду. Клиент платит — вы получаете
-          свою долю с каждой оплаты.
+          Столько вы получаете с полного пакета: {program.partnerRatePercent}% с каждой оплаты
+          клиента, которого привели. Система ведёт контент за его команду — вы её рекомендуете.
         </p>
       </section>
 
@@ -87,11 +90,47 @@ function Offer({ program, status }: { program: ApiPartnerProgram; status: string
       <section className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
         <h2 className="m-0 font-display text-[15px] font-bold">Как это работает</h2>
         <ol className="mt-2.5 space-y-2 pl-5 text-[13.5px] leading-relaxed text-white/70">
-          <li>Вы получаете свою страницу с предложением — её и отправляете клиенту.</li>
-          <li>Клиент читает, задаёт вопросы вам, договаривается о запуске.</li>
-          <li>Мы настраиваем систему и ведём её дальше. Ваша часть — рекомендация.</li>
-          <li>Клиент платит — доля приходит вам, здесь же видно сколько и когда.</li>
+          <li>Вы получаете личную ссылку — по ней клиент попадает в это приложение.</li>
+          <li>Он читает презентацию, открывает подробное предложение и пишет вам.</li>
+          <li>Договорились — заводите его на оплату здесь же, ссылку выдаёт кабинет.</li>
+          <li>Клиент платит — доля приходит вам, видно сколько и когда.</li>
         </ol>
+      </section>
+
+      {/* Онбординг: что именно отправлять. Без него человек вступает и зависает
+          — «а что теперь говорить и куда вести». */}
+      <section className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <h2 className="m-0 font-display text-[15px] font-bold">Что отправлять клиенту</h2>
+        <p className="mt-1.5 mb-0 text-[13px] leading-relaxed text-white/60">
+          После регистрации в кабинете появится ваша ссылка и готовый текст к ней — копируется одной
+          кнопкой. Отправлять её стоит тому, у кого есть бизнес и кто уже платит за контент.
+        </p>
+        <div className="mt-3 space-y-2">
+          <a
+            href="/kp/"
+            className="flex items-center justify-between gap-2 rounded-xl border border-white/12 bg-white/[0.02] px-3.5 py-3 text-[13.5px]"
+          >
+            <span>
+              <b className="block text-paper">Прочитать предложение целиком</b>
+              <span className="text-[12px] text-white/50">
+                то же, что увидит клиент, с тарифами
+              </span>
+            </span>
+            <ChevronRight size={16} className="shrink-0 text-white/30" />
+          </a>
+          <a
+            href="/"
+            className="flex items-center justify-between gap-2 rounded-xl border border-white/12 bg-white/[0.02] px-3.5 py-3 text-[13.5px]"
+          >
+            <span>
+              <b className="block text-paper">Посмотреть, что система публикует</b>
+              <span className="text-[12px] text-white/50">
+                лента продукта — живой пример работы
+              </span>
+            </span>
+            <ChevronRight size={16} className="shrink-0 text-white/30" />
+          </a>
+        </div>
       </section>
 
       {status === "paused" ? (

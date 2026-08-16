@@ -17,3 +17,37 @@ body {
   background-color: var(--color-gold);
   color: var(--color-steel);
 }
+
+/* Пульсация кружка партнёрства в полосе сторис (16.08.2026).
+   Кольцо расходится и гаснет — сам кружок стоит на месте: дрожащий контент
+   читается как поломка, а не как акцент.
+
+   🔴 Объявлено через @theme, а не голым классом: Tailwind v4 собирает утилиты
+   из темы, и обычное правило `.story-pulse` в этом файле в сборку не попало —
+   проверено живым CSS, анимация молча не применялась. */
+@theme {
+  --animate-story-pulse: story-pulse 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+@keyframes story-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(1.28);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.28);
+    opacity: 0;
+  }
+}
+
+/* Уважаем системную настройку: кому анимации мешают — тем не мигаем. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-story-pulse {
+    animation: none;
+    opacity: 0.55;
+  }
+}

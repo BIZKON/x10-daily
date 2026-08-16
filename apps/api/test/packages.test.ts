@@ -1,7 +1,13 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { PACKAGE_INFO, PACKAGE_PRICES_RUB, formatDealNo } from "@x10/config";
+import {
+  PACKAGE_INFO,
+  PACKAGE_PRICES_RUB,
+  PARTNER_RATE_PERCENT,
+  formatDealNo,
+  partnerEarningRub,
+} from "@x10/config";
 import { DEAL_PACKAGES } from "@x10/db";
 import { describe, expect, it } from "vitest";
 
@@ -67,5 +73,26 @@ describe("номер заказа", () => {
   it("длинный номер не обрезается", () => {
     // Потерянный разряд — это другой заказ, а не короткий номер.
     expect(formatDealNo(10_000)).toBe("10000");
+  });
+});
+
+describe("заработок партнёра в деньгах", () => {
+  it("считается от прайса, а не вписан руками", () => {
+    // Поднимем цену или ставку — витрина обязана пересчитаться сама.
+    expect(partnerEarningRub("line")).toBe(70_000);
+    expect(partnerEarningRub("manual")).toBe(36_000);
+  });
+
+  it("по умолчанию — полный пакет: на витрине обещаем «до»", () => {
+    expect(partnerEarningRub()).toBe(partnerEarningRub("line"));
+  });
+
+  it("🔴 совпадает с процентом из условий программы", () => {
+    // Цифра на витрине и процент в условиях — одно обещание, разными словами.
+    for (const key of DEAL_PACKAGES) {
+      expect(partnerEarningRub(key)).toBe(
+        Math.round((PACKAGE_PRICES_RUB[key] * PARTNER_RATE_PERCENT) / 100),
+      );
+    }
   });
 });

@@ -106,6 +106,7 @@ export function readBindings(): AppBindings {
     X10_BASE_DOMAIN: process.env.X10_BASE_DOMAIN,
     X10_PARTNERS_ENABLED: process.env.X10_PARTNERS_ENABLED,
     X10_PARTNER_SLUGS: process.env.X10_PARTNER_SLUGS,
+    TELEGRAM_BOT_USERNAME: process.env.TELEGRAM_BOT_USERNAME,
     TG_OPS_CHAT_ID: process.env.TG_OPS_CHAT_ID,
     X10_BANK_NAME: process.env.X10_BANK_NAME,
     X10_BANK_BIK: process.env.X10_BANK_BIK,

@@ -426,6 +426,9 @@ export type ApiPartnerCabinet = {
     ratePercent: number;
     hasMentor: boolean;
     joinedAt: string | null;
+    /** Ссылка в мини-апп: презентация продукта, подписанная партнёром. */
+    promoUrl: string | null;
+    promoWebUrl: string | null;
     kpUrl: string | null;
   };
   balance: { accruedRub: number; paidRub: number; dueRub: number };
@@ -629,6 +632,38 @@ export async function fetchInvoice(token: string): Promise<ApiInvoice | null> {
     });
     if (!res.ok) return null;
     return (await res.json()) as ApiInvoice;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+/* ── Презентация по ссылке партнёра (16.08.2026) ──────────────────────────── */
+
+export type ApiPromoPartner = {
+  name: string;
+  contact: string | null;
+  /** Полное КП партнёра: тот же домен, тот же webview. */
+  kpUrl: string;
+};
+
+/**
+ * Кто рекомендует продукт. `null` — слаг неизвестен, участие приостановлено
+ * или api недоступен: презентация тогда показывается без подписи.
+ */
+export async function fetchPromoPartner(slug: string): Promise<ApiPromoPartner | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(`${base}/v1/partner/public/${encodeURIComponent(slug)}`, {
+      signal: ctrl.signal,
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as ApiPromoPartner;
   } catch {
     return null;
   } finally {

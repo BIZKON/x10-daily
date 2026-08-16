@@ -43,6 +43,7 @@ export function getEnv(bindings: AppBindings): BaseEnv {
     X10_BASE_DOMAIN: bindings.X10_BASE_DOMAIN,
     X10_PARTNERS_ENABLED: bindings.X10_PARTNERS_ENABLED,
     X10_PARTNER_SLUGS: bindings.X10_PARTNER_SLUGS,
+    TELEGRAM_BOT_USERNAME: bindings.TELEGRAM_BOT_USERNAME,
     TG_OPS_CHAT_ID: bindings.TG_OPS_CHAT_ID,
     X10_BANK_NAME: bindings.X10_BANK_NAME,
     X10_BANK_BIK: bindings.X10_BANK_BIK,

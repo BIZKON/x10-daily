@@ -41,6 +41,12 @@ export {
   type Permission,
 } from "./permissions";
 export {
+  PARTNER_PROMO_PREFIX,
+  routeForStartParam,
+  partnerPromoLink,
+  partnerPromoWebLink,
+} from "./deep-link";
+export {
   MERCHANT,
   RECEIPT,
   VAT_NOTE,

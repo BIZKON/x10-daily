@@ -6,6 +6,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { JoinButton } from "./join-button";
 import { OrderForm } from "./order-form";
+import { PromoLink } from "./promo-link";
 
 export const metadata = { title: "Партнёрам — ИИ работает на вас" };
 
@@ -147,19 +148,20 @@ function Cabinet({ data }: { data: ApiPartnerCabinet }) {
         </div>
       </section>
 
-      {partner.kpUrl && (
-        <section className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-          <div className="text-[12px] font-semibold uppercase tracking-wider text-white/45">
-            Ваша страница с предложением
+      {/* 🔴 Ссылка ведёт В МИНИ-АПП, а не на статическое КП. Раньше человек
+          читал документ и в продукт не попадал никогда — ни в ленту, ни в
+          кейсы, ни к боту. Теперь он открывает презентацию внутри приложения,
+          а подробное КП остаётся вторым шагом по кнопке. */}
+      {partner.promoUrl ? (
+        <PromoLink url={partner.promoUrl} webUrl={partner.promoWebUrl} />
+      ) : (
+        <section className="mt-3 rounded-2xl border border-gold/30 bg-gold/5 p-4">
+          <div className="text-[12px] font-semibold uppercase tracking-wider text-gold">
+            Ссылка ещё не выдана
           </div>
-          <div className="mt-1.5 flex items-center gap-2">
-            <code className="min-w-0 flex-1 truncate font-mono text-[13px] text-gold">
-              {partner.kpUrl}
-            </code>
-            <Copy size={15} strokeWidth={1.75} className="shrink-0 text-white/40" />
-          </div>
-          <p className="mt-2 text-[12.5px] leading-relaxed text-white/55">
-            Отправьте её клиенту. Всё, что он прочитает, подписано вашим именем и вашими контактами.
+          <p className="mt-1.5 mb-0 text-[12.5px] leading-relaxed text-white/60">
+            Напишите нам — заведём вашу личную страницу с предложением. Пока её нет, клиента можно
+            привести разговором: сделку мы оформим вручную.
           </p>
         </section>
       )}

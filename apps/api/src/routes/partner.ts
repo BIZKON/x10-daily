@@ -7,6 +7,8 @@ import {
   PACKAGE_PRICES_RUB,
   PARTNER_RATE_PERCENT,
   formatDealNo,
+  partnerPromoLink,
+  partnerPromoWebLink,
 } from "@x10/config";
 import {
   DEAL_PACKAGES,
@@ -356,7 +358,20 @@ export const partnerRoute = new Hono<AppEnv>()
         ratePercent: num(me.ratePercent),
         hasMentor: Boolean(me.parentId),
         joinedAt: iso(me.joinedAt),
-        /** Ссылка на его версию КП — то, что он отправляет клиенту. */
+        /**
+         * Ссылка, которую партнёр отправляет клиенту.
+         *
+         * 🔴 Ведёт В МИНИ-АПП (`?startapp=p-<slug>`), а не на статическое КП:
+         * человек должен попасть в продукт, а не прочитать документ и уйти.
+         * Подробное КП открывается со страницы презентации второй кнопкой.
+         */
+        promoUrl: me.slug
+          ? partnerPromoLink(env.TELEGRAM_BOT_USERNAME ?? "Sekretar_Syrov_IP_bot", me.slug)
+          : null,
+        /** Тот же экран обычной ссылкой — если клиент пишет не в Telegram. */
+        promoWebUrl: me.slug
+          ? partnerPromoWebLink(env.X10_BASE_DOMAIN ?? "pro-agent-ai.ru", me.slug)
+          : null,
         kpUrl: me.slug
           ? `https://app.${env.X10_BASE_DOMAIN ?? "pro-agent-ai.ru"}/kp/${me.slug}/`
           : null,

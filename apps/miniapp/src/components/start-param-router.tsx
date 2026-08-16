@@ -17,6 +17,7 @@
  * Клиентская навигация (`router.replace`) → PPR не затрагивается (рендерит null).
  */
 
+import { routeForStartParam } from "@x10/config";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
@@ -69,12 +70,15 @@ export function StartParamRouter() {
     done.current = true;
 
     const p = readStartParam();
-    if (!p || !isValidArticleSlug(p)) return;
+    // Куда вести — решает общая функция: посты канала ведут на статью,
+    // ссылка партнёра (`p-<slug>`) — на презентацию продукта.
+    const target = routeForStartParam(p);
+    if (!p || !target) return;
     // Этот deep-link уже отработан в текущей сессии → не роутим повторно (иначе
     // возврат в ленту выбрасывал бы обратно на статью).
     if (sessionGet(HANDLED_SLUG_KEY) === p) return;
     sessionSet(HANDLED_SLUG_KEY, p);
-    router.replace(`/article/${p}`);
+    router.replace(target);
   }, [router]);
 
   return null;

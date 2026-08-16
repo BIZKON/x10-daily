@@ -84,6 +84,85 @@ function initials(name) {
  * Уменьшение нужно всё равно: снимок с телефона весит мегабайты, а внутри
  * страницы это утроилось бы в base64 — КП открывалось бы полминуты.
  */
+/**
+ * Чем резать фото: `sips` на macOS, ImageMagick на сервере.
+ *
+ * 🔴 Раньше был только `sips`, и это привязывало сборку к макбуку. Как только
+ * КП стало пересобираться на VM при деплое, портреты поехали бы: без обрезки
+ * круглая рамка режет фото по центру кадра, а не по лицу. Один и тот же
+ * документ выглядел бы по-разному в зависимости от того, кто его собрал.
+ *
+ * Возвращает `null`, если нет ни того, ни другого — фото тогда вшивается как
+ * есть, и сборка не падает.
+ */
+function pickImageTool() {
+  const has = (bin) => {
+    try {
+      execFileSync("command", ["-v", bin], { stdio: "ignore", shell: true });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  if (has("sips")) {
+    return {
+      size(src) {
+        const out = execFileSync("sips", ["-g", "pixelWidth", "-g", "pixelHeight", src], {
+          encoding: "utf8",
+        });
+        return {
+          w: Number(out.match(/pixelWidth:\s*(\d+)/)?.[1]),
+          h: Number(out.match(/pixelHeight:\s*(\d+)/)?.[1]),
+        };
+      },
+      crop(src, dst, { side, offX, offY }) {
+        execFileSync(
+          "sips",
+          [
+            "-s", "format", "jpeg",
+            "-s", "formatOptions", "72",
+            "-c", String(side), String(side), "--cropOffset", String(offY), String(offX),
+            "-Z", String(PHOTO_PX),
+            src, "--out", dst,
+          ],
+          { stdio: "ignore" },
+        );
+      },
+    };
+  }
+
+  // ImageMagick 7 зовётся `magick`, шестая версия — `identify`/`convert`.
+  const magick = has("magick");
+  if (!magick && !has("convert")) return null;
+
+  const run = (args) =>
+    magick ? execFileSync("magick", args, { encoding: "utf8" })
+           : execFileSync(args[0] === "identify" ? "identify" : "convert",
+                          args[0] === "identify" ? args.slice(1) : args,
+                          { encoding: "utf8" });
+
+  return {
+    size(src) {
+      const out = magick
+        ? execFileSync("magick", ["identify", "-format", "%w %h", src], { encoding: "utf8" })
+        : execFileSync("identify", ["-format", "%w %h", src], { encoding: "utf8" });
+      const [w, h] = out.trim().split(/\s+/).map(Number);
+      return { w, h };
+    },
+    crop(src, dst, { side, offX, offY }) {
+      run([
+        src,
+        "-crop", `${side}x${side}+${offX}+${offY}`,
+        "+repage",
+        "-resize", `${PHOTO_PX}x${PHOTO_PX}`,
+        "-quality", "72",
+        dst,
+      ]);
+    },
+  };
+}
+
 function photoDataUri(file, face) {
   const src = path.join(PHOTOS, file);
   if (!fs.existsSync(src)) return null;
@@ -91,11 +170,10 @@ function photoDataUri(file, face) {
   const tmp = path.join(PHOTOS, `.build-${file.replace(/\.[^.]+$/, "")}.jpg`);
   let out = src;
   try {
-    const dims = execFileSync("sips", ["-g", "pixelWidth", "-g", "pixelHeight", src], {
-      encoding: "utf8",
-    });
-    const w = Number(dims.match(/pixelWidth:\s*(\d+)/)?.[1]);
-    const h = Number(dims.match(/pixelHeight:\s*(\d+)/)?.[1]);
+    const tool = pickImageTool();
+    if (!tool) throw new Error("ни sips, ни ImageMagick не найдены");
+
+    const { w, h } = tool.size(src);
     if (!w || !h) throw new Error("не удалось прочитать размеры");
 
     const side = Math.min(w, h);
@@ -103,13 +181,7 @@ function photoDataUri(file, face) {
     const offX = clamp(face.x * w - side / 2, w - side);
     const offY = clamp(face.y * h - side / 2, h - side);
 
-    execFileSync("sips", [
-      "-s", "format", "jpeg",
-      "-s", "formatOptions", "72",
-      "-c", String(side), String(side), "--cropOffset", String(offY), String(offX),
-      "-Z", String(PHOTO_PX),
-      src, "--out", tmp,
-    ], { stdio: "ignore" });
+    tool.crop(src, tmp, { side, offX, offY });
     out = tmp;
   } catch (e) {
     console.warn(`  ⚠ ${file}: кадрирование не отработало (${e.message}) — вшиваю как есть`);

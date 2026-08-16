@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # x10-daily M0 deploy — один прогон на Timeweb Cloud Server (VM).
-# Цикл: git pull → build → migrate (managed PG) → up -d.
+# Цикл: git pull → сборка КП → build → migrate (managed PG) → up -d.
 #
 # Запуск:
 #   ssh <vm>
@@ -54,6 +54,23 @@ fi
 
 echo "▸ git pull"
 git pull --ff-only
+
+# Коммерческое предложение собирается ЗДЕСЬ, а не на макбуке.
+#
+# 🔴 Собранные страницы лежат под .gitignore (`landing/*/`): в них личные
+# телефоны партнёров, а репозиторий публичный. Раньше это означало ручную
+# заливку файлов после каждой правки текста — и первое же изменение цены
+# разъезжалось между репозиторием и продом незаметно. Теперь источник один:
+# template.html в гите, страницы пересобираются при каждом деплое.
+#
+# `partners.json` живёт только на VM рядом с .env.production (личные данные).
+# Нет его — соберётся основное КП, партнёрские версии пропустятся.
+echo "▸ пересборка коммерческого предложения"
+if command -v node >/dev/null 2>&1; then
+  node scripts/build-kp.mjs || echo "  ⚠ КП не собралось — прод не трогаем, страницы остались прежними"
+else
+  echo "  ⚠ node на сервере нет — КП не пересобрано (apt-get install -y nodejs imagemagick)"
+fi
 
 echo "▸ docker compose build"
 docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" build

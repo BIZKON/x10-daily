@@ -7,6 +7,7 @@ import type { AppEnv } from "../app";
 import { getDb } from "../db";
 import { getEnv } from "../env";
 import { amountInWords } from "../lib/amount-in-words";
+import { BANK_PROBLEM, type BankDetails, checkBankDetails } from "../lib/bank-account";
 import { dueNowRub } from "../lib/partner-money";
 import { isPayToken } from "../lib/pay-token";
 import { YooKassaError, createPayment } from "../lib/yookassa";
@@ -50,23 +51,19 @@ const companySchema = z.object({
 const num = (v: unknown): number => Number(v ?? 0);
 
 /**
- * Банковские реквизиты продавца или null, если не настроены.
+ * Банковские реквизиты продавца или null, если выставлять счёт нельзя.
  *
- * 🔴 Все четыре обязательны: счёт с тремя реквизитами из четырёх не пройдёт в
- * банке клиента, но выглядит заполненным — и ошибку заметят на второй день.
+ * 🔴 Проверяется контрольный ключ по БИК, а не только заполненность: опечатка
+ * в двадцатизначном счёте глазами не видна, а деньги по такому счёту уйдут в
+ * никуда — и виноватым окажется наш документ. Причина пишется в лог по имени.
  */
-function readBank(env: {
-  X10_BANK_NAME?: string;
-  X10_BANK_BIK?: string;
-  X10_BANK_ACCOUNT?: string;
-  X10_BANK_CORR_ACCOUNT?: string;
-}): { name: string; bik: string; account: string; corrAccount: string } | null {
-  const name = env.X10_BANK_NAME?.trim();
-  const bik = env.X10_BANK_BIK?.trim();
-  const account = env.X10_BANK_ACCOUNT?.trim();
-  const corrAccount = env.X10_BANK_CORR_ACCOUNT?.trim();
-  if (!name || !bik || !account || !corrAccount) return null;
-  return { name, bik, account, corrAccount };
+function readBank(env: Parameters<typeof checkBankDetails>[0]): BankDetails | null {
+  const check = checkBankDetails(env);
+  if (check.ok) return check.bank;
+  if (check.reason !== "not_set") {
+    console.error(`[pay] счёт не выставляется: ${BANK_PROBLEM[check.reason]}`);
+  }
+  return null;
 }
 
 /** Реквизиты продавца — то же, что печатается в счёте и в чеке. */

@@ -9,6 +9,8 @@
  * открывать чужую клиентскую базу.
  */
 
+import { formatDealNo } from "@x10/config";
+
 const rub = (v: number) => `${v.toLocaleString("ru-RU")} ₽`;
 
 export type PaidNotice = {
@@ -24,7 +26,7 @@ export type PaidNotice = {
 
 /** Продавцу: его клиент, его деньги — можно всё. */
 export function sellerPaidMessage(n: PaidNotice, accruedRub: number): string {
-  const head = `<b>Оплата по заказу № ${n.dealNo}</b>`;
+  const head = `<b>Оплата по заказу № ${formatDealNo(n.dealNo)}</b>`;
   const money = `${n.clientName} заплатил ${rub(n.paymentRub)}.`;
   const yours = accruedRub > 0 ? `\nВам начислено <b>${rub(accruedRub)}</b>.` : "";
   const rest = n.fullyPaid
@@ -53,7 +55,7 @@ export function ownerPaidMessage(
   parts: { sellerName: string | null; sellerRub: number; mentorRub: number },
 ): string {
   const lines = [
-    `<b>Оплата по заказу № ${n.dealNo}</b>`,
+    `<b>Оплата по заказу № ${formatDealNo(n.dealNo)}</b>`,
     `${n.clientName} — ${rub(n.paymentRub)} (оплачено ${rub(n.paidTotalRub)} из ${rub(n.amountRub)})`,
   ];
   if (parts.sellerName) {

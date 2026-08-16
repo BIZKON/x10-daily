@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { PACKAGE_INFO, PACKAGE_PRICES_RUB } from "@x10/config";
+import { PACKAGE_INFO, PACKAGE_PRICES_RUB, formatDealNo } from "@x10/config";
 import { DEAL_PACKAGES } from "@x10/db";
 import { describe, expect, it } from "vitest";
 
@@ -52,5 +52,20 @@ describe("пакеты", () => {
     expect(all).not.toContain("надиктов");
     // А тон редакции — на месте.
     expect(all).toContain("ваш голос");
+  });
+});
+
+describe("номер заказа", () => {
+  it("нумерация с единицы, четыре знака", () => {
+    expect(formatDealNo(1)).toBe("0001");
+    expect(formatDealNo(7)).toBe("0007");
+    expect(formatDealNo(42)).toBe("0042");
+    expect(formatDealNo(999)).toBe("0999");
+    expect(formatDealNo(1042)).toBe("1042");
+  });
+
+  it("длинный номер не обрезается", () => {
+    // Потерянный разряд — это другой заказ, а не короткий номер.
+    expect(formatDealNo(10_000)).toBe("10000");
   });
 });

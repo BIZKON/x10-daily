@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { MERCHANT, PACKAGE_INFO, VAT_NOTE } from "@x10/config";
+import { MERCHANT, PACKAGE_INFO, VAT_NOTE, formatDealNo } from "@x10/config";
 import { type DealPackage, dealPayments, eq, partnerDeals, payments, sql } from "@x10/db";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -261,7 +261,7 @@ export const payRoute = new Hono<AppEnv>()
       const info = PACKAGE_INFO[deal.package as DealPackage];
       const part =
         deal.installments > 1 ? ` (платёж ${paidRub > 0 ? 2 : 1} из ${deal.installments})` : "";
-      const description = `Заказ № ${deal.dealNo}. ${info.title}${part}`;
+      const description = `Заказ № ${formatDealNo(deal.dealNo)}. ${info.title}${part}`;
 
       // Почта и согласие с офертой — на заказе: их спрашивают один раз, а
       // платежей по заказу может быть два.

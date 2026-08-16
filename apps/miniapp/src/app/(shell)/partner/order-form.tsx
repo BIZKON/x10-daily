@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDealNo } from "@x10/config";
 import { Check, Copy, Loader2, Plus } from "lucide-react";
 import { useActionState, useState } from "react";
 import { createOrder } from "./actions";
@@ -34,13 +35,15 @@ export function OrderForm() {
 
   if (state.status === "created") {
     const text =
-      `Ссылка на оплату заказа № ${state.dealNo}: ${state.payUrl}\n` +
+      `Ссылка на оплату заказа № ${formatDealNo(state.dealNo)}: ${state.payUrl}\n` +
       `К оплате ${rub(state.firstPaymentRub)}. Оплатить можно картой или по счёту для юрлица; ` +
       "чек придёт на почту, которую вы укажете.";
 
     return (
       <section className="mt-3 rounded-2xl border border-success/30 bg-success/10 p-4">
-        <div className="font-display text-[15px] font-bold">Заказ № {state.dealNo} готов</div>
+        <div className="font-display text-[15px] font-bold">
+          Заказ № {formatDealNo(state.dealNo)} готов
+        </div>
         <p className="mt-1 text-[12.5px] leading-relaxed text-white/65">
           Отправьте ссылку клиенту. Как только он заплатит, доля появится здесь сама — спрашивать
           нас не нужно.

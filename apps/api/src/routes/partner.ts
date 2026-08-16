@@ -6,6 +6,7 @@ import {
   PACKAGE_INFO,
   PACKAGE_PRICES_RUB,
   PARTNER_RATE_PERCENT,
+  formatDealNo,
 } from "@x10/config";
 import {
   DEAL_PACKAGES,
@@ -465,7 +466,7 @@ export const partnerRoute = new Hono<AppEnv>()
     // ссылка партнёру важнее нашего сообщения.
     void notifyOwner(
       env,
-      `<b>Новый заказ № ${deal.dealNo}</b>\n` +
+      `<b>Новый заказ № ${formatDealNo(deal.dealNo)}</b>\n` +
         `${PACKAGE_INFO[body.package].title} — ${amountRub.toLocaleString("ru-RU")} ₽` +
         (body.installments > 1
           ? ` (двумя платежами по ${firstRub.toLocaleString("ru-RU")} ₽)`

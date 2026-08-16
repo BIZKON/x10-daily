@@ -1,4 +1,5 @@
 import { type ApiInvoice, fetchInvoice } from "@/lib/api";
+import { formatDealNo } from "@x10/config";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -131,7 +132,7 @@ function Invoice({ invoice, token }: { invoice: ApiInvoice; token: string }) {
         </table>
 
         <h1 className="mt-6 mb-0 font-display text-[20px] font-extrabold">
-          Счёт на оплату № {invoice.dealNo} от {issued}
+          Счёт на оплату № {formatDealNo(invoice.dealNo)} от {issued}
         </h1>
         <div className="mt-1 h-[3px] w-full bg-[#1A1626]" />
 
@@ -222,7 +223,7 @@ function Invoice({ invoice, token }: { invoice: ApiInvoice; token: string }) {
         <p className="mt-6 mb-0 text-[11px] leading-relaxed text-[#6B6478]">
           Оплата настоящего счёта означает согласие с условиями оферты. Счёт действителен к оплате в
           течение 5 банковских дней. В назначении платежа укажите: «Оплата по счёту №{" "}
-          {invoice.dealNo}, НДС не облагается».
+          {formatDealNo(invoice.dealNo)}, НДС не облагается».
         </p>
       </article>
     </>

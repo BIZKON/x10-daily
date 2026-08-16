@@ -1,4 +1,5 @@
 import { type ApiPayOrder, fetchPayOrder } from "@/lib/api";
+import { formatDealNo } from "@x10/config";
 import { Check, CircleCheck, Clock } from "lucide-react";
 import type { Metadata } from "next";
 import { connection } from "next/server";
@@ -90,7 +91,7 @@ function Order({ token, order }: { token: string; order: ApiPayOrder }) {
     <>
       <section className="rounded-3xl bg-gradient-to-br from-[#EADDFF] to-[#F7F0FF] p-5">
         <div className="font-mono text-[11px] uppercase tracking-wider text-[#5B21B6]">
-          Заказ № {order.dealNo}
+          Заказ № {formatDealNo(order.dealNo)}
         </div>
         <h1 className="mt-1 mb-0 font-display text-[22px] font-extrabold">{order.package.title}</h1>
 

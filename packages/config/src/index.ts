@@ -20,6 +20,7 @@ export {
   PACKAGE_PRICES_RUB,
   PACKAGE_INFO,
   NDFL_RATE_PERCENT,
+  formatDealNo,
   type ModelTier,
   type TemplateKind,
   type PackageKey,

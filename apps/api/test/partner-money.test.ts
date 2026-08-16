@@ -2,6 +2,7 @@ import { MENTOR_BONUS_MONTHS, MENTOR_RATE_PERCENT, PARTNER_RATE_PERCENT } from "
 import { describe, expect, it } from "vitest";
 import {
   accrualsForPayment,
+  dueNowRub,
   mentorStillEarns,
   partnerBalance,
   payoutBreakdown,
@@ -290,5 +291,30 @@ describe("payoutBreakdown — сколько партнёр получит на 
       netRub: 1074.08,
       statusKnown: true,
     });
+  });
+});
+
+describe("dueNowRub — сколько платить прямо сейчас", () => {
+  it("без рассрочки — вся сумма", () => {
+    expect(dueNowRub({ amountRub: 180000, paidRub: 0, installments: 1 })).toBe(180000);
+  });
+
+  it("🔴 рассрочка показывает половину, а не весь договор", () => {
+    // Увидев 350 000 там, где ждали 175 000, человек уходит думать.
+    expect(dueNowRub({ amountRub: 350000, paidRub: 0, installments: 2 })).toBe(175000);
+  });
+
+  it("после первой части — остаток", () => {
+    expect(dueNowRub({ amountRub: 350000, paidRub: 175000, installments: 2 })).toBe(175000);
+  });
+
+  it("оплачено полностью — платить нечего", () => {
+    expect(dueNowRub({ amountRub: 350000, paidRub: 350000, installments: 2 })).toBe(0);
+    expect(dueNowRub({ amountRub: 350000, paidRub: 400000, installments: 2 })).toBe(0);
+  });
+
+  it("частичная оплата не превращается в требование сверх договора", () => {
+    // Клиент заплатил 300 000 из 350 000 — остаётся 50 000, а не ещё 175 000.
+    expect(dueNowRub({ amountRub: 350000, paidRub: 300000, installments: 2 })).toBe(50000);
   });
 });

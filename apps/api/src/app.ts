@@ -24,6 +24,7 @@ import { eventsRoute } from "./routes/events";
 import { feedRoute } from "./routes/feed";
 import { healthRoute } from "./routes/health";
 import { partnerRoute } from "./routes/partner";
+import { payRoute } from "./routes/pay";
 import { pipelineRoute } from "./routes/pipeline";
 import { profileRoute } from "./routes/profile";
 import { telegramWebhookRoute } from "./routes/telegram-webhook";
@@ -145,6 +146,9 @@ export function createApp() {
   app.route("/v1", engagementRoute);
   app.route("/v1/profile", profileRoute);
   app.route("/v1/partner", partnerRoute);
+  // Публичная страница оплаты: платит клиент, входа по Telegram у него нет.
+  // Защита заказа — сам токен в адресе.
+  app.route("/v1/pay", payRoute);
 
   app.notFound((c) => c.json({ error: "not_found", path: c.req.path }, 404));
 

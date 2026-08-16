@@ -134,3 +134,6 @@ landing/kp/partners.json
 landing/*/
 !landing/kp/
 !landing/partners/
+# Лендинг мобильной разработки: пишется руками, генератором НЕ собирается —
+# значит это исходник и должен жить в репозитории. Инструкция рядом, в README.
+!landing/mobile-kp/

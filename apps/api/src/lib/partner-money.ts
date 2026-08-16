@@ -220,3 +220,26 @@ export function payoutBreakdown(
   const ndflRub = round2((grossRub * NDFL_RATE_PERCENT) / 100);
   return { grossRub, ndflRub, netRub: round2(grossRub - ndflRub), statusKnown: true };
 }
+
+/**
+ * Сколько клиент платит ПРЯМО СЕЙЧАС по этому заказу.
+ *
+ * 🔴 Самая опасная цифра на странице оплаты: увидев полную сумму договора там,
+ * где ждали половину, человек уходит думать — и не возвращается. Считается от
+ * уже оплаченного, а не от номера части: две частичные оплаты подряд не должны
+ * превратиться в требование заплатить сверх договора.
+ */
+export function dueNowRub(args: {
+  amountRub: number;
+  paidRub: number;
+  installments: number;
+}): number {
+  const remaining = round2(args.amountRub - args.paidRub);
+  if (remaining <= 0) return 0;
+
+  const parts = Math.max(1, Math.min(args.installments, 2));
+  const part = round2(args.amountRub / parts);
+
+  // Остаток меньше части — платим остаток: доплачивать «до части» нечего.
+  return Math.min(part, remaining);
+}

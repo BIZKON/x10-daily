@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Мобильное приложение с ИИ-агентами — коммерческое предложение</title>
+<meta name="description" content="Мобильное приложение для бизнеса с ИИ-агентами: iOS, Android и RuStore под ключ за 800 000 ₽ тремя платежами. Отраслевые сценарии для салонов, коучинга и логистики, кабина руководителя отдела продаж с разбором клиента и предупреждениями в рублях.">
+<meta name="robots" content="noindex, nofollow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Приложение, которое приносит сделки">
+<meta property="og:description" content="Мобильное приложение для бизнеса с ИИ-агентами: iOS, Android и RuStore под ключ за 800 000 ₽ тремя платежами. Отраслевые сценарии для салонов, коучинга и логистики, кабина руководителя отдела продаж с разбором клиента и предупреждениями в рублях.">
+<meta property="og:locale" content="ru_RU">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128241;</text></svg>">
+<style>
+  :root{
+    color-scheme: light;
+    --ground:#FCFBFF; --card:#FFFFFF;
+    --ink:#16162E; --ink-soft:#585878; --ink-faint:#8C8CAB; --line:#E9E6F5;
+    --violet:#7C3AED; --pink:#EC4899; --amber:#F59E0B;
+    --cyan:#0891B2; --emerald:#059669; --rose:#E11D48;
+    --f-violet:#F4EEFF; --f-cyan:#E2F7FB; --f-emerald:#E4F8F0; --f-amber:#FFF4E0; --f-rose:#FFEDF1;
+    --shadow:rgba(90,60,180,.20); --shadow2:rgba(22,22,46,.04);
+    --display: system-ui, -apple-system, "Segoe UI Variable Display", "Segoe UI", Roboto, sans-serif;
+    --body: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    /* Палитра макетов НЕ зависит от темы страницы: снимок экрана телефона
+       выглядит одинаково, на каком бы фоне его ни показывали. */
+    --d-frame:#1D1D22; --d-bg:#F2F2F7; --d-card:#FFFFFF; --d-ink:#000000;
+    --d-soft:#8A8A8E; --d-line:#E5E5EA; --d-blue:#007AFF; --d-green:#34C759;
+    --d-red:#FF3B30; --d-orange:#FF9500; --d-purple:#AF52DE;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0E0D1A; --card:#171528;
+      --ink:#F3F1FA; --ink-soft:#B4AFD0; --ink-faint:#8580A6; --line:#2A2740;
+      --violet:#A78BFA; --pink:#F472B6; --amber:#FBBF24;
+      --cyan:#38BDF8; --emerald:#34D399; --rose:#FB7185;
+      --f-violet:#211B3B; --f-cyan:#12293A; --f-emerald:#122E2A; --f-amber:#2E2415; --f-rose:#301A26;
+      --shadow:rgba(0,0,0,.5); --shadow2:rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0E0D1A; --card:#171528;
+    --ink:#F3F1FA; --ink-soft:#B4AFD0; --ink-faint:#8580A6; --line:#2A2740;
+    --violet:#A78BFA; --pink:#F472B6; --amber:#FBBF24;
+    --cyan:#38BDF8; --emerald:#34D399; --rose:#FB7185;
+    --f-violet:#211B3B; --f-cyan:#12293A; --f-emerald:#122E2A; --f-amber:#2E2415; --f-rose:#301A26;
+    --shadow:rgba(0,0,0,.5); --shadow2:rgba(0,0,0,.3);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--body);
+    font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1180px;margin:0 auto;padding:40px 20px 80px;}
+  .grad{background:linear-gradient(96deg,var(--violet) 0%,var(--pink) 52%,var(--amber) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .stamp{display:inline-flex;gap:8px;font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--violet);background:var(--f-violet);
+    padding:6px 12px;border-radius:999px;margin-bottom:20px;font-weight:600;}
+  .stamp.hot{color:var(--rose);background:var(--f-rose);}
+
+  .hero{position:relative;overflow:hidden;border-radius:28px;margin:8px 0 26px;
+    padding:clamp(38px,6vw,80px) clamp(24px,4vw,64px) clamp(34px,5vw,60px);
+    background:var(--card);border:1px solid var(--line);
+    box-shadow:0 2px 4px var(--shadow2), 0 30px 80px -40px var(--shadow);}
+  .blob{position:absolute;border-radius:50%;filter:blur(58px);opacity:.5;pointer-events:none;}
+  .blob1{width:520px;height:520px;left:-160px;top:-220px;background:radial-gradient(circle,#C4B5FD,transparent 68%);}
+  .blob2{width:460px;height:460px;right:-140px;top:-160px;background:radial-gradient(circle,#FBCFE8,transparent 68%);}
+  /* Только содержимое поднимается над пятнами. Прежнее `.hero>*` било по
+     .blob той же специфичностью и НИЖЕ по файлу — пятна теряли absolute,
+     вставали в поток и утапливали заголовок на полторы тысячи пикселей. */
+  .hero>:not(.blob){position:relative;}
+  .hero h1{font-family:var(--display);font-weight:800;font-size:clamp(32px,5.6vw,58px);
+    line-height:1.04;letter-spacing:-.032em;margin:0 0 18px;text-wrap:balance;}
+  .hero p{margin:0;max-width:62ch;color:var(--ink-soft);font-size:18px;}
+
+  .slide{background:var(--card);border:1px solid var(--line);border-radius:22px;
+    padding:clamp(24px,3.4vw,44px);margin-top:22px;
+    box-shadow:0 1px 2px var(--shadow2), 0 14px 40px -22px var(--shadow);}
+  .slide-no{font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.14em;
+    color:var(--ink-faint);text-transform:uppercase;margin-bottom:10px;}
+  .slide h3{font-family:var(--display);font-weight:800;font-size:clamp(25px,4vw,40px);
+    line-height:1.08;letter-spacing:-.028em;margin:0 0 8px;text-wrap:balance;}
+  .lede{font-size:17.5px;color:var(--ink-soft);margin:0 0 26px;max-width:68ch;}
+  .slide h4{font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-faint);margin:34px 0 14px;}
+  .slide p{max-width:70ch;}
+
+  .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(228px,1fr));gap:14px;}
+  .col{border-radius:16px;padding:20px;border:1px solid var(--line);}
+  .col.a{background:var(--f-violet);} .col.b{background:var(--f-cyan);}
+  .col.c{background:var(--f-amber);} .col.d{background:var(--f-emerald);}
+  .col.e{background:var(--f-rose);}
+  .col .cap{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;
+    text-transform:uppercase;margin-bottom:9px;}
+  .col.a .cap{color:var(--violet);} .col.b .cap{color:var(--cyan);}
+  .col.c .cap{color:#B45309;} .col.d .cap{color:var(--emerald);} .col.e .cap{color:var(--rose);}
+  .col h5{font-family:var(--display);font-size:18.5px;font-weight:750;margin:0 0 9px;letter-spacing:-.015em;}
+  .col p{margin:0;font-size:14px;color:var(--ink-soft);line-height:1.55;}
+  .col ul{margin:0;padding-left:17px;font-size:14px;color:var(--ink-soft);line-height:1.6;}
+  .col li{margin-bottom:5px;}
+
+  .figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:24px;}
+  .fig{border-radius:14px;padding:16px 18px;background:var(--f-cyan);border:1px solid var(--line);}
+  .fig .v{font-family:var(--mono);font-weight:700;font-size:clamp(21px,3vw,29px);letter-spacing:-.02em;
+    color:var(--cyan);font-variant-numeric:tabular-nums;line-height:1.1;}
+  .fig .l{font-size:13px;color:var(--ink-soft);margin-top:5px;line-height:1.35;}
+  .fig.v2{background:var(--f-amber);} .fig.v2 .v{color:#B45309;}
+  .fig.v3{background:var(--f-violet);} .fig.v3 .v{color:var(--violet);}
+  .fig.v4{background:var(--f-emerald);} .fig.v4 .v{color:var(--emerald);}
+  .fig.v5{background:var(--f-rose);} .fig.v5 .v{color:var(--rose);}
+
+  .price{display:flex;flex-wrap:wrap;align-items:baseline;gap:14px;margin:4px 0 6px;}
+  .price .num{font-family:var(--mono);font-weight:700;font-size:clamp(38px,7vw,66px);
+    letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums;}
+  .price .unit{font-size:16px;color:var(--ink-soft);}
+
+  .tblwrap{overflow-x:auto;margin-top:8px;}
+  table{border-collapse:collapse;width:100%;min-width:560px;font-size:14.5px;}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:700;}
+  td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;}
+  tr.me td{background:var(--f-emerald);font-weight:650;}
+  tr.me td.num{color:var(--emerald);}
+
+  .flow{display:grid;gap:10px;margin-top:6px;}
+  .step{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;
+    border:1px solid var(--line);border-radius:14px;padding:15px 18px;background:var(--card);}
+  .step .k{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--ink-faint);
+    letter-spacing:.1em;padding-top:3px;white-space:nowrap;}
+  .step b{font-family:var(--display);font-size:16px;font-weight:750;letter-spacing:-.01em;}
+  .step p{margin:4px 0 0;font-size:14px;color:var(--ink-soft);}
+
+  .gate{border-left:3px solid var(--rose);background:var(--f-rose);border-radius:0 14px 14px 0;
+    padding:16px 20px;margin-top:14px;}
+  .gate b{font-family:var(--display);font-size:15.5px;}
+  .gate p{margin:5px 0 0;font-size:14px;color:var(--ink-soft);}
+
+  /* ── макеты телефонов ──────────────────────────────
+     Геометрия не на глаз: логическое разрешение iPhone 402 × 874 pt.
+     Экран 252 × 548 даёт ту же пропорцию 2.174. «Остров» 125 × 36.7 pt,
+     радиус экрана 55 pt, строка состояния 54 pt, таб-бар 49 pt плюс зона
+     жеста 34 pt, индикатор home 139 × 5 pt — всё пересчитано в этот масштаб. */
+  .decks{display:grid;grid-template-columns:repeat(auto-fit,minmax(286px,1fr));gap:30px;margin-top:8px;}
+  .deck{display:flex;flex-direction:column;align-items:center;gap:16px;}
+  .deck .say{max-width:34ch;text-align:center;}
+  .deck .say b{font-family:var(--display);font-size:17px;font-weight:750;letter-spacing:-.015em;display:block;}
+  .deck .say p{margin:5px 0 0;font-size:14px;color:var(--ink-soft);line-height:1.5;max-width:none;}
+
+  .phone{width:274px;flex:none;position:relative;border-radius:45px;padding:11px;
+    background:linear-gradient(150deg,#54545C 0%,#26262B 18%,#1B1B1F 50%,#33333A 82%,#5A5A63 100%);
+    box-shadow:0 26px 56px -22px rgba(18,10,45,.5), 0 2px 5px rgba(0,0,0,.28),
+      inset 0 0 0 1px rgba(255,255,255,.10);}
+  /* Боковые клавиши: слева тише/громче, справа кнопка питания. */
+  .phone i.key{position:absolute;background:linear-gradient(180deg,#4A4A52,#2A2A30);border-radius:2px;}
+  .phone i.k1{left:-2px;top:112px;width:3px;height:26px;}
+  .phone i.k2{left:-2px;top:150px;width:3px;height:44px;}
+  .phone i.k3{left:-2px;top:206px;width:3px;height:44px;}
+  .phone i.k4{right:-2px;top:170px;width:3px;height:70px;}
+  .screen{width:252px;height:548px;border-radius:34px;overflow:hidden;background:var(--d-bg);
+    display:flex;flex-direction:column;position:relative;font-size:13px;color:var(--d-ink);
+    font-feature-settings:"cv02","cv03";letter-spacing:-.01em;}
+
+  .sbar{height:34px;flex:none;display:flex;align-items:center;justify-content:space-between;
+    padding:0 17px 0 22px;font-size:12.5px;font-weight:670;letter-spacing:0;position:relative;z-index:2;}
+  .island{position:absolute;left:50%;transform:translateX(-50%);top:7px;
+    width:78px;height:23px;border-radius:999px;background:#000;}
+  .sbar .rt{display:flex;align-items:center;gap:5px;}
+  .sbar svg{display:block;}
+
+  .body{flex:1;overflow:hidden;padding:0 14px;}
+  .big{font-family:var(--display);font-size:23px;font-weight:800;letter-spacing:-.032em;margin:2px 0 1px;}
+  .sub{font-size:11.5px;color:var(--d-soft);margin:0 0 9px;}
+  .sec{font-size:10.5px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--d-soft);margin:2px 0 5px 4px;}
+  .grp{background:var(--d-card);border-radius:13px;overflow:hidden;margin-bottom:9px;}
+  .row{padding:9px 11px;border-bottom:.5px solid var(--d-line);display:flex;gap:9px;align-items:center;}
+  .row:last-child{border-bottom:none;}
+  .row .t{font-weight:600;font-size:13px;letter-spacing:-.015em;}
+  .row .s{font-size:11px;color:var(--d-soft);margin-top:1.5px;line-height:1.3;}
+  .row .grow{flex:1;min-width:0;}
+  .row .val{font-family:var(--mono);font-size:12.5px;font-weight:700;
+    font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .chev{width:7px;height:7px;border-right:1.6px solid #C4C4C8;border-top:1.6px solid #C4C4C8;
+    transform:rotate(45deg);flex:none;margin-left:1px;}
+  /* Кружок значка в строке — как в системных списках iOS. */
+  .sq{width:26px;height:26px;border-radius:7px;flex:none;display:grid;place-items:center;color:#fff;}
+  .sq svg{width:15px;height:15px;}
+  .sq.bl{background:var(--d-blue);} .sq.gr{background:var(--d-green);}
+  .sq.rd{background:var(--d-red);} .sq.or{background:var(--d-orange);}
+  .sq.pu{background:var(--d-purple);} .sq.gy{background:#8E8E93;}
+  .av{width:28px;height:28px;border-radius:50%;flex:none;display:grid;place-items:center;
+    font-size:11px;font-weight:700;color:#fff;background:linear-gradient(150deg,#8E8E93,#5A5A5F);}
+
+  .chip{font-size:10px;font-weight:700;padding:2.5px 7px;border-radius:999px;white-space:nowrap;}
+  .chip.r{background:#FFE5E3;color:#C22B22;} .chip.o{background:#FFEFD6;color:#B25E00;}
+  .chip.g{background:#DFF5E4;color:#1B7F35;} .chip.b{background:#DEEDFF;color:#0060DF;}
+  .chip.p{background:#F1E4FB;color:#7A29B8;}
+  .dt{width:8px;height:8px;border-radius:50%;flex:none;}
+  .dt.r{background:var(--d-red);} .dt.o{background:var(--d-orange);}
+  .dt.b{background:var(--d-blue);} .dt.g{background:var(--d-green);}
+  .btn{background:var(--d-blue);color:#fff;border-radius:10px;padding:9px 6px;text-align:center;
+    font-weight:650;font-size:12.5px;letter-spacing:-.015em;white-space:nowrap;}
+  .btn.gr{background:var(--d-green);} .btn.gh{background:#EAEAEF;color:var(--d-blue);}
+
+  /* Таб-бар: 49 pt панель плюс 34 pt зона жеста с индикатором home. */
+  .tabs{flex:none;background:rgba(249,249,251,.94);border-top:.5px solid rgba(0,0,0,.10);
+    padding-top:5px;position:relative;height:52px;
+    display:flex;align-items:flex-start;justify-content:space-around;}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:9.5px;
+    color:#8E8E93;font-weight:550;letter-spacing:-.01em;}
+  .tab.on{color:var(--d-blue);}
+  .tab svg{width:21px;height:21px;}
+  .tab svg,.sq svg{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+  .tab.on svg{stroke-width:2.05;}
+  .home{position:absolute;left:50%;transform:translateX(-50%);bottom:5px;
+    width:87px;height:4px;border-radius:99px;background:#000;opacity:.28;}
+
+  .sb{margin-bottom:7px;}
+  .sb .lb{display:flex;justify-content:space-between;font-size:10.5px;color:var(--d-soft);margin-bottom:3px;}
+  .sb .lb b{color:var(--d-ink);font-family:var(--mono);font-weight:700;font-variant-numeric:tabular-nums;}
+  .sb .tr{height:5px;border-radius:99px;background:#E9E9EE;overflow:hidden;}
+  .sb .tr i{display:block;height:100%;border-radius:99px;background:var(--d-blue);}
+  .mets{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:9px;}
+  .met{background:var(--d-card);border-radius:10px;padding:8px 7px;}
+  .met .l{font-size:9.5px;color:var(--d-soft);letter-spacing:-.01em;}
+  .met .v{font-family:var(--mono);font-size:13px;font-weight:700;margin-top:2px;
+    font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+  .met .v.dn{color:var(--d-red);} .met .v.up{color:var(--d-green);}
+  .facts{background:var(--d-card);border-radius:13px;padding:9px 11px;margin-bottom:9px;}
+  .facts li{display:flex;gap:7px;font-size:11.5px;line-height:1.35;margin-bottom:6px;}
+  .facts li:last-child{margin-bottom:0;}
+  .facts .bl{color:var(--d-blue);flex:none;}
+  .facts .tw{margin-left:auto;font-family:var(--mono);font-size:9.5px;color:var(--d-soft);flex:none;}
+  .lock{display:inline-flex;align-items:center;gap:4px;background:#FFF3DC;color:#9A5B00;
+    font-size:10px;font-weight:650;padding:3px 7px;border-radius:6px;}
+  .inp{border:1.4px solid var(--d-blue);border-radius:9px;padding:7px 9px;font-size:12px;
+    color:var(--d-soft);display:flex;justify-content:space-between;align-items:center;}
+  .bar{height:5px;border-radius:99px;background:#E9E9EE;overflow:hidden;margin-top:6px;}
+  .bar i{display:block;height:100%;border-radius:99px;background:var(--d-blue);}
+  .spark{display:flex;align-items:flex-end;gap:3px;height:32px;margin-top:7px;}
+  .spark i{flex:1;border-radius:2px 2px 0 0;background:var(--d-blue);opacity:.3;}
+  .spark i.hi{opacity:1;background:var(--d-red);}
+  .stamps{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;}
+  .st{width:24px;height:24px;border-radius:50%;border:1.4px dashed #D6D6DB;}
+  .st.f{background:var(--d-orange);border:none;display:grid;place-items:center;color:#fff;}
+  .st.f svg{width:12px;height:12px;}
+
+  .cta{margin-top:26px;border-radius:24px;padding:clamp(28px,4vw,52px);
+    background:linear-gradient(96deg,var(--violet) 0%,var(--pink) 58%,var(--amber) 100%);color:#fff;}
+  .cta h3{font-family:var(--display);font-weight:800;font-size:clamp(26px,4.4vw,44px);
+    margin:0 0 12px;letter-spacing:-.028em;line-height:1.06;text-wrap:balance;color:#fff;}
+  .cta p{margin:0 0 22px;font-size:17px;opacity:.94;max-width:60ch;}
+  .cta .btns{display:flex;flex-wrap:wrap;gap:12px;}
+  /* Только кнопки внутри .btns. Прежнее `.cta a` красило и телефон в подписи:
+     белая пилюля плюс белый текст — номер становился невидимым. */
+  .cta .btns a{display:inline-flex;align-items:center;gap:9px;background:#fff;color:#3B1D6E;
+    text-decoration:none;font-weight:700;font-size:16px;padding:14px 26px;border-radius:999px;}
+  .cta .btns a.ghost{background:transparent;color:#fff;box-shadow:inset 0 0 0 1.6px rgba(255,255,255,.65);}
+  .cta .btns a:focus-visible{outline:3px solid #fff;outline-offset:3px;}
+  .cta .btns a svg{width:19px;height:19px;flex:none;}
+  .sign{margin-top:26px;padding-top:20px;border-top:1px solid rgba(255,255,255,.28);
+    display:flex;flex-wrap:wrap;gap:6px 22px;align-items:baseline;}
+  .sign .who{font-family:var(--display);font-size:18px;font-weight:750;letter-spacing:-.015em;}
+  .sign .role{font-size:14.5px;opacity:.9;max-width:52ch;}
+  .sign .tel{font-family:var(--mono);font-size:16px;font-weight:700;color:#fff;
+    text-decoration:none;font-variant-numeric:tabular-nums;letter-spacing:.01em;}
+  .sign .tel:focus-visible{outline:3px solid #fff;outline-offset:3px;}
+  .src{font-size:13px;color:var(--ink-faint);margin-top:18px;max-width:78ch;}
+  .src a{color:var(--ink-soft);}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3.5"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="8.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="14.5" r="1.1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 4.9L19 9.8l-5.1 1.9L12 17l-1.9-5.3L5 9.8l5.1-1.9z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></symbol>
+<symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="12" rx="2.5"/><path d="M3 13h18M12 9v12"/><path d="M12 9S9.8 4 7.6 5.2C5.9 6.1 6.8 9 9 9zM12 9s2.2-5 4.4-3.8C18.1 6.1 17.2 9 15 9z"/></symbol>
+<symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c1.3-3.6 4.2-5.4 7.5-5.4s6.2 1.8 7.5 5.4"/></symbol>
+<symbol id="i-card" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M2.5 10h19M6 15h4"/></symbol>
+<symbol id="i-cup" viewBox="0 0 24 24"><path d="M5 8h12v6.5a4.5 4.5 0 0 1-4.5 4.5h-3A4.5 4.5 0 0 1 5 14.5z"/><path d="M17 9.5h1.6a2.4 2.4 0 0 1 0 4.8H17"/><path d="M8 4.5v1.6M12 4v2.1"/></symbol>
+<symbol id="i-bag" viewBox="0 0 24 24"><path d="M4.5 8h15l-1.1 11.2a2 2 0 0 1-2 1.8H7.6a2 2 0 0 1-2-1.8z"/><path d="M8.8 8V6.4a3.2 3.2 0 0 1 6.4 0V8"/></symbol>
+<symbol id="i-wrench" viewBox="0 0 24 24"><path d="M15.5 3.8a5.4 5.4 0 0 0-6.2 7.3L3.6 16.8a2.2 2.2 0 1 0 3.1 3.1l5.7-5.7a5.4 5.4 0 0 0 7.3-6.2l-3 3-2.7-.7-.7-2.7z"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 7v5.2l3.3 2"/></symbol>
+<symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 17a8.6 8.6 0 1 1 16 0"/><path d="M12 17l4-4.5"/><circle cx="12" cy="17" r="1.4" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-box" viewBox="0 0 24 24"><path d="M20.5 8.2v7.6a1.8 1.8 0 0 1-.95 1.6l-6.7 3.6a1.8 1.8 0 0 1-1.7 0l-6.7-3.6a1.8 1.8 0 0 1-.95-1.6V8.2"/><path d="M3.9 7.4l7.25-3.9a1.8 1.8 0 0 1 1.7 0l7.25 3.9-8.1 4.3z"/><path d="M12 11.7V20"/></symbol>
+<symbol id="i-rub" viewBox="0 0 24 24"><path d="M9 20V4h4.6a4.3 4.3 0 0 1 0 8.6H9"/><path d="M6.4 12.6h7.2M6.4 16.4h7.2"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7.5A2.5 2.5 0 0 0 5 5.5v13A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V8z"/><path d="M14 3v5h5"/><path d="M8.6 13h6.8M8.6 16.6h4.4"/></symbol>
+<symbol id="i-truck" viewBox="0 0 24 24"><path d="M2.6 6.6h10.2v9.8H2.6z"/><path d="M12.8 10h3.6l3 3v3.4h-6.6z"/><circle cx="7" cy="18.4" r="1.9"/><circle cx="17" cy="18.4" r="1.9"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M8.3 12.2l2.6 2.6 4.8-5.2"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.6" cy="6.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.6" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.6" cy="17.5" r="1.3" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-build" viewBox="0 0 24 24"><path d="M4 21V6.2a1.6 1.6 0 0 1 1.1-1.5l6-2a1.6 1.6 0 0 1 2.1 1.5V21"/><path d="M13.2 10h5.2a1.6 1.6 0 0 1 1.6 1.6V21M2.6 21h18.8"/><path d="M7 8.6h3M7 12.4h3M7 16.2h3"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8.2" r="3.3"/><path d="M2.8 19.4c1.1-3.1 3.5-4.7 6.2-4.7s5.1 1.6 6.2 4.7"/><path d="M16.2 5.4a3.3 3.3 0 0 1 0 6.4M17.6 14.9c2 .5 3.3 1.9 4 4.5"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3.8L21 19.4H3z"/><path d="M12 9.6v4.2"/><circle cx="12" cy="16.6" r="1.1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24"><path d="M7.2 3.6l2.4 3.4-2 2a13 13 0 0 0 5.4 5.4l2-2 3.4 2.4v3.4a1.8 1.8 0 0 1-2 1.8C10.4 19.4 4.6 13.6 3.8 5.6a1.8 1.8 0 0 1 1.8-2z"/></symbol>
+<symbol id="i-wallet" viewBox="0 0 24 24"><path d="M3 8.4a2.4 2.4 0 0 1 2.4-2.4h11.2A2.4 2.4 0 0 1 19 8.4"/><rect x="3" y="8.4" width="18" height="11.2" rx="2.6"/><circle cx="16.4" cy="14" r="1.4" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M3.4 20.6h17.2"/><path d="M6.6 20.6v-6.2M11 20.6V7.4M15.4 20.6v-9M19.8 20.6V4.6"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 8v8M8.6 12.6L12 16l3.4-3.4"/></symbol>
+</defs></svg>
+
+  <div class="hero">
+    <div class="blob blob1"></div>
+    <div class="blob blob2"></div>
+    <div class="stamp hot">Июнь — июль 2026 · канал связи с клиентом сломался</div>
+    <h1>VK и MAX убрали из App Store и Google Play. <span class="grad">Ваш канал к клиенту</span> оказался чужой собственностью</h1>
+    <p>Сначала в июне пропал MAX из App Store, следом в июле — из Google Play вместе с приложениями VK. У людей на iPhone перестали приходить push-уведомления. Ни один российский бизнес это решение не согласовывал и отменить его не может. Собственное приложение — единственный канал, который нельзя удалить чужим решением: он ставится напрямую и остаётся вашим.</p>
+  </div>
+
+  <section class="slide">
+    <div class="slide-no">Что именно произошло</div>
+    <h3>Реклама покупает внимание в аренду. Приложение покупает его насовсем</h3>
+    <p class="lede">Разница видна на цифрах: рекламный бюджет тратится каждый месяц заново и приводит человека на чужую площадку, откуда его в любой момент могут отрезать. Приложение оплачивается один раз и ставится человеку на телефон.</p>
+
+    <div class="cols">
+      <div class="col e">
+        <div class="cap">Июнь 2026</div>
+        <h5>MAX ушёл из App Store</h5>
+        <p>Apple объяснила удаление соблюдением санкций. У установленных приложений на iOS перестали работать push-уведомления — то есть исчез сам способ дотянуться до человека.</p>
+      </div>
+      <div class="col e">
+        <div class="cap">16 июля 2026</div>
+        <h5>MAX и VK ушли из Google Play</h5>
+        <p>Удаление подтвердила ТАСС сама VK — через несколько дней после санкций ЕС против холдинга. Осталась установка через RuStore и магазины производителей.</p>
+      </div>
+      <div class="col c">
+        <div class="cap">Что это значит</div>
+        <h5>Аудитория не ваша</h5>
+        <p>Подписчики, чат-боты и рассылки живут на площадке, решение по которой принимают в Купертино и Брюсселе. Список ваших клиентов внутри вашего приложения не отключается ничьим решением.</p>
+      </div>
+      <div class="col d">
+        <div class="cap">Что делать</div>
+        <h5>Свой канал</h5>
+        <p>Push из собственного приложения, история заказов, повторная продажа и партнёрский кабинет — всё это работает, даже когда очередной сервис пропадает из магазина.</p>
+      </div>
+    </div>
+
+    <div class="figs">
+      <div class="fig v5"><div class="v">каждый месяц</div><div class="l">платится реклама — и заканчивается вместе с бюджетом</div></div>
+      <div class="fig v4"><div class="v">один раз</div><div class="l">платится приложение — и остаётся у клиента на телефоне</div></div>
+      <div class="fig v3"><div class="v">0 ₽</div><div class="l">стоит push существующему клиенту</div></div>
+      <div class="fig v2"><div class="v">3 витрины</div><div class="l">App Store, Google Play и RuStore — если уберут одну, остаются две</div></div>
+    </div>
+
+    <p class="src">Источники: <a href="https://www.svoboda.org/a/prilozheniya-vk-i-messendzhera-max-udalili-iz-google-play/33804956.html">Приложения VK и мессенджера Max удалили из Google Play</a> · <a href="https://istories.media/news/2026/07/16/gosmessendzher-max-udalili-iz-google-play/">Госмессенджер «Макс» удалили из Google Play</a> · <a href="https://www.ixbt.com/news/2026/07/16/messendzher-maks-ischez-iz-google-play.html">Мессенджер «Макс» исчез из Google Play</a></p>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">Отрасли · бизнес для людей</div>
+    <h3>B2C: приложение возвращает клиента без рекламы</h3>
+    <p class="lede">Везде, где человек приходит не один раз, приложение окупается на повторных визитах. Это те же деньги, что вы платите за привлечение — только за них не надо платить второй раз.</p>
+
+    <div class="decks">
+
+      <div class="deck">
+        <div class="phone"><i class="key k1"></i><i class="key k2"></i><i class="key k3"></i><i class="key k4"></i><div class="screen">
+          <div class="sbar"><span>9:41</span><div class="island"></div><div class="rt"><svg viewBox="0 0 18 12" width="17" height="11" fill="currentColor"><rect x="0" y="8.4" width="3" height="3.6" rx="1"/><rect x="4.6" y="6.2" width="3" height="5.8" rx="1"/><rect x="9.2" y="3.6" width="3" height="8.4" rx="1"/><rect x="13.8" y="1" width="3" height="11" rx="1"/></svg><svg viewBox="0 0 16 12" width="15" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.2 4.3a10.2 10.2 0 0 1 13.6 0"/><path d="M3.8 7a6.5 6.5 0 0 1 8.4 0"/><circle cx="8" cy="9.9" r=".9" fill="currentColor" stroke="none"/></svg><svg viewBox="0 0 27 13" width="24" height="12"><rect x=".6" y=".6" width="21" height="11.8" rx="3.4" fill="none" stroke="currentColor" stroke-opacity=".35"/><rect x="2.3" y="2.3" width="16" height="8.4" rx="2.1" fill="currentColor"/><path d="M23.6 4.6c1.1.5 1.1 3.4 0 3.9z" fill="currentColor" fill-opacity=".35"/></svg></div></div>
+          <div class="body">
+            <div class="big">Мои записи</div>
+            <p class="sub">Салон «Ирис» · Тверская, 12</p>
+            <div class="grp">
+              <div class="row"><span class="dt g"></span><div class="grow"><div class="t">Завтра, 14:00</div><div class="s">Окрашивание · мастер Ольга</div></div><span class="chip g">скоро</span></div>
+              <div class="row"><div class="grow"><div class="t">Перенести или отменить</div></div></div>
+            </div>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">Пора повторить</div><div class="s">7 недель с последнего окрашивания</div></div></div>
+              <div class="row"><div class="grow"><div class="btn">Записаться к Ольге</div></div></div>
+            </div>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">Ваш мастер свободен в четверг</div><div class="s">11:00, 15:30 и 18:00</div></div><span class="chip b">push</span></div>
+            </div>
+          </div>
+          <div class="tabs">
+            <div class="tab on"><svg viewBox="0 0 24 24"><use href="#i-cal"/></svg>Записи</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-spark"/></svg>Услуги</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-gift"/></svg>Бонусы</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-person"/></svg>Я</div>
+          </div>
+        <div class="home"></div>
+        </div></div>
+        <div class="say"><b>Салоны, клиники, студии</b>
+          <p>Клиент возвращается по циклу услуги, а не по рекламе. Приложение считает, когда пора, и напоминает бесплатно.</p></div>
+      </div>
+
+      <div class="deck">
+        <div class="phone"><i class="key k1"></i><i class="key k2"></i><i class="key k3"></i><i class="key k4"></i><div class="screen">
+          <div class="sbar"><span>9:41</span><div class="island"></div><div class="rt"><svg viewBox="0 0 18 12" width="17" height="11" fill="currentColor"><rect x="0" y="8.4" width="3" height="3.6" rx="1"/><rect x="4.6" y="6.2" width="3" height="5.8" rx="1"/><rect x="9.2" y="3.6" width="3" height="8.4" rx="1"/><rect x="13.8" y="1" width="3" height="11" rx="1"/></svg><svg viewBox="0 0 16 12" width="15" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.2 4.3a10.2 10.2 0 0 1 13.6 0"/><path d="M3.8 7a6.5 6.5 0 0 1 8.4 0"/><circle cx="8" cy="9.9" r=".9" fill="currentColor" stroke="none"/></svg><svg viewBox="0 0 27 13" width="24" height="12"><rect x=".6" y=".6" width="21" height="11.8" rx="3.4" fill="none" stroke="currentColor" stroke-opacity=".35"/><rect x="2.3" y="2.3" width="16" height="8.4" rx="2.1" fill="currentColor"/><path d="M23.6 4.6c1.1.5 1.1 3.4 0 3.9z" fill="currentColor" fill-opacity=".35"/></svg></div></div>
+          <div class="body">
+            <div class="big">Кофейня</div>
+            <p class="sub">Карта постоянного гостя</p>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">До бесплатного напитка</div><div class="s">Осталось 2 покупки</div>
+                <div class="stamps"><span class="st f"></span><span class="st f"></span><span class="st f"></span><span class="st f"></span><span class="st"></span><span class="st"></span></div>
+              </div></div>
+            </div>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">Ваш обычный заказ</div><div class="s">Капучино 300 мл, без сахара</div></div><span class="val">240 ₽</span></div>
+              <div class="row"><div class="grow"><div class="btn gr">Повторить · готово за 7 мин</div></div></div>
+            </div>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">Вы не заходили 12 дней</div><div class="s">Круассан в подарок до воскресенья</div></div><span class="chip o">−100%</span></div>
+            </div>
+          </div>
+          <div class="tabs">
+            <div class="tab on"><svg viewBox="0 0 24 24"><use href="#i-card"/></svg>Карта</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-cup"/></svg>Меню</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-bag"/></svg>Заказы</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-person"/></svg>Я</div>
+          </div>
+        <div class="home"></div>
+        </div></div>
+        <div class="say"><b>Розница, кофейни, доставка</b>
+          <p>Повторная покупка в один тап и предложение ровно тогда, когда человек начал отваливаться.</p></div>
+      </div>
+
+      <div class="deck">
+        <div class="phone"><i class="key k1"></i><i class="key k2"></i><i class="key k3"></i><i class="key k4"></i><div class="screen">
+          <div class="sbar"><span>9:41</span><div class="island"></div><div class="rt"><svg viewBox="0 0 18 12" width="17" height="11" fill="currentColor"><rect x="0" y="8.4" width="3" height="3.6" rx="1"/><rect x="4.6" y="6.2" width="3" height="5.8" rx="1"/><rect x="9.2" y="3.6" width="3" height="8.4" rx="1"/><rect x="13.8" y="1" width="3" height="11" rx="1"/></svg><svg viewBox="0 0 16 12" width="15" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.2 4.3a10.2 10.2 0 0 1 13.6 0"/><path d="M3.8 7a6.5 6.5 0 0 1 8.4 0"/><circle cx="8" cy="9.9" r=".9" fill="currentColor" stroke="none"/></svg><svg viewBox="0 0 27 13" width="24" height="12"><rect x=".6" y=".6" width="21" height="11.8" rx="3.4" fill="none" stroke="currentColor" stroke-opacity=".35"/><rect x="2.3" y="2.3" width="16" height="8.4" rx="2.1" fill="currentColor"/><path d="M23.6 4.6c1.1.5 1.1 3.4 0 3.9z" fill="currentColor" fill-opacity=".35"/></svg></div></div>
+          <div class="body">
+            <div class="big">Ремонт</div>
+            <p class="sub">Toyota Camry · В 432 УК</p>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">Диагностика завершена</div><div class="s">Мастер Сергей · пост 3</div>
+                <div class="bar"><i style="width:62%"></i></div>
+                <div class="s" style="margin-top:6px">Готовность 62% · сдача завтра к 17:00</div>
+              </div></div>
+            </div>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">Нужно ваше решение</div><div class="s">Износ передних колодок. Заменить?</div></div><span class="chip r">ждём</span></div>
+              <div class="row"><div class="grow"><div class="t">Замена колодок</div><div class="s">Работа и деталь</div></div><span class="val">8 400 ₽</span></div>
+              <div class="row" style="gap:8px"><div class="grow"><div class="btn gr">Согласовать</div></div><div class="grow"><div class="btn gh">Отказаться</div></div></div>
+            </div>
+          </div>
+          <div class="tabs">
+            <div class="tab on"><svg viewBox="0 0 24 24"><use href="#i-wrench"/></svg>Ремонт</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-clock"/></svg>История</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-gauge"/></svg>ТО</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-person"/></svg>Я</div>
+          </div>
+        <div class="home"></div>
+        </div></div>
+        <div class="say"><b>Автосервис, техника, монтаж</b>
+          <p>Согласование допработ прямо в приложении: клиент видит цену и жмёт кнопку вместо десяти звонков.</p></div>
+      </div>
+
+      <div class="deck">
+        <div class="phone"><i class="key k1"></i><i class="key k2"></i><i class="key k3"></i><i class="key k4"></i><div class="screen">
+          <div class="sbar"><span>9:41</span><div class="island"></div><div class="rt"><svg viewBox="0 0 18 12" width="17" height="11" fill="currentColor"><rect x="0" y="8.4" width="3" height="3.6" rx="1"/><rect x="4.6" y="6.2" width="3" height="5.8" rx="1"/><rect x="9.2" y="3.6" width="3" height="8.4" rx="1"/><rect x="13.8" y="1" width="3" height="11" rx="1"/></svg><svg viewBox="0 0 16 12" width="15" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.2 4.3a10.2 10.2 0 0 1 13.6 0"/><path d="M3.8 7a6.5 6.5 0 0 1 8.4 0"/><circle cx="8" cy="9.9" r=".9" fill="currentColor" stroke="none"/></svg><svg viewBox="0 0 27 13" width="24" height="12"><rect x=".6" y=".6" width="21" height="11.8" rx="3.4" fill="none" stroke="currentColor" stroke-opacity=".35"/><rect x="2.3" y="2.3" width="16" height="8.4" rx="2.1" fill="currentColor"/><path d="M23.6 4.6c1.1.5 1.1 3.4 0 3.9z" fill="currentColor" fill-opacity=".35"/></svg></div></div>
+          <div class="body">
+            <div class="big">Абонемент</div>
+            <p class="sub">Безлимит · до 14 сентября</p>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">Осталось 12 дней</div><div class="s">Посещений: 9</div><div class="bar"><i style="width:63%"></i></div></div></div>
+              <div class="row"><div class="grow"><div class="t">Продлить со скидкой раннего</div><div class="s">До 7 сентября · 12 400 ₽ вместо 14 900</div></div><span class="chip g">−17%</span></div>
+            </div>
+            <div class="sec">Сегодня в расписании</div>
+            <div class="grp">
+              <div class="row"><span class="sq pu"><svg viewBox="0 0 24 24"><use href="#i-spark"/></svg></span><div class="grow"><div class="t">Хатха · 19:00</div><div class="s">Мария · зал «Земля» · 3 места</div></div><span class="chip b">записаться</span></div>
+              <div class="row"><span class="sq gy"><svg viewBox="0 0 24 24"><use href="#i-clock"/></svg></span><div class="grow"><div class="t">Йога-нидра · 20:30</div></div><span class="chev"></span></div>
+            </div>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">Вы не были 9 дней</div><div class="s">Обычно ходите дважды в неделю</div></div><span class="chip o">маяк</span></div>
+            </div>
+          </div>
+          <div class="tabs"><div class="tab on"><svg viewBox="0 0 24 24"><use href="#i-card"/></svg>Абонемент</div><div class="tab"><svg viewBox="0 0 24 24"><use href="#i-cal"/></svg>Расписание</div><div class="tab"><svg viewBox="0 0 24 24"><use href="#i-build"/></svg>Студия</div><div class="tab"><svg viewBox="0 0 24 24"><use href="#i-person"/></svg>Я</div><div class="home"></div></div>
+        </div></div>
+        <div class="say"><b>Студии, йога, wellness</b>
+          <p>Абонемент виден всегда, продление приходит до окончания, а пропавшего гостя приложение замечает по его же ритму посещений.</p></div>
+      </div>
+      <div class="deck">
+        <div class="phone"><i class="key k1"></i><i class="key k2"></i><i class="key k3"></i><i class="key k4"></i><div class="screen">
+          <div class="sbar"><span>9:41</span><div class="island"></div><div class="rt"><svg viewBox="0 0 18 12" width="17" height="11" fill="currentColor"><rect x="0" y="8.4" width="3" height="3.6" rx="1"/><rect x="4.6" y="6.2" width="3" height="5.8" rx="1"/><rect x="9.2" y="3.6" width="3" height="8.4" rx="1"/><rect x="13.8" y="1" width="3" height="11" rx="1"/></svg><svg viewBox="0 0 16 12" width="15" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.2 4.3a10.2 10.2 0 0 1 13.6 0"/><path d="M3.8 7a6.5 6.5 0 0 1 8.4 0"/><circle cx="8" cy="9.9" r=".9" fill="currentColor" stroke="none"/></svg><svg viewBox="0 0 27 13" width="24" height="12"><rect x=".6" y=".6" width="21" height="11.8" rx="3.4" fill="none" stroke="currentColor" stroke-opacity=".35"/><rect x="2.3" y="2.3" width="16" height="8.4" rx="2.1" fill="currentColor"/><path d="M23.6 4.6c1.1.5 1.1 3.4 0 3.9z" fill="currentColor" fill-opacity=".35"/></svg></div></div>
+          <div class="body">
+            <div class="big">Поток «Апрель»</div>
+            <p class="sub">Модуль 4 из 8 · группа Светланы</p>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">Ваш прогресс</div><div class="s">4 модуля, 3 задания из 4</div><div class="bar"><i style="width:47%"></i></div></div></div>
+              <div class="row"><span class="sq rd"><svg viewBox="0 0 24 24"><use href="#i-warn"/></svg></span><div class="grow"><div class="t">Задание модуля 3 не сдано</div><div class="s">Дедлайн был 8 августа</div></div></div>
+            </div>
+            <div class="sec">Ближайшее</div>
+            <div class="grp">
+              <div class="row"><span class="sq bl"><svg viewBox="0 0 24 24"><use href="#i-cal"/></svg></span><div class="grow"><div class="t">Разбор в группе</div><div class="s">Завтра, 19:00 · 90 минут</div></div><span class="chip b">напомним</span></div>
+            </div>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">Продолжить на второй ступени</div><div class="s">Для вашей группы до конца потока</div></div><span class="chip g">−20%</span></div>
+            </div>
+          </div>
+          <div class="tabs"><div class="tab on"><svg viewBox="0 0 24 24"><use href="#i-chart"/></svg>Поток</div><div class="tab"><svg viewBox="0 0 24 24"><use href="#i-doc"/></svg>Уроки</div><div class="tab"><svg viewBox="0 0 24 24"><use href="#i-users"/></svg>Чат</div><div class="tab"><svg viewBox="0 0 24 24"><use href="#i-person"/></svg>Я</div><div class="home"></div></div>
+        </div></div>
+        <div class="say"><b>Обучение и коучинг</b>
+          <p>Видно, кто отстал по модулю, — до того, как человек тихо перестанет ходить. Доходимость до конца потока и есть выручка следующего.</p></div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">Отрасли · бизнес для бизнеса</div>
+    <h3>B2B: приложение убирает менеджера из рутины</h3>
+    <p class="lede">В B2B приложением пользуются не для удовольствия, а чтобы не звонить. Каждый заказ, оформленный клиентом самостоятельно, — это рабочий час менеджера, освободившийся под продажу.</p>
+
+    <div class="decks">
+
+      <div class="deck">
+        <div class="phone"><i class="key k1"></i><i class="key k2"></i><i class="key k3"></i><i class="key k4"></i><div class="screen">
+          <div class="sbar"><span>9:41</span><div class="island"></div><div class="rt"><svg viewBox="0 0 18 12" width="17" height="11" fill="currentColor"><rect x="0" y="8.4" width="3" height="3.6" rx="1"/><rect x="4.6" y="6.2" width="3" height="5.8" rx="1"/><rect x="9.2" y="3.6" width="3" height="8.4" rx="1"/><rect x="13.8" y="1" width="3" height="11" rx="1"/></svg><svg viewBox="0 0 16 12" width="15" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.2 4.3a10.2 10.2 0 0 1 13.6 0"/><path d="M3.8 7a6.5 6.5 0 0 1 8.4 0"/><circle cx="8" cy="9.9" r=".9" fill="currentColor" stroke="none"/></svg><svg viewBox="0 0 27 13" width="24" height="12"><rect x=".6" y=".6" width="21" height="11.8" rx="3.4" fill="none" stroke="currentColor" stroke-opacity=".35"/><rect x="2.3" y="2.3" width="16" height="8.4" rx="2.1" fill="currentColor"/><path d="M23.6 4.6c1.1.5 1.1 3.4 0 3.9z" fill="currentColor" fill-opacity=".35"/></svg></div></div>
+          <div class="body">
+            <div class="big">Заказ со склада</div>
+            <p class="sub">ООО «Северный Ветер» · договор 114-А</p>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">Ваш лимит</div><div class="s">Отгрузка без предоплаты</div></div><span class="val">1 200 000 ₽</span></div>
+              <div class="row"><div class="grow"><div class="t">Просрочка</div><div class="s">Счёт 8842 · 9 дней</div></div><span class="val" style="color:var(--d-red)">148 300 ₽</span></div>
+            </div>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">Повторить заказ от 3 августа</div><div class="s">14 позиций</div></div><span class="chip g">в наличии</span></div>
+              <div class="row"><div class="grow"><div class="btn">Оформить за 1 минуту</div></div></div>
+            </div>
+          </div>
+          <div class="tabs">
+            <div class="tab on"><svg viewBox="0 0 24 24"><use href="#i-box"/></svg>Заказ</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-rub"/></svg>Долг</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-doc"/></svg>Документы</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-person"/></svg>Я</div>
+          </div>
+        <div class="home"></div>
+        </div></div>
+        <div class="say"><b>Опт и дистрибуция</b>
+          <p>Повтор заказа, лимит, дебиторка и документы — без звонка менеджеру и без письма на почту.</p></div>
+      </div>
+
+      <div class="deck">
+        <div class="phone"><i class="key k1"></i><i class="key k2"></i><i class="key k3"></i><i class="key k4"></i><div class="screen">
+          <div class="sbar"><span>9:41</span><div class="island"></div><div class="rt"><svg viewBox="0 0 18 12" width="17" height="11" fill="currentColor"><rect x="0" y="8.4" width="3" height="3.6" rx="1"/><rect x="4.6" y="6.2" width="3" height="5.8" rx="1"/><rect x="9.2" y="3.6" width="3" height="8.4" rx="1"/><rect x="13.8" y="1" width="3" height="11" rx="1"/></svg><svg viewBox="0 0 16 12" width="15" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.2 4.3a10.2 10.2 0 0 1 13.6 0"/><path d="M3.8 7a6.5 6.5 0 0 1 8.4 0"/><circle cx="8" cy="9.9" r=".9" fill="currentColor" stroke="none"/></svg><svg viewBox="0 0 27 13" width="24" height="12"><rect x=".6" y=".6" width="21" height="11.8" rx="3.4" fill="none" stroke="currentColor" stroke-opacity=".35"/><rect x="2.3" y="2.3" width="16" height="8.4" rx="2.1" fill="currentColor"/><path d="M23.6 4.6c1.1.5 1.1 3.4 0 3.9z" fill="currentColor" fill-opacity=".35"/></svg></div></div>
+          <div class="body">
+            <div class="big">Мои грузы</div>
+            <div class="grp">
+              <div class="row"><span class="dt o"></span><div class="grow"><div class="t">Санкт-Петербург → Екатеринбург</div><div class="s">Задержка с 7 августа</div></div><span class="val">132 400 ₽</span></div>
+              <div class="row"><span class="dt b"></span><div class="grow"><div class="t">Санкт-Петербург → Казань</div><div class="s">Прибытие 15 августа</div></div><span class="val">48 500 ₽</span></div>
+            </div>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">Подпишите накладную</div><div class="s">И ещё 1 документ</div></div><span class="chip p">ИИ</span></div>
+            </div>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="btn">Отправить груз</div></div></div>
+            </div>
+          </div>
+          <div class="tabs">
+            <div class="tab on"><svg viewBox="0 0 24 24"><use href="#i-truck"/></svg>Грузы</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-doc"/></svg>Документы</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg>Задачи</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-person"/></svg>Профиль</div>
+          </div>
+        <div class="home"></div>
+        </div></div>
+        <div class="say"><b>Логистика и перевозки</b>
+          <p>Кабинет клиента «Зингер Логистики»: заявка надиктовывается голосом, ИИ разбирает её на поля и подставляет адреса из книги.</p></div>
+      </div>
+
+      <div class="deck">
+        <div class="phone"><i class="key k1"></i><i class="key k2"></i><i class="key k3"></i><i class="key k4"></i><div class="screen">
+          <div class="sbar"><span>9:41</span><div class="island"></div><div class="rt"><svg viewBox="0 0 18 12" width="17" height="11" fill="currentColor"><rect x="0" y="8.4" width="3" height="3.6" rx="1"/><rect x="4.6" y="6.2" width="3" height="5.8" rx="1"/><rect x="9.2" y="3.6" width="3" height="8.4" rx="1"/><rect x="13.8" y="1" width="3" height="11" rx="1"/></svg><svg viewBox="0 0 16 12" width="15" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.2 4.3a10.2 10.2 0 0 1 13.6 0"/><path d="M3.8 7a6.5 6.5 0 0 1 8.4 0"/><circle cx="8" cy="9.9" r=".9" fill="currentColor" stroke="none"/></svg><svg viewBox="0 0 27 13" width="24" height="12"><rect x=".6" y=".6" width="21" height="11.8" rx="3.4" fill="none" stroke="currentColor" stroke-opacity=".35"/><rect x="2.3" y="2.3" width="16" height="8.4" rx="2.1" fill="currentColor"/><path d="M23.6 4.6c1.1.5 1.1 3.4 0 3.9z" fill="currentColor" fill-opacity=".35"/></svg></div></div>
+          <div class="body">
+            <div class="big">Заявки</div>
+            <p class="sub">Сервисная служба · бригада 4</p>
+            <div class="grp">
+              <div class="row"><span class="dt r"></span><div class="grow"><div class="t">Не работает линия розлива</div><div class="s">«Пищепром» · простой 2 ч</div></div><span class="chip r">SLA 4ч</span></div>
+              <div class="row"><span class="dt o"></span><div class="grow"><div class="t">Плановое ТО компрессора</div><div class="s">Завтра, 10:00</div></div><span class="chip o">завтра</span></div>
+            </div>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">Выезд принят</div><div class="s">Бригада в пути · 24 мин</div><div class="bar"><i style="width:78%"></i></div></div></div>
+            </div>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">Акт выполненных работ</div><div class="s">Подпишите прямо на объекте</div></div><span class="chip b">подпись</span></div>
+            </div>
+          </div>
+          <div class="tabs">
+            <div class="tab on"><svg viewBox="0 0 24 24"><use href="#i-list"/></svg>Заявки</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-build"/></svg>Объекты</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-doc"/></svg>Акты</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-person"/></svg>Я</div>
+          </div>
+        <div class="home"></div>
+        </div></div>
+        <div class="say"><b>Сервис, монтаж, обслуживание</b>
+          <p>SLA виден обеим сторонам, акт подписывается на объекте — спор о сроках закрывается сам собой.</p></div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">Живой пример · «Зингер Логистика»</div>
+    <h3>Кабина руководителя отдела продаж</h3>
+    <p class="lede">Не макет и не концепт: работающая система транспортной компании <b>«Зингер Логистика»</b> — собственный автопарк, перевозки Москва — Санкт-Петербург с 1998 года. В базе <b>15 446 заявок</b>, синхронизация с 1С. Руководитель открывает телефон и за один экран видит, где сегодня теряются деньги — с суммой у каждой строки.</p>
+
+    <div class="decks">
+      <div class="deck">
+        <div class="phone"><i class="key k1"></i><i class="key k2"></i><i class="key k3"></i><i class="key k4"></i><div class="screen">
+          <div class="sbar"><span>9:41</span><div class="island"></div><div class="rt"><svg viewBox="0 0 18 12" width="17" height="11" fill="currentColor"><rect x="0" y="8.4" width="3" height="3.6" rx="1"/><rect x="4.6" y="6.2" width="3" height="5.8" rx="1"/><rect x="9.2" y="3.6" width="3" height="8.4" rx="1"/><rect x="13.8" y="1" width="3" height="11" rx="1"/></svg><svg viewBox="0 0 16 12" width="15" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.2 4.3a10.2 10.2 0 0 1 13.6 0"/><path d="M3.8 7a6.5 6.5 0 0 1 8.4 0"/><circle cx="8" cy="9.9" r=".9" fill="currentColor" stroke="none"/></svg><svg viewBox="0 0 27 13" width="24" height="12"><rect x=".6" y=".6" width="21" height="11.8" rx="3.4" fill="none" stroke="currentColor" stroke-opacity=".35"/><rect x="2.3" y="2.3" width="16" height="8.4" rx="2.1" fill="currentColor"/><path d="M23.6 4.6c1.1.5 1.1 3.4 0 3.9z" fill="currentColor" fill-opacity=".35"/></svg></div></div>
+          <div class="body">
+            <div class="big">Риски</div>
+            <p class="sub">По деньгам из 1С, а не по статусам</p>
+            <div class="grp">
+              <div class="row"><span class="dt r"></span><div class="grow"><div class="t">Выручка упала вдвое</div><div class="s">Ещё заказывает · 90д: 612 тыс против 1,24 млн</div></div><span class="val">≈ 628 000 ₽</span></div>
+              <div class="row"><span class="dt o"></span><div class="grow"><div class="t">Не заказывал 34 дня</div><div class="s">Возил 4 года · LTV 4,2 млн</div></div><span class="val">≈ 480 000 ₽</span></div>
+              <div class="row"><span class="dt b"></span><div class="grow"><div class="t">Кросс-селл после доставки</div><div class="s">Доставлено вчера · обратный рейс пуст</div></div><span class="val">≈ 48 500 ₽</span></div>
+            </div>
+          </div>
+          <div class="tabs"><div class="tab"><svg viewBox="0 0 24 24"><use href="#i-users"/></svg>Клиенты</div><div class="tab on"><svg viewBox="0 0 24 24"><use href="#i-warn"/></svg>Риски</div><div class="tab"><svg viewBox="0 0 24 24"><use href="#i-phone"/></svg>Звонки</div><div class="tab"><svg viewBox="0 0 24 24"><use href="#i-spark"/></svg>Агент</div><div class="home"></div></div>
+        </div></div>
+        <div class="say"><b>Предупреждения с ценой</b>
+          <p>Первая строка — клиент, который <b>продолжает заказывать</b>. В воронке он зелёный. По деньгам — уже отдал половину.</p></div>
+      </div>
+      <div class="deck">
+        <div class="phone"><i class="key k1"></i><i class="key k2"></i><i class="key k3"></i><i class="key k4"></i><div class="screen">
+          <div class="sbar"><span>9:41</span><div class="island"></div><div class="rt"><svg viewBox="0 0 18 12" width="17" height="11" fill="currentColor"><rect x="0" y="8.4" width="3" height="3.6" rx="1"/><rect x="4.6" y="6.2" width="3" height="5.8" rx="1"/><rect x="9.2" y="3.6" width="3" height="8.4" rx="1"/><rect x="13.8" y="1" width="3" height="11" rx="1"/></svg><svg viewBox="0 0 16 12" width="15" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.2 4.3a10.2 10.2 0 0 1 13.6 0"/><path d="M3.8 7a6.5 6.5 0 0 1 8.4 0"/><circle cx="8" cy="9.9" r=".9" fill="currentColor" stroke="none"/></svg><svg viewBox="0 0 27 13" width="24" height="12"><rect x=".6" y=".6" width="21" height="11.8" rx="3.4" fill="none" stroke="currentColor" stroke-opacity=".35"/><rect x="2.3" y="2.3" width="16" height="8.4" rx="2.1" fill="currentColor"/><path d="M23.6 4.6c1.1.5 1.1 3.4 0 3.9z" fill="currentColor" fill-opacity=".35"/></svg></div></div>
+          <div class="body">
+            <div class="big">Разбор клиента</div>
+            <p class="sub">Строится ночью по всей истории</p>
+            <div class="grp"><div class="row"><div class="grow"><div class="s" style="font-size:11.5px;color:var(--d-ink);line-height:1.4">Возит регулярно по двум направлениям, торгуется редко, но остро реагирует на срыв срока. Четвёртый месяц снижает объём.</div></div></div></div>
+            <div class="sec">Портрет</div>
+            <div class="grp"><div class="row"><div class="grow">
+              <div class="sb"><div class="lb"><span>Чувствительность к цене</span><b>34</b></div><div class="tr"><i style="width:34%"></i></div></div>
+              <div class="sb"><div class="lb"><span>Приоритет скорости</span><b>71</b></div><div class="tr"><i style="width:71%"></i></div></div>
+              <div class="sb" style="margin-bottom:0"><div class="lb"><span>Требования к надёжности</span><b>88</b></div><div class="tr"><i style="width:88%"></i></div></div>
+            </div></div></div>
+            <div class="grp"><div class="row"><span class="sq rd"><svg viewBox="0 0 24 24"><use href="#i-warn"/></svg></span><div class="grow"><div class="t">Реакция на проблемы</div><div class="s">Звонит сразу, ждёт решения в тот же день</div></div></div></div>
+          </div>
+          <div class="tabs"><div class="tab on"><svg viewBox="0 0 24 24"><use href="#i-users"/></svg>Клиенты</div><div class="tab"><svg viewBox="0 0 24 24"><use href="#i-warn"/></svg>Риски</div><div class="tab"><svg viewBox="0 0 24 24"><use href="#i-phone"/></svg>Звонки</div><div class="tab"><svg viewBox="0 0 24 24"><use href="#i-spark"/></svg>Агент</div><div class="home"></div></div>
+        </div></div>
+        <div class="say"><b>Разбор клиента агентом</b>
+          <p>Портрет строится ночью по всей истории: насколько торгуется, что важнее — срок или цена, как ведёт себя при сбое.</p></div>
+      </div>
+      <div class="deck">
+        <div class="phone"><i class="key k1"></i><i class="key k2"></i><i class="key k3"></i><i class="key k4"></i><div class="screen">
+          <div class="sbar"><span>9:41</span><div class="island"></div><div class="rt"><svg viewBox="0 0 18 12" width="17" height="11" fill="currentColor"><rect x="0" y="8.4" width="3" height="3.6" rx="1"/><rect x="4.6" y="6.2" width="3" height="5.8" rx="1"/><rect x="9.2" y="3.6" width="3" height="8.4" rx="1"/><rect x="13.8" y="1" width="3" height="11" rx="1"/></svg><svg viewBox="0 0 16 12" width="15" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.2 4.3a10.2 10.2 0 0 1 13.6 0"/><path d="M3.8 7a6.5 6.5 0 0 1 8.4 0"/><circle cx="8" cy="9.9" r=".9" fill="currentColor" stroke="none"/></svg><svg viewBox="0 0 27 13" width="24" height="12"><rect x=".6" y=".6" width="21" height="11.8" rx="3.4" fill="none" stroke="currentColor" stroke-opacity=".35"/><rect x="2.3" y="2.3" width="16" height="8.4" rx="2.1" fill="currentColor"/><path d="M23.6 4.6c1.1.5 1.1 3.4 0 3.9z" fill="currentColor" fill-opacity=".35"/></svg></div></div>
+          <div class="body">
+            <div class="big">Показатели</div>
+            <p class="sub">За всё время и последние 90 дней</p>
+            <div class="mets">
+              <div class="met"><div class="l">LTV</div><div class="v">4,2 млн</div></div>
+              <div class="met"><div class="l">Заказов</div><div class="v">218</div></div>
+              <div class="met"><div class="l">Ср. чек</div><div class="v">19 400</div></div>
+              <div class="met"><div class="l">Выручка 90д</div><div class="v dn">612 тыс</div></div>
+              <div class="met"><div class="l">Открытый расчёт</div><div class="v">132 400</div></div>
+              <div class="met"><div class="l">Опозданий 90д</div><div class="v dn">3</div></div>
+            </div>
+            <div class="sec">Что агент выяснил</div>
+            <ul class="facts">
+              <li><span class="bl">•</span><span>Сменился логист — решения принимает другой человек</span><span class="tw">0.9</span></li>
+              <li><span class="bl">•</span><span>Просил термоконтроль на трёх последних рейсах</span><span class="tw">0.8</span></li>
+              <li><span class="bl">•</span><span>Упоминал конкурента по одному из маршрутов</span><span class="tw">0.6</span></li>
+            </ul>
+          </div>
+          <div class="tabs"><div class="tab on"><svg viewBox="0 0 24 24"><use href="#i-users"/></svg>Клиенты</div><div class="tab"><svg viewBox="0 0 24 24"><use href="#i-warn"/></svg>Риски</div><div class="tab"><svg viewBox="0 0 24 24"><use href="#i-phone"/></svg>Звонки</div><div class="tab"><svg viewBox="0 0 24 24"><use href="#i-spark"/></svg>Агент</div><div class="home"></div></div>
+        </div></div>
+        <div class="say"><b>Показатели и факты</b>
+          <p>Шесть цифр, по которым видно состояние клиента, и факты, которые агент выудил из переписки и звонков. Справа — насколько он в них уверен.</p></div>
+      </div>
+      <div class="deck">
+        <div class="phone"><i class="key k1"></i><i class="key k2"></i><i class="key k3"></i><i class="key k4"></i><div class="screen">
+          <div class="sbar"><span>9:41</span><div class="island"></div><div class="rt"><svg viewBox="0 0 18 12" width="17" height="11" fill="currentColor"><rect x="0" y="8.4" width="3" height="3.6" rx="1"/><rect x="4.6" y="6.2" width="3" height="5.8" rx="1"/><rect x="9.2" y="3.6" width="3" height="8.4" rx="1"/><rect x="13.8" y="1" width="3" height="11" rx="1"/></svg><svg viewBox="0 0 16 12" width="15" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.2 4.3a10.2 10.2 0 0 1 13.6 0"/><path d="M3.8 7a6.5 6.5 0 0 1 8.4 0"/><circle cx="8" cy="9.9" r=".9" fill="currentColor" stroke="none"/></svg><svg viewBox="0 0 27 13" width="24" height="12"><rect x=".6" y=".6" width="21" height="11.8" rx="3.4" fill="none" stroke="currentColor" stroke-opacity=".35"/><rect x="2.3" y="2.3" width="16" height="8.4" rx="2.1" fill="currentColor"/><path d="M23.6 4.6c1.1.5 1.1 3.4 0 3.9z" fill="currentColor" fill-opacity=".35"/></svg></div></div>
+          <div class="body">
+            <div class="big">Рекомендации</div>
+            <p class="sub">Ждут вашего решения</p>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">Вернуть по направлению на Екатеринбург</div><div class="s">Возил туда в прошлом сезоне, направление снова открыто</div></div></div>
+              <div class="row"><div class="grow"><span class="lock"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Требует тариф — цену впишет менеджер</span></div></div>
+              <div class="row"><div class="grow"><div class="inp"><span>Ставка за рейс, ₽</span><span style="color:#C4C4C8">—</span></div></div></div>
+              <div class="row" style="gap:7px"><div class="grow"><div class="btn gr">Одобрить</div></div><div class="grow"><div class="btn gh">Отклонить</div></div></div>
+            </div>
+          </div>
+          <div class="tabs"><div class="tab"><svg viewBox="0 0 24 24"><use href="#i-users"/></svg>Клиенты</div><div class="tab"><svg viewBox="0 0 24 24"><use href="#i-warn"/></svg>Риски</div><div class="tab"><svg viewBox="0 0 24 24"><use href="#i-phone"/></svg>Звонки</div><div class="tab on"><svg viewBox="0 0 24 24"><use href="#i-spark"/></svg>Агент</div><div class="home"></div></div>
+        </div></div>
+        <div class="say"><b>Рекомендация под замком</b>
+          <p>Агент предложил действие, но цену не придумывает: пока менеджер не впишет ставку, кнопка одобрения ничего не отправит.</p></div>
+      </div>
+    </div>
+
+    <h4>Четыре проверки между агентом и вашим клиентом</h4>
+    <div class="flow">
+      <div class="step"><div class="k">ШАГ 1</div><div><b>Согласие</b>
+        <p>Обращение уходит только тому, кто дал согласие и не отписался. Нет согласия — кандидат отбрасывается молча.</p></div></div>
+      <div class="step"><div class="k">ШАГ 2</div><div><b>Частота</b>
+        <p>Не чаще одного касания в 7 дней и не более трёх в 30 — считается по организации, а не по контакту. Иначе трое сотрудников одной компании получили бы три письма подряд.</p></div></div>
+      <div class="step"><div class="k">ШАГ 3</div><div><b>Маскировка персональных данных</b>
+        <p>Перед отправкой в языковую модель имена, телефоны и почта заменяются метками. Модель видит структуру сделки, но не человека.</p></div></div>
+      <div class="step"><div class="k">ШАГ 4</div><div><b>Человек на выходе</b>
+        <p>Готовый текст показывается менеджеру. Автоматически не уходит ничего.</p></div></div>
+    </div>
+
+    <div class="gate">
+      <b>Числовой пост-гейт — то, чего нет почти нигде</b>
+      <p>Если в сочинённом агентом тексте есть сумма, слово «скидка» или процент, отправка принудительно уходит на подтверждение человеку. Причина простая: модель может придумать скидку, которой не существует, и клиент будет прав, потребовав её. Самая дешёвая страховка в проекте.</p>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">Возражение · «у нас уже есть CRM»</div>
+    <h3>Это не вторая CRM. Это маяк, который читает первую</h3>
+    <p class="lede">Сразу честно: Битрикс24 и amoCRM умеют ИИ-скоринг лидов, прогноз сделок и даже предсказание оттока. Спорить с этим глупо. Разница не в том, есть ли там искусственный интеллект, а в том, <b>на каких данных он считает и на какой вопрос отвечает</b>.</p>
+
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Вопрос</th><th>Рабочая CRM</th><th>Маяк в кармане</th></tr></thead>
+        <tbody>
+          <tr><td>Откуда берутся данные</td><td>То, что завёл менеджер</td><td>Отгрузки и деньги из 1С</td></tr>
+          <tr><td>На что смотрит</td><td>Стадия сделки и вероятность закрытия</td><td>Сумма за 90 дней против предыдущих 90</td></tr>
+          <tr><td>Что выдаёт</td><td>«Вероятность 34%»</td><td>«≈ 628 000 ₽, вот этот клиент»</td></tr>
+          <tr><td>Кто пользуется</td><td>Отдел продаж, весь день</td><td>Владелец и РОП, две минуты утром</td></tr>
+          <tr><td>Может ли ИИ отправить цену</td><td>Да, шаблоном или роботом</td><td>Нет. Физически заблокировано</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4>Четыре довода, которые проверяются на ваших данных</h4>
+    <div class="cols">
+      <div class="col e">
+        <div class="cap">Довод 1 · источник</div>
+        <h5>CRM видит то, что показал менеджер</h5>
+        <p>Не завёл сделку — для CRM её нет, и никакой скоринг её не найдёт. Отгрузка в 1С есть всегда: по ней везли груз и выставляли счёт. Мы считаем по документам, а не по дисциплине заполнения — в «Зингер Логистике» это 15 446 заявок, приехавших синхронизацией.</p>
+      </div>
+      <div class="col a">
+        <div class="cap">Довод 2 · сигнал</div>
+        <h5>Опасен не молчащий, а тихо усохший</h5>
+        <p>Клиент, который перестал заказывать, виден всем. Клиент, который заказывает как обычно, но отдал половину объёма конкуренту, в воронке выглядит здоровым: сделки идут, статусы двигаются. Мы ловим именно его.</p>
+      </div>
+      <div class="col c">
+        <div class="cap">Довод 3 · формат</div>
+        <h5>Владелец не открывает CRM</h5>
+        <p>И не будет. CRM — рабочее место отдела продаж, там сто экранов и нет времени. Маяк — один экран на телефоне, три строки, у каждой сумма. Две минуты утром вместо отчёта, который никто не читает.</p>
+      </div>
+      <div class="col d">
+        <div class="cap">Довод 4 · безопасность</div>
+        <h5>ИИ не назовёт цену без вас</h5>
+        <p>Роботы CRM отправляют клиенту то, что им написали. Наш агент готовит текст сам — и сам себя останавливает, если в нём появилась сумма, скидка или процент. Придуманную скидку клиент имеет право потребовать.</p>
+      </div>
+    </div>
+
+    <div class="gate" style="border-left-color:var(--emerald);background:var(--f-emerald);">
+      <b>Предложение, которое снимает спор о дублировании</b>
+      <p>Подключаемся к вашей 1С и за две недели показываем на <b>ваших</b> данных, сколько у вас прямо сейчас клиентов с падением выручки вдвое — тех, кто в CRM числится активным. Расчёт идёт по истории, а не по накоплению: результат виден сразу, ждать квартал не нужно. <b>Не найдём ни одного — этот этап вы не оплачиваете.</b></p>
+    </div>
+
+    <p class="src">Что умеют CRM сегодня — по открытым источникам: <a href="https://www.cnews.ru/news/line/2019-09-26_v_crm_bitriks24_poyavilsya">ИИ-скоринг лидов в Битрикс24</a> · <a href="https://acp-24.ru/baza-znaniy/ai-skoring-lidov-prognoz-sdelok-bitrix24/">AI-скоринг и прогноз сделок</a> · <a href="https://iaassaaspaas.ru/po-dlya-biznesa/crm-sistemy/crm-s-iskusstvennym-intellektom">обзор CRM с ИИ, 2026</a>. Мы не заменяем эти системы и не спорим с ними — мы смотрим на другие данные и отвечаем на другой вопрос.</p>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">Новые клиенты</div>
+    <h3>Партнёрский кабинет: клиенты приводят клиентов</h3>
+    <p class="lede">Реклама покупает незнакомого человека. Партнёр приводит того, кому вас уже порекомендовали, и берёт процент только с денег, которые реально пришли на счёт.</p>
+
+    <div class="decks" style="grid-template-columns:repeat(auto-fit,minmax(268px,1fr));">
+      <div class="deck">
+        <div class="phone"><i class="key k1"></i><i class="key k2"></i><i class="key k3"></i><i class="key k4"></i><div class="screen">
+          <div class="sbar"><span>9:41</span><div class="island"></div><div class="rt"><svg viewBox="0 0 18 12" width="17" height="11" fill="currentColor"><rect x="0" y="8.4" width="3" height="3.6" rx="1"/><rect x="4.6" y="6.2" width="3" height="5.8" rx="1"/><rect x="9.2" y="3.6" width="3" height="8.4" rx="1"/><rect x="13.8" y="1" width="3" height="11" rx="1"/></svg><svg viewBox="0 0 16 12" width="15" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.2 4.3a10.2 10.2 0 0 1 13.6 0"/><path d="M3.8 7a6.5 6.5 0 0 1 8.4 0"/><circle cx="8" cy="9.9" r=".9" fill="currentColor" stroke="none"/></svg><svg viewBox="0 0 27 13" width="24" height="12"><rect x=".6" y=".6" width="21" height="11.8" rx="3.4" fill="none" stroke="currentColor" stroke-opacity=".35"/><rect x="2.3" y="2.3" width="16" height="8.4" rx="2.1" fill="currentColor"/><path d="M23.6 4.6c1.1.5 1.1 3.4 0 3.9z" fill="currentColor" fill-opacity=".35"/></svg></div></div>
+          <div class="body">
+            <div class="big">Партнёру</div>
+            <p class="sub">Ваша ссылка и ваши деньги</p>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">Заработано за август</div><div class="s">С 6 оплат клиентов</div></div><span class="val" style="color:var(--d-green)">184 500 ₽</span></div>
+              <div class="row"><div class="grow"><div class="t">Ждёт выплаты</div></div><span class="val">62 000 ₽</span></div>
+            </div>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="t">ООО «Пищепром»</div><div class="s">14 августа · 12%</div></div><span class="val">+ 42 000 ₽</span></div>
+              <div class="row"><div class="grow"><div class="t">ИП Кузнецов</div><div class="s">9 августа · 12%</div></div><span class="val">+ 18 600 ₽</span></div>
+            </div>
+            <div class="grp">
+              <div class="row"><div class="grow"><div class="btn">Скопировать ссылку</div></div></div>
+            </div>
+          </div>
+          <div class="tabs">
+            <div class="tab on"><svg viewBox="0 0 24 24"><use href="#i-wallet"/></svg>Доход</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-users"/></svg>Клиенты</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-down"/></svg>Выплаты</div>
+            <div class="tab"><svg viewBox="0 0 24 24"><use href="#i-person"/></svg>Я</div>
+          </div>
+        <div class="home"></div>
+        </div></div>
+        <div class="say"><b>Кабинет партнёра</b>
+          <p>Партнёр видит каждую оплату своего клиента и свою долю с неё. Прозрачность — то, ради чего партнёр остаётся.</p></div>
+      </div>
+
+      <div style="display:grid;gap:14px;align-content:start;">
+        <div class="col d" style="margin:0">
+          <div class="cap">Ключевое отличие</div>
+          <h5>Процент с поступивших денег, а не с суммы договора</h5>
+          <p>Начисление привязано к платежу. Клиент заплатил половину — партнёр получил с половины. Договор расторгли — вы никому ничего не должны. Это защищает вас от выплат за сделки, которые не состоялись.</p>
+        </div>
+        <div class="col a" style="margin:0">
+          <div class="cap">Ставка</div>
+          <h5>Фиксируется в момент сделки</h5>
+          <p>Ставка записывается снимком в саму сделку. Поменяли условия завтра — вчерашние начисления не пересчитываются задним числом, и спорить не о чем.</p>
+        </div>
+        <div class="col c" style="margin:0">
+          <div class="cap">Осторожно</div>
+          <h5>Платить можно только за приведённых клиентов</h5>
+          <p>Схема, где доход идёт за привлечение самих партнёров, а не за продажи, попадает под статью 172.2 УК РФ. В том, что я строю, вознаграждение всегда привязано к реальной оплате реального клиента.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">Отрасли, в которых мы уже внутри</div>
+    <h3>Три разные отрасли — три разные математики</h3>
+    <p class="lede">Приложение окупается не «вообще», а конкретным повторным действием клиента. В каждой отрасли оно своё, и считается по-разному. Ниже — три, с которыми мы работаем прямо сейчас, и арифметика, которую легко пересчитать на свои цифры.</p>
+
+    <h4>Салоны, студии, wellness</h4>
+    <div class="cols">
+      <div class="col e">
+        <div class="cap">Что болит</div>
+        <h5>Гость уходит молча</h5>
+        <p>Он не отписывается и не жалуется — просто перестаёт приходить. Администратор замечает это через полгода, когда вспоминать уже поздно. Реклама тем временем приводит нового по цене в несколько визитов.</p>
+      </div>
+      <div class="col a">
+        <div class="cap">Что делает приложение</div>
+        <h5>Считает ритм каждого</h5>
+        <p>У одного гостя цикл 3 недели, у другого 7. Приложение знает личный ритм и напоминает, когда пора именно ему, а не всем разом в пятницу. Абонемент виден всегда, продление приходит до окончания, а не после.</p>
+      </div>
+      <div class="col d">
+        <div class="cap">Где деньги</div>
+        <h5>Один лишний визит в год</h5>
+        <p>При среднем чеке 3 000 ₽ и базе в 400 активных гостей один дополнительный визит каждого за год — это <b>1,2 млн ₽</b>. Приложение окупается, если вернёт четверть из них.</p>
+      </div>
+    </div>
+    <p class="src">Наши клиенты в этой отрасли: сеть массажных салонов <b>«Бохо Ритуал»</b> и премиальный йога-центр <b>«Алхимия»</b> — там мы делаем цифровую часть: сайт, запись, ИИ-консьерж, работающий на базе знаний студии.</p>
+
+    <h4>Обучение, коучинг, наставничество</h4>
+    <div class="cols">
+      <div class="col e">
+        <div class="cap">Что болит</div>
+        <h5>Тихий отвал в середине потока</h5>
+        <p>Человек пропустил модуль, потом второй, потом стало стыдно возвращаться. До конца доходит половина, и именно эта половина покупает следующую ступень. Куратор узнаёт о выпавшем последним.</p>
+      </div>
+      <div class="col a">
+        <div class="cap">Что делает приложение</div>
+        <h5>Показывает отставших рано</h5>
+        <p>Не «активность за неделю», а конкретно: не сдано задание модуля 3, дедлайн был 8 августа. Куратор видит список сегодня, а не на разборе через две недели. Ученик видит свой прогресс и сколько личных сессий у него осталось.</p>
+      </div>
+      <div class="col d">
+        <div class="cap">Где деньги</div>
+        <h5>Доходимость = выручка следующего потока</h5>
+        <p>Поток 30 человек, вторая ступень 60 000 ₽. Рост доходимости с 60% до 70% — это <b>три продления, 180 000 ₽ с одного потока</b>. Четыре потока в год — и приложение оплатило себя.</p>
+      </div>
+    </div>
+
+    <h4>Логистика и перевозки</h4>
+    <div class="cols">
+      <div class="col e">
+        <div class="cap">Что болит</div>
+        <h5>Клиент усыхает незаметно</h5>
+        <p>Он не уходит — он просто возит вдвое меньше, отдав остальное конкуренту. В воронке он активен, менеджер спокоен, а половина объёма уже потеряна.</p>
+      </div>
+      <div class="col a">
+        <div class="cap">Что делает приложение</div>
+        <h5>Сравнивает деньги, а не статусы</h5>
+        <p>Выручка за 90 дней против предыдущих 90 — по отгрузкам из 1С. Падение вдвое поднимает тревогу с суммой, пока клиент ещё возит и его ещё можно вернуть.</p>
+      </div>
+      <div class="col d">
+        <div class="cap">Где деньги</div>
+        <h5>Один удержанный клиент</h5>
+        <p>В кабине «Зингер Логистики» такая строка стоит <b>628 000 ₽</b> — это выручка предыдущих 90 дней, которая уходит. Удержать одного такого клиента дороже, чем стоит вся разработка.</p>
+      </div>
+    </div>
+
+    <p class="src">Цифры в примерах — арифметика, а не обещание: подставьте свой средний чек, размер базы и цену ступени, и она пересчитается за минуту. Мы сделаем это вместе на первом разговоре, на ваших числах.</p>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">Предложение</div>
+    <h3>800 000 ₽ — два магазина и RuStore в комплекте</h3>
+    <p class="lede">Одна цена за весь путь: от бизнес-логики до опубликованного приложения в трёх витринах. Не «дизайн отдельно, разработка отдельно, публикация за ваш счёт».</p>
+
+    <div class="price">
+      <span class="num grad">800 000 ₽</span>
+      <span class="unit">iOS · Android · RuStore — под ключ<br>тремя платежами за три месяца</span>
+    </div>
+
+    <div class="flow" style="margin-top:18px;">
+      <div class="step"><div class="k">1 МЕСЯЦ</div><div><b>300 000 ₽ — старт и проектирование</b>
+        <p>Разбираем бизнес-логику, собираем сценарии и экраны, согласуем состав. К концу месяца у вас на руках то, по чему видно, что именно будет построено.</p></div></div>
+      <div class="step"><div class="k">2 МЕСЯЦ</div><div><b>250 000 ₽ — сборка</b>
+        <p>Приложение, серверная часть, интеграция с вашей учётной системой, ИИ-агенты и правила их поведения. Вы смотрите работающие сборки на своём телефоне, а не отчёты о процессе.</p></div></div>
+      <div class="step"><div class="k">3 МЕСЯЦ</div><div><b>250 000 ₽ — публикация</b>
+        <p>Выпуск в App Store, Google Play и RuStore, ответы на замечания модерации. Последний платёж — когда приложение лежит в витринах и его можно скачать.</p></div></div>
+    </div>
+
+    <p class="src">Платёж привязан к этапу, а не к календарю: не сдали этап — не выставляем счёт. Аккаунты разработчика и внешние сервисы оплачиваются вами напрямую поставщикам и в эти 800 000 ₽ не входят.</p>
+
+    <div class="cols" style="margin-top:22px;">
+      <div class="col a"><div class="cap">App Store</div><h5>iOS</h5>
+        <p>Сборка, подписание, прохождение ревью Apple, ответы на замечания модерации до публикации.</p></div>
+      <div class="col b"><div class="cap">Google Play</div><h5>Android</h5>
+        <p>Та же кодовая база, отдельная сборка и листинг, политика данных и возрастной рейтинг.</p></div>
+      <div class="col c"><div class="cap">RuStore</div><h5>Российская витрина</h5>
+        <p>Ровно та витрина, где остались VK и MAX после удаления. Входит в цену, не докупается.</p></div>
+      <div class="col d"><div class="cap">Внутри</div><h5>Бизнес-логика</h5>
+        <p>Роли, права, сценарии, интеграция с учётной системой, ИИ-агенты и правила их поведения.</p></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">Рынок · факты, не ощущения</div>
+    <h3>Сколько такое стоит на самом деле</h3>
+    <p class="lede">Это не мои оценки, а живые закупки на мобильную разработку из государственной системы ЕИС: 103 лота, из них 102 с указанной ценой, выборка на 14 августа 2026 года.</p>
+
+    <div class="figs">
+      <div class="fig v3"><div class="v">2 344 512 ₽</div><div class="l">медиана по всем 102 лотам</div></div>
+      <div class="fig v2"><div class="v">5 000 000 ₽</div><div class="l">медиана по 27 лотам именно на разработку</div></div>
+      <div class="fig"><div class="v">47 %</div><div class="l">лотов дороже 3 млн ₽</div></div>
+      <div class="fig v4"><div class="v">1,94 млрд ₽</div><div class="l">суммарный объём выборки</div></div>
+    </div>
+
+    <h4>Прямые аналоги: те же две платформы</h4>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>Заказчик</th><th>Что заказывали</th><th>Цена</th></tr></thead>
+        <tbody>
+          <tr><td>ГАУ «Многофункциональный центр»</td><td>Сайт и мобильное приложение для iOS и Android</td><td class="num">900 600 ₽</td></tr>
+          <tr><td>ФБУ «Государственный региональный центр»</td><td>Мобильное приложение на платформах iOS и Android</td><td class="num">1 170 000 ₽</td></tr>
+          <tr><td>МБУ г. Сочи</td><td>Мобильное приложение VisitSochi</td><td class="num">3 150 000 ₽</td></tr>
+          <tr><td>АНО «Медиацентр»</td><td>Приложение агромаркета для iOS и Android</td><td class="num">4 450 000 ₽</td></tr>
+          <tr><td>АО «Областной аптечный склад»</td><td>Приложение и редизайн сайта APTEKA74</td><td class="num">6 000 000 ₽</td></tr>
+          <tr class="me"><td>Моё предложение</td><td>iOS + Android + RuStore, с бизнес-логикой и ИИ-агентами</td><td class="num">800 000 ₽</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="src">Источник: единая информационная система закупок <code>zakupki.gov.ru</code>, 44-ФЗ и 223-ФЗ. Дешевле 800 000 ₽ в выборке — 26 % лотов, и это почти целиком сопровождение уже готовых приложений, а не разработка.</p>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">Чем я отличаюсь</div>
+    <h3>Инженер и консультант, а не подрядчик по картинкам</h3>
+    <p class="lede">Разница видна не в портфолио, а в том, кто отвечает на вопрос «что должно происходить, когда клиент перестал возить». У студии на него отвечает заказчик. У меня — я, и это входит в работу.</p>
+
+    <div class="cols">
+      <div class="col e"><div class="cap">Обычная студия</div><h5>Вы приносите ТЗ</h5>
+        <ul><li>Сценарии придумываете сами</li><li>Дизайн отдельной сметой</li><li>Публикация — ваша забота</li>
+          <li>Отказ модерации — доработка за доплату</li><li>Интеграция с 1С — «дайте API»</li></ul></div>
+      <div class="col d"><div class="cap">Работа со мной</div><h5>Я приношу бизнес-логику</h5>
+        <ul><li>Сценарии проектирую и защищаю</li><li>Дизайн — часть цены</li><li>Довожу до публикации в трёх витринах</li>
+          <li>Отвечаю на замечания модерации сам</li><li>Разбираюсь с вашей учётной системой</li></ul></div>
+      <div class="col b"><div class="cap">Что это даёт</div><h5>Проект, который продаёт</h5>
+        <p>Приложение проектируется от денег: где сделка застревает, где клиент уходит, где менеджер забыл перезвонить. Экраны появляются после ответа на этот вопрос, а не вместо него.</p></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">Границы</div>
+    <h3>Что входит в 800 000 ₽, а что нет</h3>
+    <div class="cols">
+      <div class="col d"><div class="cap">Входит</div><h5>Всё до публикации</h5>
+        <ul><li>Проектирование сценариев и бизнес-логики</li><li>Дизайн экранов и состояний</li>
+          <li>Разработка iOS и Android из одной кодовой базы</li><li>Серверная часть и база данных</li>
+          <li>ИИ-агенты и правила их поведения</li><li>Публикация в App Store, Google Play и RuStore</li>
+          <li>Ответы на замечания модерации</li></ul></div>
+      <div class="col c"><div class="cap">Оплачивается отдельно</div><h5>То, что покупается не у меня</h5>
+        <ul><li>Аккаунты разработчика Apple и Google</li><li>Серверные мощности и домен</li>
+          <li>Расход на языковые модели</li><li>Платные внешние сервисы: карты, СМС, эквайринг</li></ul>
+        <p style="margin-top:10px;">Эти счета приходят вам напрямую от поставщиков — я на них не зарабатываю и наценку не ставлю.</p></div>
+      <div class="col b"><div class="cap">Отдельным этапом</div><h5>После запуска</h5>
+        <ul><li>Развитие и новые сценарии</li><li>Интеграции, которых не было в первом объёме</li></ul>
+        <p style="margin-top:10px;">Разработка заканчивается публикацией. Дальше приложение живёт — и это отдельный договор, а не скрытый довесок к цене.</p></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">После запуска</div>
+    <h3>Сопровождение — от 30 000 ₽ в месяц за магазин</h3>
+    <p class="lede">Опубликованное приложение нельзя оставить без присмотра: Apple и Google каждый год меняют требования и версии систем, и приложение, которое сегодня работает, через год просто перестаёт приниматься в обновление. Сопровождение — это чтобы оно продолжало работать и обновляться, а не чтобы «было».</p>
+
+    <div class="cols">
+      <div class="col a">
+        <div class="cap">Один магазин</div>
+        <h5>от 30 000 ₽ / мес</h5>
+        <p>Обновления под новые версии iOS или Android, продление и перевыпуск сертификатов, ответы на замечания при обновлениях, мониторинг сбоев и мелкие правки.</p>
+      </div>
+      <div class="col d">
+        <div class="cap">Два магазина вместе</div>
+        <h5>40 000 ₽ / мес вместо 60 000</h5>
+        <p>iOS и Android обслуживаются одной кодовой базой, поэтому и работа делается один раз. Экономия <b>20 000 ₽ в месяц</b> — 240 000 ₽ за год.</p>
+      </div>
+      <div class="col c">
+        <div class="cap">Что это даёт</div>
+        <h5>Приложение не выпадает из витрин</h5>
+        <p>Самая частая причина, по которой бизнес теряет приложение, — не поломка, а тишина: год без обновлений, и магазин снимает его с публикации. Тогда всё, что вы за него заплатили, придётся платить заново.</p>
+      </div>
+    </div>
+
+    <div class="figs">
+      <div class="fig v4"><div class="v">40 000 ₽</div><div class="l">в месяц за оба магазина при заказе двух</div></div>
+      <div class="fig v2"><div class="v">−20 000 ₽</div><div class="l">ежемесячно против раздельного обслуживания</div></div>
+      <div class="fig v3"><div class="v">240 000 ₽</div><div class="l">разница за год</div></div>
+      <div class="fig"><div class="v">по договору</div><div class="l">отдельно от разработки, начинается после публикации</div></div>
+    </div>
+  </section>
+
+  <div class="cta">
+    <h3>Начнём с разбора, а не с приложения</h3>
+    <p>Первый разговор — про то, где именно ваш бизнес теряет деньги. Если после него окажется, что приложение вам не нужно, я так и скажу: это дешевле для нас обоих, чем узнать это через полгода.</p>
+    <div class="btns">
+      <a href="https://t.me/profysales" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.5 4.3 2.9 11.4c-1 .4-1 1.8.1 2.1l4.7 1.4 1.8 5.5c.3.9 1.4 1.1 2 .4l2.6-2.7 4.7 3.5c.8.6 1.9.2 2.1-.8l3-14.2c.2-1-.8-1.8-1.7-1.4z"/><path d="M8.1 14.6 17.6 8l-7.3 7.4-.3 3.6z" fill="#3B1D6E" fill-opacity=".22"/></svg>
+        Написать в Telegram
+      </a>
+      <a class="ghost" href="tel:+79785850650">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.2 3.6l2.4 3.4-2 2a13 13 0 0 0 5.4 5.4l2-2 3.4 2.4v3.4a1.8 1.8 0 0 1-2 1.8C10.4 19.4 4.6 13.6 3.8 5.6a1.8 1.8 0 0 1 1.8-2z"/></svg>
+        Позвонить
+      </a>
+    </div>
+    <div class="sign">
+      <span class="who">Константин Сыров</span>
+      <a class="tel" href="tel:+79785850650">+7 978 585-06-50</a>
+      <span class="role">CEO студии <b>pro-agent-ai</b> — разработка ИИ-автоматизации бизнес-процессов и мобильных приложений</span>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

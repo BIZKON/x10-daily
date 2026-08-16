@@ -31,7 +31,7 @@ import { extractSession } from "../auth";
 import { getDb } from "../db";
 import { getEnv } from "../env";
 import { partnerBalance } from "../lib/partner-money";
-import { reservedSlugFor } from "../lib/partner-slug";
+import { normalizeSlug, reservedSlugFor } from "../lib/partner-slug";
 import { generatePayToken } from "../lib/pay-token";
 import { sendMessage } from "../lib/telegram-call";
 
@@ -414,6 +414,41 @@ export const partnerRoute = new Hono<AppEnv>()
         joinedAt: iso(p.joinedAt),
         soldRub: soldByPartner.get(p.id) ?? 0,
       })),
+    });
+  })
+
+  /**
+   * GET /v1/partner/public/:slug
+   * Кто рекомендует — для подписи на странице презентации.
+   *
+   * 🔴 Публичный и НАМЕРЕННО бедный: имя и контакт, которые партнёр и так
+   * пишет клиенту сам. Ставка, обороты и клиенты сюда не попадают — страницу
+   * открывает посторонний человек по ссылке из чужой переписки.
+   *
+   * ⚠️ Гейта раздела здесь нет намеренно: презентацию читает КЛИЕНТ, а не
+   * участник программы. Выключенная в копии программа не должна ломать продажу.
+   */
+  .get("/public/:slug", async (c) => {
+    const env = getEnv(c.env);
+    const slug = normalizeSlug(c.req.param("slug"));
+    if (!slug) return c.json({ error: "not_found" }, 404);
+
+    const db = getDb(env.DATABASE_URL);
+    const [row] = await db
+      .select({ name: partners.name, contact: partners.contact, status: partners.status })
+      .from(partners)
+      .where(eq(partners.slug, slug))
+      .limit(1);
+
+    // Приостановленный партнёр не подписывает страницу: ссылка продолжает
+    // открывать презентацию, но уже от лица редакции.
+    if (!row || row.status !== "active") return c.json({ error: "not_found" }, 404);
+
+    return c.json({
+      name: row.name,
+      contact: row.contact,
+      /** Полное КП: тот же домен и webview — человек не выпадает из приложения. */
+      kpUrl: `https://app.${env.X10_BASE_DOMAIN ?? "pro-agent-ai.ru"}/kp/${slug}/`,
     });
   })
 

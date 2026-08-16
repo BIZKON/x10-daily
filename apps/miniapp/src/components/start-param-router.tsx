@@ -23,12 +23,6 @@ import { useEffect, useRef } from "react";
 
 const HANDLED_SLUG_KEY = "pa_deeplink_slug";
 
-/** Slug статьи — транслит: латиница/цифры/дефис, ≤120. Защита от инъекции пути
- *  (start_param приходит извне; `../`, слэши и т.п. отвергаем). */
-export function isValidArticleSlug(s: string): boolean {
-  return /^[a-z0-9-]{1,120}$/.test(s);
-}
-
 /** start_param из Telegram. Приоритет — SDK (`initDataUnsafe`, он же парсит
  *  hash). Фолбэк — сам hash-фрагмент (Telegram кладёт `tgWebApp*` именно туда,
  *  НЕ в query), и напоследок query — для ручного теста в браузере. */

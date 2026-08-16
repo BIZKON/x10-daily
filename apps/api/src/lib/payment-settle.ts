@@ -50,6 +50,8 @@ export type SettleDealResult =
   | {
       ok: true;
       paymentId: string;
+      /** Сколько пришло ЭТИМ платежом — нужно уведомлениям и админке. */
+      paymentRub: number;
       accruals: Accrual[];
       fullyPaid: boolean;
       nextDueAt: Date | null;
@@ -195,6 +197,7 @@ export async function settleDealPayment(
   return {
     ok: true,
     paymentId: payment.id,
+    paymentRub: args.amountRub,
     accruals,
     fullyPaid: plan.fullyPaid,
     nextDueAt: plan.nextDueAt,
@@ -236,7 +239,13 @@ async function creditTopup(
 }
 
 export type SettleProviderResult =
-  | { ok: true; purpose: "topup" | "entry"; dealResult: SettleDealResult | null }
+  | {
+      ok: true;
+      purpose: "topup" | "entry";
+      /** Заказ, если платёж за вход. Нужен уведомлениям после транзакции. */
+      dealId: string | null;
+      dealResult: SettleDealResult | null;
+    }
   | { ok: false; reason: "unknown_payment" | "already_credited" | "deal_missing" };
 
 /**
@@ -279,7 +288,7 @@ export async function settleProviderPayment(
 
     if (row.purpose === "topup") {
       await creditTopup(tx, { paymentId: row.id, amountRub: num(row.amountRub) });
-      return { ok: true, purpose: "topup", dealResult: null } as const;
+      return { ok: true, purpose: "topup", dealId: null, dealResult: null } as const;
     }
 
     if (!row.dealId) {
@@ -295,7 +304,7 @@ export async function settleProviderPayment(
       providerPaymentId,
     });
 
-    return { ok: true, purpose: "entry", dealResult } as const;
+    return { ok: true, purpose: "entry", dealId: row.dealId, dealResult } as const;
   });
 }
 

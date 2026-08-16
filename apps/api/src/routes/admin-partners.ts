@@ -20,6 +20,7 @@ import { getDb } from "../db";
 import { getEnv } from "../env";
 import { wouldMakeCycle } from "../lib/partner-money";
 import { normalizeSlug } from "../lib/partner-slug";
+import { notifyPaymentSettled } from "../lib/payment-notify";
 import { settleDealPayment } from "../lib/payment-settle";
 
 /**
@@ -362,6 +363,9 @@ export const adminPartnersRoute = new Hono<AppEnv>()
         }
         return c.json({ error: result.reason }, 409);
       }
+
+      // Уведомления — после коммита: партнёр узнаёт об оплате сам, без нас.
+      await notifyPaymentSettled(db, env, { dealId: id, result });
 
       return c.json(
         {

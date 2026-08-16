@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../app";
 import { getDb } from "../db";
 import { getEnv } from "../env";
+import { notifyPaymentSettled } from "../lib/payment-notify";
 import { markPaymentCanceled, settleProviderPayment } from "../lib/payment-settle";
 import { type YooKassaCreds, getPayment } from "../lib/yookassa";
 
@@ -95,11 +96,13 @@ export const billingRoute = new Hono<AppEnv>().post("/yookassa", async (c) => {
       return c.json({ ok: true });
     }
 
-    if (result.purpose === "entry" && result.dealResult?.ok) {
-      const accrued = result.dealResult.accruals.length;
-      console.info(
-        `[billing] заказ оплачен: платёж ${parsed.providerPaymentId}, начислений ${accrued}`,
-      );
+    if (result.purpose === "entry" && result.dealResult?.ok && result.dealId) {
+      // 🔴 После коммита транзакции: Telegram отвечает сотни миллисекунд, а
+      // держать на этом блокировки денежных таблиц нельзя.
+      await notifyPaymentSettled(db, env, {
+        dealId: result.dealId,
+        result: result.dealResult,
+      });
     }
 
     return c.json({ ok: true });

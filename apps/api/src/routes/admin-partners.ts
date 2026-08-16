@@ -20,8 +20,10 @@ import { getDb } from "../db";
 import { getEnv } from "../env";
 import { wouldMakeCycle } from "../lib/partner-money";
 import { normalizeSlug } from "../lib/partner-slug";
+import { generatePayToken } from "../lib/pay-token";
 import { notifyPaymentSettled } from "../lib/payment-notify";
 import { settleDealPayment } from "../lib/payment-settle";
+import { payUrlFor } from "./partner";
 
 /**
  * Партнёрская программа со стороны владельца (спека 14.08).
@@ -177,6 +179,9 @@ export const adminPartnersRoute = new Hono<AppEnv>()
           amountRub: partnerDeals.amountRub,
           ratePercent: partnerDeals.ratePercent,
           status: partnerDeals.status,
+          installments: partnerDeals.installments,
+          payToken: partnerDeals.payToken,
+          nextDueAt: partnerDeals.nextDueAt,
           createdAt: partnerDeals.createdAt,
         })
         .from(partnerDeals)
@@ -253,6 +258,10 @@ export const adminPartnersRoute = new Hono<AppEnv>()
         paidRub: paidByDeal.get(d.id) ?? 0,
         ratePercent: num(d.ratePercent),
         status: d.status,
+        installments: d.installments,
+        // Ссылка живёт в карточке заказа: владелец отдаёт её так же, как партнёр.
+        payUrl: d.payToken ? payUrlFor(env, d.payToken) : null,
+        nextDueAt: iso(d.nextDueAt),
         createdAt: iso(d.createdAt),
       })),
       accruals: accruals.map((a) => ({
@@ -298,6 +307,7 @@ export const adminPartnersRoute = new Hono<AppEnv>()
       if (!partner) return c.json({ error: "not_found", id }, 404);
 
       const rate = body.ratePercent ?? num(partner.ratePercent);
+      const payToken = generatePayToken();
       const [created] = await db
         .insert(partnerDeals)
         .values({
@@ -308,16 +318,24 @@ export const adminPartnersRoute = new Hono<AppEnv>()
           amountRub: String(body.amountRub),
           ratePercent: String(rate),
           status: "negotiating",
+          // Части рассрочки принимались и раньше, но до магазина их некуда было
+          // сохранять: ответ повторял их обратно, и на этом всё кончалось.
+          installments: body.installmentMonths,
+          payToken,
           note: body.note ?? null,
         })
-        .returning({ id: partnerDeals.id });
+        .returning({ id: partnerDeals.id, dealNo: partnerDeals.dealNo });
 
       return c.json(
         {
           id: created?.id,
+          dealNo: created?.dealNo,
           ratePercent: rate,
           installmentMonths: body.installmentMonths,
           maxInstallmentMonths: MAX_INSTALLMENT_MONTHS,
+          // Ссылка на оплату — то же, что получает партнёр. Владелец продаёт
+          // тем же механизмом, включая произвольную сумму по согласованию.
+          payUrl: payUrlFor(env, payToken),
         },
         201,
       );

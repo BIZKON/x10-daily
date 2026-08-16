@@ -1120,6 +1120,11 @@ export type AdminPartnerDeal = {
   paidRub: number;
   ratePercent: number;
   status: string;
+  installments: number;
+  /** Ссылка на оплату — та же, что видит партнёр. */
+  payUrl: string | null;
+  /** Срок второй части рассрочки. Появляется после первой оплаты. */
+  nextDueAt: string | null;
   createdAt: string | null;
 };
 

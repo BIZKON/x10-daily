@@ -238,11 +238,26 @@ function DealRow({ deal, partnerId }: { deal: AdminPartnerDeal; partnerId: strin
         <span className="text-mist">
           Оплачено {rub(deal.paidRub)}
           {rest > 0 ? ` · осталось ${rub(rest)}` : " · полностью"}
+          {deal.installments > 1 ? ` · ${deal.installments} части` : ""}
         </span>
         <span className="font-mono font-bold text-success">
           {earned > 0 ? `начислено ${rub(earned)}` : "начислений нет"}
         </span>
       </div>
+
+      {/* Ссылка нужна, пока заказ не оплачен: дальше это мусор в карточке. */}
+      {deal.payUrl && rest > 0 && (
+        <div className="mt-2.5 truncate rounded-lg bg-night px-3 py-2 font-mono text-[12px] text-gold">
+          {deal.payUrl}
+        </div>
+      )}
+
+      {deal.nextDueAt && rest > 0 && (
+        <div className="mt-1.5 text-[12px] text-haze">
+          Вторая часть — до{" "}
+          {new Date(deal.nextDueAt).toLocaleDateString("ru-RU", { day: "2-digit", month: "long" })}
+        </div>
+      )}
     </article>
   );
 }

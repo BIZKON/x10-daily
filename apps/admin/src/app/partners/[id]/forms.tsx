@@ -145,6 +145,13 @@ export function PaymentForm({
       <p className="m-0 mb-3 text-[12.5px] leading-relaxed text-mist">
         Отметьте поступившую оплату — доля партнёра начислится сама, в тот же момент.
       </p>
+      {/* 🔴 Без этой строки владелец однажды отметит вручную оплату, уже
+          записанную вебхуком, и партнёр получит долю дважды. Интерфейс должен
+          сказать это до ошибки, а не после разбирательства по деньгам. */}
+      <p className="m-0 mb-3 rounded-xl border border-gold/40 bg-gold/5 px-3 py-2 text-[12px] leading-relaxed text-mist">
+        Только для безнала и наличных. Оплату картой по ссылке система записывает сама — отмечать её
+        здесь не нужно, иначе доля начислится дважды.
+      </p>
       <form action={action} className="space-y-3">
         <input type="hidden" name="partnerId" value={partnerId} />
 

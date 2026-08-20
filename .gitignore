@@ -142,3 +142,5 @@ landing/*/
 # из разных источников не для публичного репозитория.
 !landing/danilova/
 landing/danilova/audit-pienenite.md
+# скриншоты аудита: пиксели уже вшиты в index.html data-URI, файлы — только исходники
+landing/danilova/shots/

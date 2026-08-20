@@ -218,7 +218,7 @@ x10-daily/                  ← техническое имя репо (исто
 | Источники парсинга (список, adapter_type, правила, pending) | `docs/parsing-sources.md` (канон) + `scripts/seed-sources.sql` |
 | Dev-фикстуры | `scripts/seed.ts` (id совпадают с `apps/admin/src/lib/mocks.ts`) |
 | Деплой prod | `./deploy.sh`, `docker-compose.prod.yml`, `caddy/Caddyfile.prod` |
-| **Состояние на конец последней сессии** | **`docs/handoffs/handoff-session-38.md`** |
+| **Состояние на конец последней сессии** | **`docs/handoffs/handoff-session-40.md`** |
 | Коммерческое предложение (что читает клиент) | `landing/kp/template.html` — ЕДИНЫЙ источник текста. `landing/index.html` и партнёрские версии СОБИРАЮТСЯ из него: `node scripts/build-kp.mjs`. Руками не править |
 | Исторические handoffs сессий | `docs/handoffs/` |
 | Архив стратегии X10-эпохи | `docs/strategy/` (НЕ канон нового бренда) |

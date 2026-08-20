@@ -307,23 +307,29 @@
   .note b{color:#4C1D95;}
 
   /* ── калькулятор рассрочки ─────────────────────────────
-     Одна цена и три графика. Кнопки-сегменты переключают срок, ниже сумма
+     Одна цена и два графика. Кнопки-сегменты переключают срок, ниже сумма
      раскладывается на первый платёж и равные месячные доли — клиент видит
-     не «рассрочка возможна», а конкретную цифру в месяц. */
+     не «рассрочка возможна», а конкретную цифру в месяц.
+     Кнопок ровно две (решение владельца 20.08: «3 месяца» убрана) — и это
+     же чинит мобильный баг: у grid-колонок стоит min-width:0, иначе длинное
+     слово в подписи («сбалансированно») не даёт колонке ужаться, и третья
+     кнопка молча выталкивалась за правый край экрана без прокрутки. */
   .calc{border-radius:18px;border:1px solid #EADDFF;overflow:hidden;
     background:linear-gradient(152deg,var(--f-violet),#FDFCFF 55%);}
   .calc .head{padding:22px 24px 0;}
   .calc .total{font-family:var(--mono);font-weight:700;letter-spacing:-.02em;
     font-size:clamp(34px,5.4vw,52px);color:var(--violet);font-variant-numeric:tabular-nums;line-height:1.05;}
   .calc .total-sub{font-size:14px;color:var(--ink-soft);margin:6px 0 18px;}
-  .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 24px;}
+  .seg{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 24px;}
   .seg button{
+    min-width:0;
     font-family:var(--body);font-size:14.5px;font-weight:700;color:var(--ink-soft);
     background:#fff;border:1px solid var(--line);border-radius:12px;
     padding:12px 8px;cursor:pointer;transition:all .18s ease;
   }
   .seg button .m{display:block;font-family:var(--mono);font-size:11px;font-weight:700;
-    letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-top:3px;}
+    letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-top:3px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .seg button:hover{transform:translateY(-1px);box-shadow:0 8px 20px -12px rgba(90,60,180,.5);}
   .seg button.on{background:linear-gradient(120deg,var(--violet),var(--pink));
     border-color:transparent;color:#fff;box-shadow:0 10px 26px -12px rgba(190,60,150,.8);}
@@ -786,7 +792,6 @@
         <div class="total-sub">полная стоимость под ключ · первый платёж 2 000 € при старте · остальное — в рассрочку без банка и переплаты</div>
       </div>
       <div class="seg" role="group" aria-label="Срок рассрочки">
-        <button type="button" data-months="3">3 месяца<span class="m">быстрее закрыть</span></button>
         <button type="button" data-months="6" class="on">6 месяцев<span class="m">сбалансированно</span></button>
         <button type="button" data-months="12">12 месяцев<span class="m">легче для кассы</span></button>
       </div>

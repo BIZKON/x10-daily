@@ -320,6 +320,43 @@
   .calc .total{font-family:var(--mono);font-weight:700;letter-spacing:-.02em;
     font-size:clamp(34px,5.4vw,52px);color:var(--violet);font-variant-numeric:tabular-nums;line-height:1.05;}
   .calc .total-sub{font-size:14px;color:var(--ink-soft);margin:6px 0 18px;}
+  /* конструктор услуг: категории с чекбоксами. Полный набор = цена «под
+     ключ» 15 000 € (по отдельности 19 000 €); снял галочку — итог и график
+     пересчитались по прайсу поштучно. У вариантов внутри категории —
+     пилюли-радио («обе платформы» / «одна»). */
+  .svc{display:grid;gap:10px;padding:0 24px;margin:0 0 6px;}
+  .svc-item{display:grid;grid-template-columns:auto 1fr auto;gap:6px 12px;align-items:start;
+    border:1px solid var(--line);border-radius:14px;padding:13px 15px;background:#fff;
+    cursor:pointer;transition:border-color .15s ease, background .15s ease, opacity .15s ease;}
+  .svc-item.sel{background:linear-gradient(96deg,#F7F0FF,#fff 60%);border-color:#D9C7FA;}
+  .svc-item:not(.sel){opacity:.62;}
+  .svc-item input{width:19px;height:19px;margin:2px 0 0;accent-color:var(--violet);cursor:pointer;flex:0 0 auto;}
+  .svc-item .nm{min-width:0;}
+  .svc-item .nm b{display:block;font-family:var(--display);font-size:15.5px;font-weight:750;
+    letter-spacing:-.01em;line-height:1.25;}
+  .svc-item .nm .d{font-size:13px;color:var(--ink-soft);line-height:1.45;margin-top:3px;}
+  .svc-price{font-family:var(--mono);font-size:14px;font-weight:700;white-space:nowrap;
+    color:var(--violet);background:var(--f-violet);border:1px solid #EADDFF;
+    padding:5px 10px;border-radius:9px;font-variant-numeric:tabular-nums;}
+  .svc-item:not(.sel) .svc-price{color:var(--ink-faint);background:#F4F3F9;border-color:var(--line);
+    text-decoration:line-through;}
+  .svc-var{grid-column:2/-1;display:flex;flex-wrap:wrap;gap:7px;margin-top:2px;}
+  .svc-var span{font-size:12px;font-weight:650;padding:5px 11px;border-radius:999px;
+    border:1px solid var(--line);background:#fff;color:var(--ink-soft);cursor:pointer;
+    font-variant-numeric:tabular-nums;transition:all .15s ease;}
+  .svc-var span.on{background:linear-gradient(120deg,var(--violet),var(--pink));
+    color:#fff;border-color:transparent;}
+  .svc-core{padding:0 24px;margin:12px 0 0;font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
+  .svc-core b{color:var(--ink);}
+  .allbtn{margin:14px 24px 0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+  .allbtn button{font-family:var(--body);font-size:14px;font-weight:700;color:#fff;
+    background:linear-gradient(120deg,var(--violet),var(--pink));border:none;border-radius:12px;
+    padding:11px 18px;cursor:pointer;box-shadow:0 10px 24px -12px rgba(190,60,150,.8);
+    transition:transform .15s ease;}
+  .allbtn button:hover{transform:translateY(-1px);}
+  .allbtn .note2{font-size:12.5px;color:var(--ink-soft);}
+  .calc .divider{border-top:1px dashed #E2DBF3;margin:20px 24px 0;}
+
   .seg{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 24px;}
   .seg button{
     min-width:0;
@@ -784,21 +821,89 @@
   <section class="slide">
     <div class="slide-no">сколько это стоит</div>
     <h3>15 000 € — <span class="grad">за весь центр под ключ</span></h3>
-    <p class="lede">Одна цена за всё перечисленное: цифровой администратор, говорящие агенты, боты записи с оплатой, приложения iOS и Android, контент-завод, финансовые агенты, обновление сайта, пакет документов по GDPR — и два личных наставника на весь период разработки. Первый платёж — 2 000 €, остальное — равными долями по графику, который вы выбираете сами.</p>
+    <p class="lede">Полный пакет — 15 000 €: всё перечисленное ниже плюс наставники, обновление сайта и пакет документов GDPR. Если что-то кажется избыточным — снимите галочку: конструктор пересчитает стоимость и график платежей. По отдельности набор стоит 19 000 €, вместе — 15 000 €: комплект выгоднее на 4 000 €.</p>
 
     <div class="calc" id="calc">
-      <div class="head">
-        <div class="total">15 000 €</div>
-        <div class="total-sub">полная стоимость под ключ · первый платёж 2 000 € при старте · остальное — в рассрочку без банка и переплаты</div>
+      <div class="head" style="padding-bottom:6px;">
+        <div class="cap2" style="margin:0 0 12px;">соберите свой набор — уберите лишнее или включите всё</div>
       </div>
-      <div class="seg" role="group" aria-label="Срок рассрочки">
+
+      <div class="svc" id="svc">
+        <label class="svc-item sel" data-id="apps">
+          <input type="checkbox" checked aria-label="Приложения iOS и Android">
+          <span class="nm"><b>Мобильное приложение центра</b>
+            <span class="d">Собственное приложение в App Store и Google Play: запись, история посещений, push-напоминания, оплата.</span></span>
+          <span class="svc-price" data-role="price">8 000 €</span>
+          <span class="svc-var" data-role="vars">
+            <span class="on" data-price="8000" data-full="1">iOS + Android — 8 000 €</span>
+            <span data-price="5000">одна платформа — 5 000 €</span>
+          </span>
+        </label>
+
+        <label class="svc-item sel" data-id="content">
+          <input type="checkbox" checked aria-label="Контент-завод">
+          <span class="nm"><b>Контент-завод</b>
+            <span class="d">Посты, обложки и статьи на русском и латышском для сайта и соцсетей — по вашему одобрению, ни одна публикация без вашего «да».</span></span>
+          <span class="svc-price" data-role="price">4 000 €</span>
+          <span class="svc-var" data-role="vars">
+            <span class="on" data-price="4000" data-full="1">ежедневный поток — 4 000 €</span>
+            <span data-price="2500">лайт: 8 публикаций в месяц — 2 500 €</span>
+          </span>
+        </label>
+
+        <label class="svc-item sel" data-id="voice">
+          <input type="checkbox" checked aria-label="Голосовой агент">
+          <span class="nm"><b>Голосовой агент на телефоне</b>
+            <span class="d">Приём звонков 24/7: запись, перенос, напоминания, ответы на частые вопросы. Представляется помощником клиники, по просьбе переводит на человека.</span></span>
+          <span class="svc-price" data-role="price">3 000 €</span>
+          <span class="svc-var" data-role="vars">
+            <span class="on" data-price="3000" data-full="1">входящие + напоминания — 3 000 €</span>
+          </span>
+        </label>
+
+        <label class="svc-item sel" data-id="bots">
+          <input type="checkbox" checked aria-label="Боты в соцсетях">
+          <span class="nm"><b>Боты записи в соцсетях</b>
+            <span class="d">Telegram и Instagram: свободные окна, запись в два касания и кнопка оплаты прямо в чате (Stripe / Klix by Citadele).</span></span>
+          <span class="svc-price" data-role="price">3 000 €</span>
+          <span class="svc-var" data-role="vars">
+            <span class="on" data-price="3000" data-full="1">Telegram + Instagram — 3 000 €</span>
+            <span data-price="2000">только Telegram — 2 000 €</span>
+          </span>
+        </label>
+
+        <label class="svc-item sel" data-id="agents">
+          <input type="checkbox" checked aria-label="Агенты записи и контроля">
+          <span class="nm"><b>Агенты записи и контроля</b>
+            <span class="d">Расписание врачей, контроль неявок и напоминания, еженедельные разборы потока пациентов и выручки — к утру понедельника.</span></span>
+          <span class="svc-price" data-role="price">1 000 €</span>
+          <span class="svc-var" data-role="vars">
+            <span class="on" data-price="1000" data-full="1">контроль + разборы — 1 000 €</span>
+          </span>
+        </label>
+      </div>
+
+      <div class="svc-core"><b>Ядро — цифровой администратор</b> (база знаний клиники, единый тон, журнал разговоров) входит в любой набор: без него сервисы не работают. <b>Наставники 2 раза в неделю, обновление сайта и полный пакет GDPR-документов — только в комплекте «под ключ».</b></div>
+
+      <div class="allbtn">
+        <button type="button" id="allBtn">Включить всё — под ключ за 15 000 €</button>
+        <span class="note2" id="allNote">сейчас выбран полный комплект</span>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="head" style="padding-top:18px;">
+        <div class="total" id="cTotalBig">15 000 €</div>
+        <div class="total-sub" id="totalSub">полный комплект под ключ · по отдельности 19 000 € — экономия 4 000 € · наставники, сайт и GDPR-пакет в подарок</div>
+      </div>
+      <div class="seg" id="segWrap" role="group" aria-label="Срок рассрочки">
         <button type="button" data-months="6" class="on">6 месяцев<span class="m">сбалансированно</span></button>
         <button type="button" data-months="12">12 месяцев<span class="m">легче для кассы</span></button>
       </div>
       <div class="out">
         <div class="cbox first">
-          <div class="cv">2 000 €</div>
-          <div class="cl">первый платёж — при подписании, запускает работы</div>
+          <div class="cv" id="cFirst">2 000 €</div>
+          <div class="cl" id="cFirstL">первый платёж — при подписании, запускает работы</div>
         </div>
         <div class="cbox month">
           <div class="cv" id="cMonth">— €</div>
@@ -932,50 +1037,156 @@
       { threshold: 0.2 }).observe(end);
   })();
 
-  // ── Калькулятор рассрочки ──────────────────────────────
-  // Всего 15 000 €. Первый платёж 2 000 € — всегда. Остаток 13 000 € делится
-  // на равные месячные доли; копеечный хвост от деления забирает последний
-  // платёж, чтобы сумма сходилась в 15 000 ровно.
+  // ── Конструктор услуг + рассрочка ─────────────────────
+  // Полный набор (все галочки, полные варианты) = «под ключ» 15 000 €.
+  // Любое отклонение — сумма по прайсу поштучно (по отдельности всё стоит
+  // 19 000 €, комплект выгоднее на 4 000 €). Первый платёж: 2 000 € при
+  // сумме от 4 000 €; наборы дешевле делятся 50/50 — старт и сдача, без
+  // месячной рассрочки. Хвост округления забирает последний платёж.
   (function () {
-    var TOTAL = 15000, FIRST = 2000, REST = TOTAL - FIRST;
+    var BUNDLE = 15000;
+    var months = 6;
+    var NBSP = String.fromCharCode(160);
     var fmt = function (n) {
-      return n.toLocaleString('ru-RU').replace(/ /g, ' ') + ' €';
+      return n.toLocaleString('ru-RU').split(NBSP).join(' ').replace(/\s/g, ' ') + ' €';
     };
-    var mv = document.getElementById('cMonth');
-    var ml = document.getElementById('cMonthL');
-    var bars = document.getElementById('bars');
-    var cap = document.getElementById('schedCap');
-    var btns = document.querySelectorAll('.seg button');
+    var items = [].slice.call(document.querySelectorAll('.svc-item'));
+    var segWrap = document.getElementById('segWrap');
+    var segBtns = [].slice.call(segWrap.querySelectorAll('button'));
+    var sched = document.querySelector('.sched');
 
-    function render(months) {
-      var base = Math.floor(REST / months);
-      var last = REST - base * (months - 1);
-      mv.textContent = fmt(base);
-      ml.textContent = months + ' платеж' + (months === 3 ? 'а' : 'ей') +
-        ' по графику' + (last !== base ? ' · последний ' + fmt(last) : '');
-      cap.textContent = 'график платежей · старт + ' + months + ' мес';
-
-      var max = FIRST > base ? FIRST : last;
-      var html = '<div class="bar b0"><i style="height:' +
-        Math.max(14, Math.round(FIRST / max * 96)) + 'px"></i>' +
-        '<div class="bv">' + fmt(FIRST) + '</div><div class="bl">старт</div></div>';
-      for (var i = 1; i <= months; i++) {
-        var v = (i === months) ? last : base;
-        html += '<div class="bar"><i style="height:' +
-          Math.max(14, Math.round(v / max * 96)) + 'px"></i>' +
-          '<div class="bv">' + fmt(v) + '</div><div class="bl">' + i + ' мес</div></div>';
-      }
-      bars.innerHTML = html;
+    function fullSum() {
+      var s = 0;
+      items.forEach(function (it) {
+        s += parseInt(it.querySelector('[data-role="vars"] [data-full]').dataset.price, 10);
+      });
+      return s;
     }
 
-    btns.forEach(function (b) {
-      b.addEventListener('click', function () {
-        btns.forEach(function (x) { x.classList.remove('on'); });
-        b.classList.add('on');
-        render(parseInt(b.dataset.months, 10));
+    function state() {
+      var sum = 0, allOn = true, allFull = true;
+      items.forEach(function (it) {
+        var on = it.querySelector('input').checked;
+        var v = it.querySelector('[data-role="vars"] .on');
+        if (on) sum += parseInt(v.dataset.price, 10); else allOn = false;
+        if (!v.dataset.full) allFull = false;
+      });
+      var bundle = allOn && allFull;
+      return { total: bundle ? BUNDLE : sum, bundle: bundle };
+    }
+
+    function render() {
+      var s = state();
+      var sub = document.getElementById('totalSub');
+      var note = document.getElementById('allNote');
+      var first = document.getElementById('cFirst');
+      var firstL = document.getElementById('cFirstL');
+      var mv = document.getElementById('cMonth');
+      var ml = document.getElementById('cMonthL');
+      var bars = document.getElementById('bars');
+      var cap = document.getElementById('schedCap');
+
+      document.getElementById('cTotalBig').textContent = fmt(s.total);
+      document.getElementById('cTotal').textContent = fmt(s.total);
+
+      if (s.bundle) {
+        sub.textContent = 'полный комплект под ключ · по отдельности ' + fmt(fullSum()) +
+          ' — экономия ' + fmt(fullSum() - BUNDLE) + ' · наставники, сайт и GDPR-пакет в подарок';
+        note.textContent = 'сейчас выбран полный комплект';
+      } else if (s.total >= BUNDLE) {
+        sub.textContent = 'этот набор по прайсу дороже полного комплекта — «под ключ» за ' + fmt(BUNDLE) +
+          ' вы получите всё, плюс наставников, сайт и GDPR-пакет';
+        note.textContent = 'включите всё — сэкономите ' + fmt(s.total - BUNDLE) + ' и получите больше';
+      } else {
+        sub.textContent = 'ваш набор по прайсу поштучно · наставники, обновление сайта и полный GDPR-пакет входят только в комплект «под ключ»';
+        note.textContent = 'полный комплект стоит ' + fmt(BUNDLE) + ' — дешевле, чем добирать услуги позже';
+      }
+      if (s.total === 0) {
+        sub.textContent = 'ничего не выбрано — отметьте хотя бы одну услугу';
+        first.textContent = '— €'; mv.textContent = '— €';
+        ml.textContent = 'выберите услуги'; firstL.textContent = 'выберите услуги';
+        segWrap.style.display = 'none'; sched.style.display = 'none';
+        return;
+      }
+
+      if (s.total >= 4000) {
+        var FIRST = 2000, rest = s.total - FIRST;
+        segWrap.style.display = ''; sched.style.display = '';
+        var base = Math.floor(rest / months);
+        var last = rest - base * (months - 1);
+        first.textContent = fmt(FIRST);
+        firstL.textContent = 'первый платёж — при подписании, запускает работы';
+        mv.textContent = fmt(base);
+        ml.textContent = months + ' платежей по графику' + (last !== base ? ' · последний ' + fmt(last) : '');
+        cap.textContent = 'график платежей · старт + ' + months + ' мес';
+        var max = Math.max(FIRST, base, last);
+        var html = '<div class="bar b0"><i style="height:' +
+          Math.max(14, Math.round(FIRST / max * 96)) + 'px"></i>' +
+          '<div class="bv">' + fmt(FIRST) + '</div><div class="bl">старт</div></div>';
+        for (var i = 1; i <= months; i++) {
+          var v = (i === months) ? last : base;
+          html += '<div class="bar"><i style="height:' +
+            Math.max(14, Math.round(v / max * 96)) + 'px"></i>' +
+            '<div class="bv">' + fmt(v) + '</div><div class="bl">' + i + ' мес</div></div>';
+        }
+        bars.innerHTML = html;
+      } else {
+        var half = Math.ceil(s.total / 2 / 50) * 50;
+        segWrap.style.display = 'none'; sched.style.display = '';
+        first.textContent = fmt(half);
+        firstL.textContent = 'половина — при подписании';
+        mv.textContent = fmt(s.total - half);
+        ml.textContent = 'вторая половина — при сдаче работ';
+        cap.textContent = 'график платежей · 50 / 50';
+        var mx = Math.max(half, s.total - half);
+        bars.innerHTML =
+          '<div class="bar b0"><i style="height:' + Math.max(14, Math.round(half / mx * 96)) + 'px"></i>' +
+          '<div class="bv">' + fmt(half) + '</div><div class="bl">старт</div></div>' +
+          '<div class="bar"><i style="height:' + Math.max(14, Math.round((s.total - half) / mx * 96)) + 'px"></i>' +
+          '<div class="bv">' + fmt(s.total - half) + '</div><div class="bl">сдача</div></div>';
+      }
+    }
+
+    items.forEach(function (it) {
+      var cb = it.querySelector('input');
+      cb.addEventListener('change', function () {
+        it.classList.toggle('sel', cb.checked);
+        render();
+      });
+      it.querySelectorAll('[data-role="vars"] span').forEach(function (v) {
+        v.addEventListener('click', function (e) {
+          e.preventDefault();
+          it.querySelectorAll('[data-role="vars"] span').forEach(function (x) { x.classList.remove('on'); });
+          v.classList.add('on');
+          it.querySelector('[data-role="price"]').textContent = fmt(parseInt(v.dataset.price, 10));
+          if (!cb.checked) { cb.checked = true; it.classList.add('sel'); }
+          render();
+        });
       });
     });
-    render(6);
+
+    document.getElementById('allBtn').addEventListener('click', function () {
+      items.forEach(function (it) {
+        it.querySelector('input').checked = true;
+        it.classList.add('sel');
+        it.querySelectorAll('[data-role="vars"] span').forEach(function (x) { x.classList.remove('on'); });
+        var full = it.querySelector('[data-role="vars"] [data-full]');
+        full.classList.add('on');
+        it.querySelector('[data-role="price"]').textContent = fmt(parseInt(full.dataset.price, 10));
+      });
+      render();
+    });
+
+    segBtns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        segBtns.forEach(function (x) { x.classList.remove('on'); });
+        b.classList.add('on');
+        months = parseInt(b.dataset.months, 10);
+        render();
+      });
+    });
+
+    render();
   })();
 </script>
 </body>

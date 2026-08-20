@@ -320,6 +320,9 @@
   .calc .total{font-family:var(--mono);font-weight:700;letter-spacing:-.02em;
     font-size:clamp(34px,5.4vw,52px);color:var(--violet);font-variant-numeric:tabular-nums;line-height:1.05;}
   .calc .total-sub{font-size:14px;color:var(--ink-soft);margin:6px 0 18px;}
+  .total-was{font-family:var(--mono);font-weight:700;font-size:clamp(17px,2.6vw,24px);
+    color:var(--ink-faint);text-decoration:line-through;text-decoration-color:var(--rose);
+    text-decoration-thickness:2px;font-variant-numeric:tabular-nums;margin-bottom:2px;}
   /* конструктор услуг: категории с чекбоксами. Полный набор = цена «под
      ключ» 15 000 € (по отдельности 19 000 €); снял галочку — итог и график
      пересчитались по прайсу поштучно. У вариантов внутри категории —
@@ -893,6 +896,7 @@
       <div class="divider"></div>
 
       <div class="head" style="padding-top:18px;">
+        <div class="total-was" id="cWas">по отдельности — 19 000 €</div>
         <div class="total" id="cTotalBig">15 000 €</div>
         <div class="total-sub" id="totalSub">полный комплект под ключ · по отдельности 19 000 € — экономия 4 000 € · наставники, сайт и GDPR-пакет в подарок</div>
       </div>
@@ -1088,6 +1092,13 @@
 
       document.getElementById('cTotalBig').textContent = fmt(s.total);
       document.getElementById('cTotal').textContent = fmt(s.total);
+      var was = document.getElementById('cWas');
+      if (s.bundle) {
+        was.style.display = '';
+        was.textContent = 'по отдельности — ' + fmt(fullSum());
+      } else {
+        was.style.display = 'none';
+      }
 
       if (s.bundle) {
         sub.textContent = 'полный комплект под ключ · по отдельности ' + fmt(fullSum()) +
@@ -1187,6 +1198,26 @@
     });
 
     render();
+
+    // Страховка для мобильных браузеров: раз в секунду сверяем фактическое
+    // состояние галочек с последним отрисованным. Нативный чекбокс может
+    // переключиться и без наших обработчиков — сумма обязана догнать.
+    var lastSig = '';
+    setInterval(function () {
+      var sig = '';
+      items.forEach(function (it) {
+        sig += (it.querySelector('input').checked ? '1' : '0');
+        sig += it.querySelector('[data-role="vars"] .on').dataset.price + ';';
+      });
+      sig += months;
+      if (sig !== lastSig) {
+        lastSig = sig;
+        items.forEach(function (it) {
+          it.classList.toggle('sel', it.querySelector('input').checked);
+        });
+        render();
+      }
+    }, 800);
   })();
 </script>
 </body>

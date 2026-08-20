@@ -1,0 +1,935 @@
+<!doctype html>
+<!--
+  Коммерческое предложение для детского педиатрического центра Елены Даниловой
+  (Резекне, Латвия). Ручная сборка на дизайн-системе landing/kp/template.html.
+  Отдельный документ, генератором build-kp.mjs НЕ собирается.
+-->
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Цифровой центр клиники Даниловой</title>
+<meta name="description" content="Единый цифровой администратор для детского центра: голосовые агенты, запись и оплата в Telegram и Instagram, приложения iOS и Android, контент-завод и финансовые агенты. Серверы в Латвии, работа по законам ЕС.">
+<meta name="robots" content="noindex, nofollow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Клиника отвечает, записывает и помнит всё — вы занимаетесь медициной">
+<meta property="og:description" content="Единый цифровой администратор для детского центра: голос, мессенджеры, приложения, контент и финансы. Серверы в Латвии, законы ЕС.">
+<meta property="og:locale" content="ru_RU">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#129657;</text></svg>">
+<style>
+  :root{
+    color-scheme: light;
+    --ground:#FCFBFF; --card:#FFFFFF;
+    --ink:#16162E; --ink-soft:#585878; --ink-faint:#8C8CAB; --line:#E9E6F5;
+    --violet:#7C3AED; --pink:#EC4899; --amber:#F59E0B;
+    --cyan:#0891B2; --emerald:#059669; --rose:#E11D48;
+    --f-violet:#F4EEFF; --f-cyan:#E2F7FB; --f-emerald:#E4F8F0; --f-amber:#FFF4E0; --f-rose:#FFEDF1;
+    --display: system-ui, -apple-system, "Segoe UI Variable Display", "Segoe UI", Roboto, sans-serif;
+    --body: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1100px 520px at 10% -8%, #F6EEFF 0%, transparent 62%),
+      radial-gradient(900px 460px at 94% 2%, #E3F7FB 0%, transparent 56%),
+      var(--ground);
+    color:var(--ink); font-family:var(--body); font-size:16px; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:40px 20px 80px;}
+  .grad{
+    background:linear-gradient(96deg,var(--violet) 0%,var(--pink) 52%,var(--amber) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+
+  .slide{
+    background:var(--card);border:1px solid var(--line);border-radius:22px;
+    padding:clamp(24px,3.4vw,44px);margin-top:22px;
+    box-shadow:0 1px 2px rgba(22,22,46,.04), 0 14px 40px -22px rgba(90,60,180,.20);
+  }
+  .slide-no{
+    font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.14em;
+    color:var(--ink-faint);text-transform:uppercase;margin-bottom:10px;
+  }
+  .slide h3{
+    font-family:var(--display);font-weight:800;font-size:clamp(25px,4vw,41px);
+    line-height:1.08;letter-spacing:-.028em;margin:0 0 8px;text-wrap:balance;
+  }
+  .lede{font-size:17.5px;color:var(--ink-soft);margin:0 0 26px;max-width:68ch;}
+  .slide h4{
+    font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-faint);margin:32px 0 13px;
+  }
+
+  .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(228px,1fr));gap:14px;}
+  .col{border-radius:16px;padding:20px;border:1px solid var(--line);}
+  .col.a{background:var(--f-violet);border-color:#EADDFF;}
+  .col.b{background:var(--f-cyan);border-color:#C9EDF4;}
+  .col.c{background:var(--f-amber);border-color:#FBE3B8;}
+  .col.d{background:var(--f-emerald);border-color:#C6EFDD;}
+  .col .cap{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:9px;}
+  .col.a .cap{color:var(--violet);} .col.b .cap{color:var(--cyan);}
+  .col.c .cap{color:#B45309;} .col.d .cap{color:var(--emerald);}
+  .col h5{font-family:var(--display);font-size:18.5px;font-weight:750;margin:0 0 9px;letter-spacing:-.015em;}
+  .col p{margin:0;font-size:14px;color:var(--ink-soft);line-height:1.55;}
+  .col ul{margin:0;padding-left:17px;font-size:14px;color:var(--ink-soft);line-height:1.6;}
+  .col li{margin-bottom:4px;}
+
+  .figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:24px;}
+  .fig{border-radius:14px;padding:16px 18px;background:var(--f-cyan);border:1px solid #C9EDF4;}
+  .fig .v{font-family:var(--mono);font-weight:700;font-size:clamp(22px,3.1vw,30px);letter-spacing:-.02em;color:var(--cyan);font-variant-numeric:tabular-nums;line-height:1.1;}
+  .fig .l{font-size:13px;color:var(--ink-soft);margin-top:5px;line-height:1.35;}
+  .fig.v2{background:var(--f-amber);border-color:#FBE3B8;} .fig.v2 .v{color:#B45309;}
+  .fig.v3{background:var(--f-violet);border-color:#EADDFF;} .fig.v3 .v{color:var(--violet);}
+  .fig.v4{background:var(--f-emerald);border-color:#C6EFDD;} .fig.v4 .v{color:var(--emerald);}
+
+  /* герой */
+  .hero{position:relative;overflow:hidden;border-radius:28px;margin:8px 0 26px;
+    padding:clamp(38px,6vw,84px) clamp(24px,4vw,64px) clamp(34px,5vw,64px);
+    background:#fff;border:1px solid var(--line);
+    box-shadow:0 2px 4px rgba(22,22,46,.03), 0 30px 80px -40px rgba(120,60,200,.35);}
+  .blob{position:absolute;border-radius:50%;filter:blur(58px);opacity:.55;pointer-events:none;}
+  .blob1{width:520px;height:520px;left:-160px;top:-220px;
+    background:radial-gradient(circle,#C4B5FD,transparent 68%);animation:drift1 22s ease-in-out infinite;}
+  .blob2{width:460px;height:460px;right:-140px;top:-160px;
+    background:radial-gradient(circle,#FBCFE8,transparent 68%);animation:drift2 26s ease-in-out infinite;}
+  .blob3{width:400px;height:400px;right:14%;bottom:-240px;
+    background:radial-gradient(circle,#A5F3FC,transparent 68%);animation:drift3 30s ease-in-out infinite;}
+  @keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(60px,50px) scale(1.12)}}
+  @keyframes drift2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-50px,64px) scale(1.08)}}
+  @keyframes drift3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,-56px) scale(1.14)}}
+
+  .hero .inner{position:relative;z-index:1;}
+  .stamp{
+    display:inline-flex;gap:8px;font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--violet);background:var(--f-violet);
+    padding:6px 12px;border-radius:999px;margin-bottom:20px;font-weight:600;
+  }
+  .hero h1{font-family:var(--display);font-weight:800;
+    font-size:clamp(36px,6.8vw,74px);line-height:1.02;letter-spacing:-.035em;
+    margin:0 0 18px;text-wrap:balance;}
+  .hero h1 .grad{background-size:200% 100%;animation:shift 9s ease-in-out infinite;}
+  @keyframes shift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+  .hero .sub{margin:0 0 26px;max-width:58ch;font-size:clamp(17px,2vw,21px);
+    color:var(--ink-soft);line-height:1.5;}
+
+  .chips{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:30px;}
+  .chip{font-size:13.5px;font-weight:650;padding:9px 16px;border-radius:999px;
+    background:#fff;border:1px solid var(--line);color:var(--ink);
+    box-shadow:0 2px 10px -6px rgba(90,60,180,.35);}
+  .chip.k1{background:var(--f-violet);border-color:#EADDFF;}
+  .chip.k2{background:var(--f-cyan);border-color:#C9EDF4;}
+  .chip.k3{background:var(--f-amber);border-color:#FBE3B8;}
+  .chip.k4{background:var(--f-emerald);border-color:#C6EFDD;}
+  .chip.k5{background:var(--f-rose);border-color:#FBCDD8;}
+
+  .act{display:inline-flex;align-items:center;justify-content:center;gap:9px;
+    text-decoration:none;font-weight:700;font-size:16px;line-height:1.2;
+    min-height:54px;padding:0 26px;border-radius:14px;border:1px solid transparent;
+    text-align:center;
+    transition:transform .18s ease, box-shadow .18s ease, background .18s ease;}
+  .act:focus-visible{outline:3px solid var(--violet);outline-offset:3px;}
+  .act svg{flex:0 0 auto;}
+  .act-primary{background:linear-gradient(120deg,var(--violet),var(--pink));color:#fff;
+    box-shadow:0 12px 30px -14px rgba(190,60,150,.85);}
+  .act-primary:hover{transform:translateY(-2px);box-shadow:0 18px 38px -14px rgba(190,60,150,.95);}
+  .act-ghost{background:#fff;border-color:var(--line);color:var(--ink);}
+  .act-ghost:hover{transform:translateY(-2px);box-shadow:0 12px 26px -16px rgba(22,22,46,.5);}
+  .act-light{background:#fff;color:var(--violet);border-color:#fff;}
+  .act-light:hover{transform:translateY(-2px);box-shadow:0 14px 30px -14px rgba(0,0,0,.5);}
+  .act-dim{background:rgba(20,10,40,.24);border-color:rgba(255,255,255,.30);color:#fff;}
+  .act-dim:hover{background:rgba(20,10,40,.36);transform:translateY(-2px);}
+
+  .cta{display:flex;flex-wrap:wrap;gap:11px;align-items:center;}
+  .cta .tel{font-variant-numeric:tabular-nums;}
+  @media (max-width:560px){
+    .cta{display:grid;grid-template-columns:1fr;gap:10px;}
+    .cta .act{width:100%;}
+  }
+
+  .rise{opacity:0;transform:translateY(22px);
+    transition:opacity .7s cubic-bezier(.2,.7,.3,1), transform .7s cubic-bezier(.2,.7,.3,1);}
+  .rise.in{opacity:1;transform:none;}
+  .slide:hover{box-shadow:0 1px 2px rgba(22,22,46,.04), 0 22px 54px -26px rgba(90,60,180,.30);}
+  .slide{transition:box-shadow .3s ease;}
+  .p, .col, .row, .mode{transition:transform .2s ease;}
+  .p:hover, .col:hover, .mode:hover{transform:translateY(-3px);}
+
+  @media (prefers-reduced-motion: reduce){
+    .blob{animation:none;}
+    .hero h1 .grad{animation:none;}
+    .rise{opacity:1;transform:none;transition:none;}
+    .cta a:hover,.p:hover,.col:hover,.mode:hover{transform:none;}
+  }
+
+  .dock{position:fixed;left:0;right:0;bottom:0;z-index:30;
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+    background:rgba(252,251,255,.92);backdrop-filter:blur(10px);
+    border-top:1px solid var(--line);
+    transform:translateY(110%);transition:transform .28s cubic-bezier(.2,.7,.3,1);
+    display:none;}
+  .dock.show{transform:none;}
+  .dock .act{width:100%;}
+  @media (max-width:720px){
+    .dock{display:block;}
+    body{padding-bottom:84px;}
+  }
+  @media (prefers-reduced-motion: reduce){ .dock{transition:none;} }
+
+  .contacts{display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:center;}
+  @media (max-width:860px){ .contacts{grid-template-columns:auto 1fr;} .contacts .links{grid-column:1/-1;} }
+  @media (max-width:460px){
+    .contacts{grid-template-columns:1fr;justify-items:stretch;}
+    .contacts .avatar{justify-self:start;}
+    .links{min-width:0;}
+  }
+  .avatar{width:104px;height:104px;border-radius:50%;flex:0 0 auto;
+    background:rgba(255,255,255,.22);
+    border:3px solid rgba(255,255,255,.9);box-shadow:0 10px 30px -12px rgba(0,0,0,.45);
+    display:grid;place-items:center;overflow:hidden;}
+  .avatar .ini{font-family:var(--display);font-weight:800;font-size:34px;color:#fff;letter-spacing:.02em;}
+  .person .role{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;
+    text-transform:uppercase;color:rgba(255,255,255,.8);margin-bottom:7px;}
+  .person .name{font-family:var(--display);font-size:clamp(24px,3.4vw,34px);font-weight:800;
+    letter-spacing:-.022em;color:#fff;margin-bottom:4px;line-height:1.1;}
+  .person .pos{font-size:15px;color:rgba(255,255,255,.9);}
+  .links{display:flex;flex-direction:column;gap:10px;min-width:260px;}
+  .links .act{width:100%;}
+  .links .act:focus-visible{outline:3px solid #fff;outline-offset:3px;}
+
+  /* схема центра */
+  figure.line{margin:0 0 30px;}
+  figure.line svg{width:100%;max-width:100%;height:auto;display:block;color:var(--ink);}
+  figure.line figcaption{margin-top:12px;font-size:13.5px;color:var(--ink-soft);line-height:1.5;}
+  .sv-box{fill:#FDFCFF;stroke:currentColor;stroke-opacity:.22;}
+  .sv-fmt{fill:var(--f-cyan);stroke:#BEE9F2;}
+  .sv-gate{fill:url(#gateGrad);stroke:none;}
+  .sv-out{fill:var(--f-emerald);stroke:#C6EFDD;}
+  .sv-t{font-family:var(--display);font-size:13.5px;font-weight:750;fill:currentColor;}
+  .sv-s{font-size:11.5px;fill:currentColor;fill-opacity:.62;}
+  .sv-a{font-size:11px;fill:currentColor;fill-opacity:.55;font-family:var(--mono);}
+  .sv-w{font-family:var(--display);font-size:13.5px;font-weight:750;fill:#fff;}
+  .sv-ws{font-size:11.5px;fill:#fff;fill-opacity:.9;}
+  .sv-l{stroke:currentColor;stroke-opacity:.32;stroke-width:1.5;fill:none;}
+  .sv-group{fill:none;stroke:currentColor;stroke-opacity:.18;stroke-dasharray:5 5;}
+  .sv-gate-v{fill:url(#gateGradV);stroke:none;}
+  figure.line .line-tall{display:none;}
+  .line-tall .sv-t{font-size:17.5px;}
+  .line-tall .sv-s{font-size:15px;}
+  .line-tall .sv-a{font-size:13.5px;}
+  .line-tall .sv-w{font-size:18px;}
+  .line-tall .sv-ws{font-size:15px;}
+  @media (max-width:760px){
+    figure.line .line-wide{display:none;}
+    figure.line .line-tall{display:block;}
+  }
+
+  /* составляющие */
+  .prod{display:grid;grid-template-columns:repeat(auto-fit,minmax(246px,1fr));gap:13px;}
+  .p{border-radius:16px;padding:19px 20px;border:1px solid var(--line);background:#FDFCFF;position:relative;overflow:hidden;}
+  .p::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:linear-gradient(180deg,var(--violet),var(--pink));}
+  .p h5{font-family:var(--display);font-size:18px;font-weight:750;margin:0 0 7px;letter-spacing:-.015em;}
+  .p .txt{font-size:14px;color:var(--ink-soft);line-height:1.5;margin-bottom:11px;}
+  .p .price{
+    display:inline-block;font-family:var(--mono);font-size:12.5px;font-weight:700;
+    background:var(--f-emerald);color:#047857;padding:5px 11px;border-radius:8px;
+  }
+  .p.hl::before{background:linear-gradient(180deg,var(--amber),var(--pink));}
+  .p.hl .price{background:var(--f-amber);color:#B45309;}
+
+  /* строки аудита */
+  .mx{display:grid;gap:9px;}
+  .row{display:grid;grid-template-columns:190px 128px 1fr;gap:14px;align-items:center;
+    padding:13px 16px;border-radius:13px;border:1px solid var(--line);background:#FDFCFF;}
+  .row .n{font-weight:680;font-size:15.5px;}
+  .row .w{font-size:13.5px;color:var(--ink-soft);line-height:1.42;}
+  .pill{display:inline-block;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:999px;white-space:nowrap;text-align:center;}
+  .ok{background:var(--emerald);color:#fff;}
+  .set{background:linear-gradient(120deg,var(--violet),var(--pink));color:#fff;}
+  .warn{background:var(--f-amber);color:#B45309;border:1px solid #FBE3B8;}
+  .miss{background:var(--f-rose);color:#BE123C;border:1px solid #FBCDD8;}
+  .row.is-ok{background:linear-gradient(96deg,#EAFBF3,#FDFCFF 55%);border-color:#C6EFDD;}
+  .row.is-set{background:linear-gradient(96deg,#F7F0FF,#FDFCFF 55%);border-color:#EADDFF;}
+  @media (max-width:720px){
+    .row{grid-template-columns:1fr;gap:7px;}
+    .row .pill{justify-self:start;}
+  }
+
+  /* наставники */
+  .modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;}
+  .mode{border-radius:18px;padding:22px;border:1px solid var(--line);background:#FDFCFF;}
+  .mode.auto{background:linear-gradient(152deg,var(--f-violet),#FDFCFF 60%);border-color:#EADDFF;}
+  .mode.hand{background:linear-gradient(152deg,var(--f-cyan),#FDFCFF 60%);border-color:#C9EDF4;}
+  .tag{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:700;
+    letter-spacing:.1em;text-transform:uppercase;padding:5px 11px;border-radius:999px;margin-bottom:11px;}
+  .t-auto{background:var(--violet);color:#fff;}
+  .t-hand{background:var(--cyan);color:#fff;}
+  .mode h5{font-family:var(--display);font-size:19px;font-weight:750;margin:0 0 9px;letter-spacing:-.015em;}
+  .mode p{margin:0;font-size:14.5px;color:var(--ink-soft);line-height:1.55;}
+  .mode ul{margin:12px 0 0;padding-left:18px;font-size:14px;color:var(--ink-soft);line-height:1.6;}
+  .mode li{margin-bottom:5px;}
+  .mode .who{font-size:13.5px;color:var(--ink-soft);line-height:1.5;
+    border-top:1px solid rgba(22,22,46,.08);padding-top:11px;margin-top:13px;}
+  .mode .who b{color:var(--ink);}
+
+  /* этапы */
+  .steps{display:grid;gap:11px;}
+  .st{display:grid;grid-template-columns:34px 1fr;gap:15px;align-items:start;
+    padding:15px 17px;border-radius:14px;background:#FDFCFF;border:1px solid var(--line);}
+  .st .num{font-family:var(--mono);font-weight:700;font-size:13.5px;color:#fff;
+    background:linear-gradient(140deg,var(--violet),var(--pink));
+    width:30px;height:30px;border-radius:9px;display:grid;place-items:center;}
+  .st b{display:block;font-size:15.5px;font-weight:700;margin-bottom:3px;}
+  .st span{font-size:13.5px;color:var(--ink-soft);line-height:1.45;}
+
+  .band{
+    margin-top:24px;border-radius:18px;padding:26px 28px;
+    background:linear-gradient(122deg,var(--violet),var(--pink) 62%,var(--amber));
+    color:#fff;
+  }
+  .band h4{color:rgba(255,255,255,.82);margin:0 0 10px;}
+  .band .big{font-family:var(--display);font-weight:800;font-size:clamp(21px,3.1vw,30px);letter-spacing:-.02em;line-height:1.18;margin:0 0 10px;text-wrap:balance;}
+  .band p{margin:0;font-size:15px;color:rgba(255,255,255,.94);max-width:70ch;line-height:1.55;}
+
+  .note{margin-top:22px;padding:15px 18px;border-radius:13px;background:var(--f-violet);
+    border:1px solid #EADDFF;font-size:14px;color:#5B21B6;line-height:1.55;}
+  .note b{color:#4C1D95;}
+
+  /* ── калькулятор рассрочки ─────────────────────────────
+     Одна цена и три графика. Кнопки-сегменты переключают срок, ниже сумма
+     раскладывается на первый платёж и равные месячные доли — клиент видит
+     не «рассрочка возможна», а конкретную цифру в месяц. */
+  .calc{border-radius:18px;border:1px solid #EADDFF;overflow:hidden;
+    background:linear-gradient(152deg,var(--f-violet),#FDFCFF 55%);}
+  .calc .head{padding:22px 24px 0;}
+  .calc .total{font-family:var(--mono);font-weight:700;letter-spacing:-.02em;
+    font-size:clamp(34px,5.4vw,52px);color:var(--violet);font-variant-numeric:tabular-nums;line-height:1.05;}
+  .calc .total-sub{font-size:14px;color:var(--ink-soft);margin:6px 0 18px;}
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 24px;}
+  .seg button{
+    font-family:var(--body);font-size:14.5px;font-weight:700;color:var(--ink-soft);
+    background:#fff;border:1px solid var(--line);border-radius:12px;
+    padding:12px 8px;cursor:pointer;transition:all .18s ease;
+  }
+  .seg button .m{display:block;font-family:var(--mono);font-size:11px;font-weight:700;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-top:3px;}
+  .seg button:hover{transform:translateY(-1px);box-shadow:0 8px 20px -12px rgba(90,60,180,.5);}
+  .seg button.on{background:linear-gradient(120deg,var(--violet),var(--pink));
+    border-color:transparent;color:#fff;box-shadow:0 10px 26px -12px rgba(190,60,150,.8);}
+  .seg button.on .m{color:rgba(255,255,255,.85);}
+  .seg button:focus-visible{outline:3px solid var(--violet);outline-offset:2px;}
+
+  .calc .out{padding:20px 24px 6px;display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;}
+  .cbox{border-radius:14px;padding:16px 18px;background:#fff;border:1px solid var(--line);}
+  .cbox .cv{font-family:var(--mono);font-weight:700;font-size:clamp(22px,3.4vw,32px);
+    letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1;color:var(--ink);}
+  .cbox .cl{font-size:13px;color:var(--ink-soft);margin-top:5px;line-height:1.4;}
+  .cbox.first{background:var(--f-amber);border-color:#FBE3B8;} .cbox.first .cv{color:#B45309;}
+  .cbox.month{background:var(--f-violet);border-color:#EADDFF;} .cbox.month .cv{color:var(--violet);}
+  .cbox.term .cv{color:var(--cyan);} .cbox.term{background:var(--f-cyan);border-color:#C9EDF4;}
+
+  /* график платежей: первый взнос + месячные доли, высота пропорциональна сумме */
+  .sched{padding:10px 24px 24px;}
+  .sched .cap2{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-faint);margin:10px 0 12px;}
+  .bars{display:flex;gap:6px;align-items:flex-end;min-height:118px;}
+  .bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;min-width:0;}
+  .bar i{display:block;border-radius:8px 8px 4px 4px;
+    background:linear-gradient(180deg,#C4B5FD,#A78BFA);min-height:14px;
+    transition:height .35s cubic-bezier(.2,.7,.3,1);}
+  .bar.b0 i{background:linear-gradient(180deg,var(--amber),#FBBF24);}
+  .bar .bl{font-family:var(--mono);font-size:10px;color:var(--ink-faint);text-align:center;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .bar .bv{font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--ink-soft);
+    text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  @media (max-width:640px){
+    .bars{gap:3px;}
+    .bar .bv{font-size:9px;}
+    .bar .bl{font-size:8.5px;}
+  }
+
+  footer{margin-top:52px;padding-top:22px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-faint);line-height:1.6;}
+</style>
+<style>
+  html{-webkit-text-size-adjust:100%;}
+  img,svg{max-width:100%;}
+  h1,h2,h3,h4,h5,p,figure{margin:0;}
+  ul{margin:0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="blob blob1"></div>
+    <div class="blob blob2"></div>
+    <div class="blob blob3"></div>
+    <div class="inner">
+      <div class="stamp rise">Коммерческое предложение · детский центр Елены Даниловой · Резекне</div>
+      <h1 class="rise">Клиника отвечает, записывает и помнит всё —<br><span class="grad">вы занимаетесь медициной</span></h1>
+      <p class="sub rise">Единый цифровой администратор для вашего центра: разговаривает с родителями голосом и текстом, записывает на приём и принимает оплату в Telegram и Instagram, ведёт сайт и соцсети, живёт в собственных приложениях для iPhone и Android — и каждую неделю кладёт вам на стол разбор финансов и потока пациентов. Все данные — на серверах в Латвии, работа — по законам ЕС.</p>
+      <div class="chips rise">
+        <span class="chip k1">Голосовой приём звонков</span>
+        <span class="chip k2">Запись и оплата в мессенджерах</span>
+        <span class="chip k3">Приложения iOS и Android</span>
+        <span class="chip k4">Контент на двух языках</span>
+        <span class="chip k5">Агенты финансов и потока</span>
+        <span class="chip k1">Два личных наставника</span>
+      </div>
+      <div class="cta rise">
+        <a class="act act-primary" href="https://t.me/profysales" target="_blank" rel="noopener">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.24 1.07-.88 1.33-1.78.83l-4.92-3.63-2.37 2.29c-.26.26-.48.48-.99.48l.35-5.02 9.13-8.25c.4-.35-.09-.55-.62-.2L6.22 12.02 1.36 10.5c-1.06-.33-1.08-1.06.22-1.57L20.53 2.7c.88-.33 1.65.2 1.37 1.6Z"/></svg>
+          Написать в Telegram
+        </a>
+        <a class="act act-ghost tel" href="tel:+79785850650">+7 (978) 585-06-50</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="slide">
+    <div class="slide-no">что это меняет для вас лично</div>
+    <h3>Вы выходите из рутины — <span class="grad">центр продолжает работать</span></h3>
+    <p class="lede">Сегодня каждый звонок «а когда можно записаться?», каждое сообщение в директ, каждое напоминание о приёме и каждый пост в соцсетях проходят через вас и ваших сотрудников. Это часы каждый день — и все они уходят не на медицину. Мы забираем эту рутину в одну систему, которая работает круглосуточно и никогда не устаёт.</p>
+
+    <div class="cols">
+      <div class="col a">
+        <div class="cap">Телефон</div>
+        <h5>Звонки принимает голос</h5>
+        <p>Говорящий агент отвечает мгновенно, в любой час: записывает на приём и консультацию, переносит, отвечает на частые вопросы — часы работы, подготовка к анализам, цены. Родитель больше не слушает гудки, а вы не отвлекаетесь от приёма.</p>
+      </div>
+      <div class="col b">
+        <div class="cap">Мессенджеры</div>
+        <h5>Запись и оплата в чате</h5>
+        <p>Бот в Telegram и Instagram показывает свободные окна, записывает и сразу даёт кнопку оплаты. Ответ приходит за секунды — в том числе вечером, когда родители на самом деле и пишут.</p>
+      </div>
+      <div class="col c">
+        <div class="cap">Сайт и соцсети</div>
+        <h5>Контент выходит сам</h5>
+        <p>Контент-завод готовит посты, обложки и статьи на русском и латышском — в вашем тоне и по вашим правилам. Вы только одобряете: ни одна публикация не выходит без вашего «да».</p>
+      </div>
+      <div class="col d">
+        <div class="cap">Финансы и поток</div>
+        <h5>Разборы без бухгалтера</h5>
+        <p>Агенты видят выручку, загрузку врачей и поток пациентов, готовят еженедельные разборы и подсказывают, где центр теряет деньги и время. Вы читаете готовый вывод, а не собираете таблицы.</p>
+      </div>
+    </div>
+
+    <div class="figs">
+      <div class="fig v2"><div class="v">32</div><div class="l">с какого раза пациентка дозвонилась в регистратуру латвийской поликлиники (staburags.lv)</div></div>
+      <div class="fig"><div class="v">23,5%</div><div class="l">записей в среднем теряется на неявках без напоминаний (сводка 50+ исследований)</div></div>
+      <div class="fig v3"><div class="v">≈15–21 тыс. €</div><div class="l">стоит работодателю один регистратор в Латвии за год — брутто плюс взносы 23,59%</div></div>
+      <div class="fig v4"><div class="v">24/7</div><div class="l">работает цифровой администратор — без отпусков, больничных и «занято»</div></div>
+    </div>
+
+    <div class="band">
+      <h4>Главная арифметика этого предложения</h4>
+      <p class="big">Администратор-человек работает 8 часов и говорит с одним родителем за раз. Цифровой — круглосуточно и со всеми сразу.</p>
+      <p>Ночью, в выходные, в момент, когда на регистратуре очередь, а телефон разрывается, — система отвечает каждому. Ни одно обращение не теряется, каждая запись попадает в расписание, каждое слово от имени клиники звучит так, как вы его утвердили. А вы занимаетесь тем, ради чего открывали центр: детьми и медициной.</p>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">как это устроено</div>
+    <h3>Один центр управления — <span class="grad">а не десять разных сервисов</span></h3>
+    <p class="lede">Все каналы — телефон, Telegram, Instagram, сайт и приложения — сходятся в одного цифрового администратора. Он один знает ваши правила, ваши цены и ваш тон, поэтому родитель получает одинаково точный ответ везде. Всё, что происходит, стекается в вашу панель: записи, оплаты, разговоры, отчёты.</p>
+
+    <figure class="line">
+      <svg class="line-wide" viewBox="0 0 1020 440" role="img" aria-label="Схема центра: каналы связи, цифровой администратор, действия, панель владельца">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor" fill-opacity=".45"/>
+          </marker>
+          <linearGradient id="gateGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#7C3AED"/><stop offset="100%" stop-color="#EC4899"/>
+          </linearGradient>
+        </defs>
+
+        <rect class="sv-box" x="16" y="60" width="150" height="52" rx="11"/>
+        <text class="sv-t" x="91" y="83" text-anchor="middle">Телефон</text>
+        <text class="sv-s" x="91" y="100" text-anchor="middle">голосовой агент</text>
+
+        <rect class="sv-box" x="16" y="126" width="150" height="52" rx="11"/>
+        <text class="sv-t" x="91" y="149" text-anchor="middle">Telegram</text>
+        <text class="sv-s" x="91" y="166" text-anchor="middle">бот записи</text>
+
+        <rect class="sv-box" x="16" y="192" width="150" height="52" rx="11"/>
+        <text class="sv-t" x="91" y="215" text-anchor="middle">Instagram</text>
+        <text class="sv-s" x="91" y="232" text-anchor="middle">директ и комментарии</text>
+
+        <rect class="sv-box" x="16" y="258" width="150" height="52" rx="11"/>
+        <text class="sv-t" x="91" y="281" text-anchor="middle">Сайт</text>
+        <text class="sv-s" x="91" y="298" text-anchor="middle">обновлённый, с записью</text>
+
+        <rect class="sv-box" x="16" y="324" width="150" height="52" rx="11"/>
+        <text class="sv-t" x="91" y="347" text-anchor="middle">Приложения</text>
+        <text class="sv-s" x="91" y="364" text-anchor="middle">iOS и Android</text>
+
+        <path class="sv-l" d="M166,86 C210,86 210,218 252,218" marker-end="url(#ar)"/>
+        <path class="sv-l" d="M166,152 C206,152 206,218 252,218" marker-end="url(#ar)"/>
+        <path class="sv-l" d="M166,218 L252,218" marker-end="url(#ar)"/>
+        <path class="sv-l" d="M166,284 C206,284 206,218 252,218" marker-end="url(#ar)"/>
+        <path class="sv-l" d="M166,350 C210,350 210,218 252,218" marker-end="url(#ar)"/>
+
+        <rect class="sv-gate" x="258" y="164" width="180" height="108" rx="13"/>
+        <text class="sv-w" x="348" y="200" text-anchor="middle">Цифровой</text>
+        <text class="sv-w" x="348" y="220" text-anchor="middle">администратор</text>
+        <text class="sv-ws" x="348" y="242" text-anchor="middle">голос и текст, ваши правила,</text>
+        <text class="sv-ws" x="348" y="258" text-anchor="middle">полный журнал</text>
+
+        <path class="sv-l" d="M438,218 C462,218 462,101 480,101" marker-end="url(#ar)"/>
+        <path class="sv-l" d="M438,218 C462,218 462,179 480,179" marker-end="url(#ar)"/>
+        <path class="sv-l" d="M438,218 C462,218 462,257 480,257" marker-end="url(#ar)"/>
+        <path class="sv-l" d="M438,218 C462,218 462,335 480,335" marker-end="url(#ar)"/>
+
+        <rect class="sv-fmt" x="486" y="70" width="170" height="62" rx="11"/>
+        <text class="sv-t" x="571" y="96" text-anchor="middle">Запись на приём</text>
+        <text class="sv-s" x="571" y="114" text-anchor="middle">в расписание врачей</text>
+
+        <rect class="sv-fmt" x="486" y="148" width="170" height="62" rx="11"/>
+        <text class="sv-t" x="571" y="174" text-anchor="middle">Оплата</text>
+        <text class="sv-s" x="571" y="192" text-anchor="middle">кнопкой в чате и приложении</text>
+
+        <rect class="sv-fmt" x="486" y="226" width="170" height="62" rx="11"/>
+        <text class="sv-t" x="571" y="252" text-anchor="middle">Напоминания</text>
+        <text class="sv-s" x="571" y="270" text-anchor="middle">меньше неявок</text>
+
+        <rect class="sv-fmt" x="486" y="304" width="170" height="62" rx="11"/>
+        <text class="sv-t" x="571" y="330" text-anchor="middle">Контент</text>
+        <text class="sv-s" x="571" y="348" text-anchor="middle">на русском и латышском</text>
+
+        <path class="sv-l" d="M656,101 C690,101 690,218 706,218" marker-end="url(#ar)"/>
+        <path class="sv-l" d="M656,179 C690,179 690,218 706,218" marker-end="url(#ar)"/>
+        <path class="sv-l" d="M656,257 C690,257 690,218 706,218" marker-end="url(#ar)"/>
+        <path class="sv-l" d="M656,335 C690,335 690,218 706,218" marker-end="url(#ar)"/>
+
+        <rect class="sv-out" x="712" y="118" width="292" height="200" rx="11"/>
+        <text class="sv-t" x="858" y="150" text-anchor="middle">Ваша панель управления</text>
+        <text class="sv-s" x="858" y="178" text-anchor="middle">расписание и записи</text>
+        <text class="sv-s" x="858" y="200" text-anchor="middle">оплаты и выручка</text>
+        <text class="sv-s" x="858" y="222" text-anchor="middle">журнал всех разговоров</text>
+        <text class="sv-s" x="858" y="244" text-anchor="middle">очередь публикаций на одобрение</text>
+        <text class="sv-s" x="858" y="266" text-anchor="middle">разборы финансов и потока</text>
+        <text class="sv-a" x="858" y="292" text-anchor="middle">решения принимаете вы</text>
+      </svg>
+      <svg class="line-tall" viewBox="0 0 380 800" role="img" aria-label="Схема центра: каналы связи, цифровой администратор, действия, панель владельца">
+        <defs>
+          <marker id="arv" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor" fill-opacity=".45"/>
+          </marker>
+          <linearGradient id="gateGradV" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#7C3AED"/><stop offset="100%" stop-color="#EC4899"/>
+          </linearGradient>
+        </defs>
+
+        <rect class="sv-group" x="20" y="8" width="340" height="204" rx="14"/>
+        <text class="sv-a" x="190" y="30" text-anchor="middle">каналы, где вас ищут родители</text>
+        <rect class="sv-box" x="32" y="42" width="316" height="46" rx="10"/>
+        <text class="sv-t" x="190" y="71" text-anchor="middle">Телефон · голосовой агент</text>
+        <rect class="sv-box" x="32" y="96" width="316" height="46" rx="10"/>
+        <text class="sv-t" x="190" y="125" text-anchor="middle">Telegram и Instagram · боты</text>
+        <rect class="sv-box" x="32" y="150" width="316" height="46" rx="10"/>
+        <text class="sv-t" x="190" y="179" text-anchor="middle">Сайт · приложения iOS и Android</text>
+        <line class="sv-l" x1="190" y1="212" x2="190" y2="232" marker-end="url(#arv)"/>
+
+        <rect class="sv-gate-v" x="20" y="238" width="340" height="86" rx="14"/>
+        <text class="sv-w" x="190" y="272" text-anchor="middle">Цифровой администратор</text>
+        <text class="sv-ws" x="190" y="296" text-anchor="middle">голос и текст · ваши правила · журнал</text>
+        <line class="sv-l" x1="190" y1="324" x2="190" y2="344" marker-end="url(#arv)"/>
+
+        <rect class="sv-group" x="20" y="350" width="340" height="244" rx="14"/>
+        <text class="sv-a" x="190" y="372" text-anchor="middle">что он делает</text>
+        <rect class="sv-fmt" x="32" y="384" width="316" height="44" rx="10"/>
+        <text class="sv-t" x="190" y="412" text-anchor="middle">Записывает на приём</text>
+        <rect class="sv-fmt" x="32" y="436" width="316" height="44" rx="10"/>
+        <text class="sv-t" x="190" y="464" text-anchor="middle">Принимает оплату</text>
+        <rect class="sv-fmt" x="32" y="488" width="316" height="44" rx="10"/>
+        <text class="sv-t" x="190" y="516" text-anchor="middle">Напоминает — меньше неявок</text>
+        <rect class="sv-fmt" x="32" y="540" width="316" height="44" rx="10"/>
+        <text class="sv-t" x="190" y="568" text-anchor="middle">Готовит контент на 2 языках</text>
+        <line class="sv-l" x1="190" y1="594" x2="190" y2="614" marker-end="url(#arv)"/>
+
+        <rect class="sv-out" x="20" y="620" width="340" height="164" rx="12"/>
+        <text class="sv-t" x="190" y="650" text-anchor="middle">Ваша панель управления</text>
+        <text class="sv-s" x="190" y="676" text-anchor="middle">записи · оплаты · журнал разговоров</text>
+        <text class="sv-s" x="190" y="700" text-anchor="middle">очередь публикаций на одобрение</text>
+        <text class="sv-s" x="190" y="724" text-anchor="middle">разборы финансов и потока</text>
+        <text class="sv-a" x="190" y="756" text-anchor="middle">решения принимаете вы</text>
+      </svg>
+      <figcaption>Родитель обращается туда, где ему удобно, — а внутри работает один администратор с одними правилами. Вы видите всё в одной панели и в любой момент можете вмешаться: поправить ответ, изменить правило, забрать разговор на себя. Ни одно слово не уходит от имени клиники без заданных вами рамок.</figcaption>
+    </figure>
+
+    <div class="note">
+      <b>Полный контроль текстового сопровождения.</b> Каждый ответ — голосом или текстом — строится на утверждённой вами базе знаний: услуги, цены, правила подготовки к приёму, что можно обещать и чего нельзя. Каждый разговор записан в журнал. Ответы на новые вопросы система предлагает вам на утверждение — и только после этого начинает использовать. Медицинских советов администратор не даёт: всё, что касается лечения, он вежливо переводит на врача.
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">из чего состоит система</div>
+    <h3>Шесть составляющих <span class="grad">одного центра</span></h3>
+    <p class="lede">Это не набор отдельных подрядов, а одна система, где каждая часть усиливает остальные: бот записывает — приложение напоминает — контент приводит новых родителей — финансовые агенты показывают, что из этого приносит деньги.</p>
+
+    <div class="prod">
+      <div class="p hl">
+        <h5>Цифровой администратор</h5>
+        <div class="txt">Ядро системы. Ведёт всю коммуникацию клиники — вербальную и текстовую — одним голосом и по вашим правилам. Знает услуги, цены и расписание, помнит каждого родителя, пишет и говорит на русском и латышском.</div>
+        <span class="price">ядро системы</span>
+      </div>
+      <div class="p">
+        <h5>Говорящие агенты на телефоне</h5>
+        <div class="txt">Принимают звонки на запись и консультацию: отвечают мгновенно, записывают, переносят, напоминают. Честно представляются помощником клиники и переводят на человека по первой просьбе.</div>
+        <span class="price">входит в поставку</span>
+      </div>
+      <div class="p">
+        <h5>Боты записи с оплатой</h5>
+        <div class="txt">Telegram и Instagram: свободные окна, запись в два касания и кнопка оплаты прямо в чате — через Stripe или Klix by Citadele: карта, Apple Pay, Google Pay и привычные латвийцам банковские ссылки. Деньги — на счёт клиники, подтверждение — родителю, запись — в расписание.</div>
+        <span class="price">входит в поставку</span>
+      </div>
+      <div class="p">
+        <h5>Приложения iOS и Android</h5>
+        <div class="txt">Собственные нативные приложения центра в App Store и Google Play: запись, история посещений, напоминания, push-уведомления, оплата. Иконка вашей клиники — на экране у каждого родителя.</div>
+        <span class="price">входит в поставку</span>
+      </div>
+      <div class="p">
+        <h5>Контент-завод</h5>
+        <div class="txt">Посты, обложки и статьи для сайта и соцсетей на двух языках — по вашему тону и календарю. Ни одна публикация не выходит без вашего одобрения: одна кнопка — и материал уходит на все площадки.</div>
+        <span class="price">входит в поставку</span>
+      </div>
+      <div class="p hl">
+        <h5>Агенты финансов и потока</h5>
+        <div class="txt">Видят выручку, загрузку врачей и путь каждого пациента. Готовят еженедельные разборы, собирают историю посещений и предлагают врачу проект плана наблюдения — назначение всегда утверждает врач.</div>
+        <span class="price">входит в поставку</span>
+      </div>
+    </div>
+
+    <div class="figs">
+      <div class="fig v3"><div class="v">24/7</div><div class="l">приём звонков и сообщений — без выходных и обеда</div></div>
+      <div class="fig"><div class="v">2</div><div class="l">языка: русский и латышский, один тон</div></div>
+      <div class="fig v2"><div class="v">5</div><div class="l">каналов записи: телефон, Telegram, Instagram, сайт, приложения</div></div>
+      <div class="fig v4"><div class="v">100%</div><div class="l">текстов и ответов — под вашим контролем</div></div>
+    </div>
+
+    <div class="note">
+      <b>Про планы лечения — честно.</b> Система готовит врачу материалы: историю посещений, жалобы из переписки, результаты по карточке, проект плана наблюдения. Решение и назначение всегда остаются за врачом — это не наша осторожность, а требование европейского права к ИИ в медицине. Мы строим систему так, чтобы она усиливала врача, а не подменяла его — и чтобы у проверяющих органов не возникало ни одного вопроса.
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">не только технологии</div>
+    <h3>Два наставника — <span class="grad">лично с вами</span></h3>
+    <p class="lede">На весь период разработки вы получаете не подрядчика, а команду развития: два наставника работают с вами лично — по стратегии и по финансам. К моменту запуска системы у вас уже выстроена модель, в которую она встаёт.</p>
+
+    <div class="modes">
+      <div class="mode auto">
+        <div class="tag t-auto">Наставник · Стратегия</div>
+        <h5>Стратегическое развитие центра</h5>
+        <p>Личные сессии на весь период разработки: куда растёт центр и на чём он зарабатывает.</p>
+        <ul>
+          <li>Позиционирование: чем ваш центр отличается и почему выбирают его.</li>
+          <li>Линейка услуг и цены: что добавить, что поднять, что упаковать в программы наблюдения.</li>
+          <li>Поток пациентов: откуда приходят, где теряются, как возвращать.</li>
+          <li>Команда: как выстроить работу врачей и сотрудников без вашего постоянного участия.</li>
+        </ul>
+        <div class="who"><b>Формат:</b> регулярные личные сессии, разбор ваших решений, план на неделю. Не курс и не марафон — работа над вашим центром.</div>
+      </div>
+      <div class="mode hand">
+        <div class="tag t-hand">Наставник · Финансы</div>
+        <h5>Финансы и управленческий учёт</h5>
+        <p>Личные сессии параллельно с настройкой финансовых агентов системы: цифры центра — под контроль.</p>
+        <ul>
+          <li>Управленческий учёт: сколько центр зарабатывает на самом деле.</li>
+          <li>Экономика приёма: себестоимость, маржа, загрузка врачей.</li>
+          <li>Планирование: бюджет, сезонность, подушка, инвестиции в рост.</li>
+          <li>Финансовые агенты: настраиваем вместе отчёты, которые вы будете читать за пять минут.</li>
+        </ul>
+        <div class="who"><b>Формат:</b> регулярные личные сессии на период разработки. Финансовые агенты системы остаются с вами и после — уже настроенные под ваш учёт.</div>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>Почему наставники входят в предложение.</b> Система автоматизирует то, что в бизнесе уже выстроено. Если автоматизировать хаос — получится быстрый хаос. Поэтому параллельно с разработкой мы приводим в порядок стратегию и финансы: к запуску система встаёт не поверх рутины, а поверх порядка.
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">мы уже посмотрели на вас</div>
+    <h3>Аудит pienenite.lv — <span class="grad">глазами маркетолога</span></h3>
+    <p class="lede">Перед тем как писать это предложение, мы провели полный аудит вашего сайта и присутствия в интернете (20.08.2026, все факты проверены вручную). Сайт тёплый и человечный — видно врача, которому доверяешь. Но прямо сейчас он почти не приводит пациентов, и вот почему.</p>
+
+    <div class="figs">
+      <div class="fig v2"><div class="v">0</div><div class="l">посетителей видят сайт нормально: HTTPS отдаёт фиктивный сертификат — браузер показывает «соединение не защищено»</div></div>
+      <div class="fig"><div class="v">8</div><div class="l">страниц меню ведут на 404 — включая политику конфиденциальности под каждой формой</div></div>
+      <div class="fig v3"><div class="v">5 лет</div><div class="l">свежайшему отзыву на сайте — скриншоты июня 2021 года</div></div>
+      <div class="fig v4"><div class="v">36 €</div><div class="l">цена консультации, которую нельзя найти: она спрятана в русскоязычных пакетах акций</div></div>
+    </div>
+
+    <h4>Главные находки</h4>
+    <div class="mx">
+      <div class="row"><div class="n">HTTPS-сертификат</div><span class="pill miss">блокер</span><div class="w">Сайт отдаёт самоподписанный сертификат-заглушку — каждый посетитель из поиска и рекламы упирается в полноэкранное предупреждение браузера. Пока это так, любые вложения в маркетинг бессмысленны.</div></div>
+      <div class="row"><div class="n">Онлайн-запись</div><span class="pill miss">отсутствует</span><div class="w">Только форма «заказать звонок». Родитель с больным ребёнком в 23:00 записаться не может — а в Латвии e-pieraksts уже отраслевой стандарт. Ваш конкурент через дорогу (Medical Plus) кнопку записи имеет.</div></div>
+      <div class="row"><div class="n">Политика конфиденциальности</div><span class="pill miss">404 + GDPR-риск</span><div class="w">Ссылки под формами сбора данных ведут на несуществующую страницу — при работающем Facebook Pixel и без cookie-баннера. Для медицинского сайта это прямой риск при первой же жалобе в DVI.</div></div>
+      <div class="row"><div class="n">Отзывы</div><span class="pill warn">июнь 2021</span><div class="w">Четыре скриншота переписки пятилетней давности. Пять лет без свежих отзывов читается как «врач больше не практикует». Google-отзывов центра не находится вовсе.</div></div>
+      <div class="row"><div class="n">Латышская версия</div><span class="pill warn">теряет аудиторию</span><div class="w">Заголовок латышской главной — по-русски, «Акции» переведены как «Krājumi» (склад), латышской страницы цен нет (404). Латышскоязычные родители и поисковики проходят мимо.</div></div>
+      <div class="row"><div class="n">Акции и цены</div><span class="pill warn">устарели</span><div class="w">«Весенний детокс» в августе и арифметическая ошибка «Ваша выгода: 451 €» (на деле ~45 €). Цены приёма не видны на главной — типичный убийца заявок в медицине.</div></div>
+      <div class="row"><div class="n">Соцсети</div><span class="pill warn">не упакованы</span><div class="w">Facebook — личный профиль вместо страницы клиники, Telegram — анонимная инвайт-ссылка без названия. Instagram — единственный живой канал, и он заслуживает роли хаба.</div></div>
+      <div class="row is-set"><div class="n">Ваш козырь</div><span class="pill set">не используется</span><div class="w">Вы — практикующий педиатр Резекненской больницы, принимаете очно, онлайн и на дому, без месячных очередей. Ни Medical Plus (у них нет педиатра-консультанта), ни государственный кабинет этого не дают — а сайт об этом молчит.</div></div>
+    </div>
+
+    <h4>Что мы сделаем с этим — в рамках предложения</h4>
+    <div class="cols">
+      <div class="col a">
+        <div class="cap">Немедленно</div>
+        <h5>Чиним фундамент</h5>
+        <p>Рабочий HTTPS, восстановленные страницы, политика конфиденциальности на двух языках, cookie-согласие, аналитика с целями. Сайт снова существует для поисковиков и людей.</p>
+      </div>
+      <div class="col b">
+        <div class="cap">Конверсия</div>
+        <h5>Запись вместо «оставьте телефон»</h5>
+        <p>Онлайн-запись со слотами прямо на сайте — та же, что в ботах и приложениях: одно расписание везде. Прозрачный прайс на обоих языках. Новый первый экран: «Приём на этой неделе — очно, онлайн или на дому».</p>
+      </div>
+      <div class="col c">
+        <div class="cap">Доверие</div>
+        <h5>Отзывы и профили</h5>
+        <p>Google Business Profile центра, системный сбор отзывов после каждого приёма (QR на ресепшене), свежие отзывы на сайте, бизнес-страница вместо личного профиля, именованный Telegram-канал.</p>
+      </div>
+      <div class="col d">
+        <div class="cap">Рост</div>
+        <h5>Контент, который ищут</h5>
+        <p>Ваши PDF-памятки («температура 38°», «питьё при болезни») переезжают с Google Drive на сайт и становятся страницами под родительские запросы — на латышском и русском. Их дальше ведёт контент-завод.</p>
+      </div>
+    </div>
+
+    <div class="band">
+      <h4>Почему аудит — часть предложения, а не отдельная услуга</h4>
+      <p class="big">Обновлённый сайт становится пятым каналом единого центра: запись с сайта падает в то же расписание, что звонок, чат и приложение.</p>
+      <p>Мы не «переделываем сайт» — мы включаем его в систему. Полный протокол аудита со всеми проверками и ссылками передадим на первой встрече.</p>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">приватность и закон</div>
+    <h3>Данные — в Латвии. <span class="grad">Работа — по законам ЕС</span></h3>
+    <p class="lede">В медицине ошибка с персональными данными стоит дороже всего: звонок о симптомах ребёнка — это уже «данные о здоровье» по статье 9 GDPR, особая категория. Мы проектируем систему так, чтобы вопрос надзора был закрыт до запуска, а не после первой жалобы, — и сдаём вам не только софт, но и полный пакет документов.</p>
+
+    <div class="cols">
+      <div class="col a">
+        <div class="cap">GDPR · ст. 9</div>
+        <h5>Двойное основание для медданных</h5>
+        <p>Каждый сценарий агента спроектирован под пару юридических оснований: запись на приём — ст. 6(1)(b) + ст. 9(2)(h) под врачебной тайной (ст. 9(3)); напоминания и рассылки — только по явному согласию (ст. 9(2)(a)). Ни один сценарий не работает «на честном слове».</p>
+      </div>
+      <div class="col b">
+        <div class="cap">Хостинг · глава V</div>
+        <h5>Серверы — в Латвии</h5>
+        <p>Данные пациентов не покидают юрисдикцию GDPR: размещение в дата-центрах уровня Tier III в Риге. Глава V о передаче в третьи страны не задействуется вовсе — без SCC, без оценок Schrems II, без доступа иностранных юрисдикций к данным ваших пациентов.</p>
+      </div>
+      <div class="col c">
+        <div class="cap">EU AI Act · 2024/1689</div>
+        <h5>Готовность к 02.08.2026</h5>
+        <p>Агенты представляются ИИ при первом контакте — как требует ст. 50(1). Систему держим в классе limited risk: без клинических рекомендаций, которые превратили бы её в high-risk-медизделие. Решение по пациенту всегда принимает человек — как требует и ст. 22 GDPR.</p>
+      </div>
+      <div class="col d">
+        <div class="cap">Документы</div>
+        <h5>Пакет под ключ</h5>
+        <p>DPIA — оценка воздействия (ст. 35, для клиники с ИИ обязательна), реестр обработки (ст. 30), договоры обработчиков со всеми вендорами (ст. 28), тексты согласий, объявление о записи разговора (ст. 13 + ePrivacy). Готовим в виде, в котором это запросит инспекция.</p>
+      </div>
+    </div>
+
+    <div class="band">
+      <h4>Цена ошибки, которую мы снимаем с вас</h4>
+      <p class="big">До 20 000 000 € или 4% оборота — штраф за обработку медданных без основания (ст. 83(5) GDPR). До 10 млн € — за работу с вендорами без договоров (ст. 83(4)).</p>
+      <p>Большинство «коробочных» ботов и сервисов записи сегодня работают без DPA, гонят данные пациентов в США и не знают слова DPIA. Мы строим систему так, чтобы этот раздел закона не имел к вам отношения — и чтобы на любой запрос Datu valsts inspekcija у вас был готовый ответ в тот же день.</p>
+    </div>
+
+    <div class="note">
+      <b>Мы знаем вашего регулятора и ваш горизонт.</b> Надзор в Латвии — Datu valsts inspekcija (DVI), национальный закон — Fizisko personu datu apstrādes likums (2018). А с 2027–2029 годов поэтапно вступает EHDS — европейское пространство медицинских данных (Regulation 2025/327): клиники ЕС начнут обмениваться структурированными записями. Система, которую мы строим, уже работает на структурированных данных — к EHDS вы придёте готовой, а не в последний вагон.
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">сколько это стоит</div>
+    <h3>15 000 € — <span class="grad">за весь центр под ключ</span></h3>
+    <p class="lede">Одна цена за всё перечисленное: цифровой администратор, говорящие агенты, боты записи с оплатой, приложения iOS и Android, контент-завод, финансовые агенты, обновление сайта, пакет документов по GDPR — и два личных наставника на весь период разработки. Первый платёж — 2 000 €, остальное — равными долями по графику, который вы выбираете сами.</p>
+
+    <div class="calc" id="calc">
+      <div class="head">
+        <div class="total">15 000 €</div>
+        <div class="total-sub">полная стоимость под ключ · первый платёж 2 000 € при старте · остальное — в рассрочку без банка и переплаты</div>
+      </div>
+      <div class="seg" role="group" aria-label="Срок рассрочки">
+        <button type="button" data-months="3">3 месяца<span class="m">быстрее закрыть</span></button>
+        <button type="button" data-months="6" class="on">6 месяцев<span class="m">сбалансированно</span></button>
+        <button type="button" data-months="12">12 месяцев<span class="m">легче для кассы</span></button>
+      </div>
+      <div class="out">
+        <div class="cbox first">
+          <div class="cv">2 000 €</div>
+          <div class="cl">первый платёж — при подписании, запускает работы</div>
+        </div>
+        <div class="cbox month">
+          <div class="cv" id="cMonth">— €</div>
+          <div class="cl" id="cMonthL">в месяц, равными долями</div>
+        </div>
+        <div class="cbox term">
+          <div class="cv" id="cTotal">15 000 €</div>
+          <div class="cl">итого — без процентов и скрытых надбавок</div>
+        </div>
+      </div>
+      <div class="sched">
+        <div class="cap2" id="schedCap">график платежей</div>
+        <div class="bars" id="bars" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <h4>Что это стоило бы по отдельности</h4>
+    <div class="figs">
+      <div class="fig v2"><div class="v">100–180 тыс. €</div><div class="l">нативные приложения iOS и Android у европейского агентства (apptunix, netguru)</div></div>
+      <div class="fig"><div class="v">11–60 тыс. €</div><div class="l">разработка голосового ИИ-агента (yesworkflow, masterofcode)</div></div>
+      <div class="fig v3"><div class="v">20–100 тыс. €</div><div class="l">кастомный чат-бот с интеграциями и оплатой (chatarmin)</div></div>
+      <div class="fig v4"><div class="v">15 000 €</div><div class="l">наша цена за всё вместе — включая наставников и документы GDPR</div></div>
+    </div>
+
+    <div class="note">
+      <b>Почему цена возможна.</b> Мы не разрабатываем каждый компонент с нуля: центр собирается на нашей готовой агентной платформе — той же, на которой работает наш контент-завод. Вы платите за настройку под вашу клинику, ваши языки и ваши законы, а не за изобретение велосипеда. Поэтому 15 000 € — это цена конфигурации зрелой системы, а не стартап-эксперимента.<br><br>
+      <b>Рассрочка — от нас, а не от банка.</b> Без заявки в банк, без скоринга, без процентов и без третьей стороны в договоре: график закрепляется письменно в договоре разработки. Сумма фиксированная — 15 000 € независимо от выбранного срока. Сопровождение системы после запуска (сервер, обновления, работа моделей и телефонии) — отдельной строкой в договоре, обсуждается на встрече.
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="slide-no">как пойдёт работа</div>
+    <h3>От первого платежа — <span class="grad">к работающему центру</span></h3>
+    <p class="lede">Работы идут волнами, и каждая волна отдаёт вам работающий кусок системы — вы не ждёте финала, чтобы увидеть результат. Наставники подключаются с первой недели.</p>
+
+    <div class="steps">
+      <div class="st"><div class="num">1</div><div><b>Погружение и аудит · недели 1–2</b><span>Изучаем процессы центра: как записывают, как платят, что спрашивают родители. Собираем базу знаний — услуги, цены, правила. Стартуют сессии с наставниками. Согласуем обновление сайта.</span></div></div>
+      <div class="st"><div class="num">2</div><div><b>Цифровой администратор и боты · недели 3–5</b><span>Запускаем ботов записи в Telegram и Instagram с кнопкой оплаты. Администратор начинает отвечать текстом — сначала под вашим присмотром, потом самостоятельно.</span></div></div>
+      <div class="st"><div class="num">3</div><div><b>Говорящий агент · недели 5–7</b><span>Подключаем телефонию: агент принимает звонки, записывает и напоминает. Обкатываем на реальных звонках, шлифуем формулировки вместе с вами.</span></div></div>
+      <div class="st"><div class="num">4</div><div><b>Сайт и контент-завод · недели 6–9</b><span>Обновляем сайт по итогам аудита, запускаем производство контента на двух языках. Первые публикации — на вашем одобрении.</span></div></div>
+      <div class="st"><div class="num">5</div><div><b>Приложения iOS и Android · недели 8–14</b><span>Разработка, тестирование и публикация в App Store и Google Play. Запись, история, напоминания, оплата — всё из той же системы.</span></div></div>
+      <div class="st"><div class="num">6</div><div><b>Финансовые агенты и передача · недели 14–16</b><span>Настраиваем отчёты и разборы под ваш учёт — вместе с наставником по финансам. Передаём доступы, обучаем команду, закрепляем регламент сопровождения.</span></div></div>
+    </div>
+
+    <div class="band">
+      <h4>Что у вас будет через четыре месяца</h4>
+      <p class="big">Центр, который отвечает, записывает, принимает оплату и отчитывается — сам. И вы, впервые за долгое время, — не диспетчер, а врач и владелец.</p>
+      <p>Каждое обращение принято, каждая запись в расписании, каждый евро виден в панели. Контент выходит по календарю, финансовые разборы приходят к утру понедельника. А стратегия и финансовая модель, выстроенные с наставниками, остаются с вами навсегда.</p>
+    </div>
+  </section>
+
+  <section class="slide band rise" style="background:linear-gradient(122deg,var(--violet),var(--pink) 62%,var(--amber));border:none;">
+    <div class="contacts">
+      <div class="avatar"><span class="ini">КС</span></div>
+      <div class="person">
+        <div class="role">Ваш контакт по проекту</div>
+        <div class="name">Константин Сыров</div>
+        <div class="pos">Основатель ProAgent AI: разрабатываю и внедряю ИИ-агентов</div>
+      </div>
+      <div class="links">
+        <a class="act act-light" href="https://t.me/profysales" target="_blank" rel="noopener">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.24 1.07-.88 1.33-1.78.83l-4.92-3.63-2.37 2.29c-.26.26-.48.48-.99.48l.35-5.02 9.13-8.25c.4-.35-.09-.55-.62-.2L6.22 12.02 1.36 10.5c-1.06-.33-1.08-1.06.22-1.57L20.53 2.7c.88-.33 1.65.2 1.37 1.6Z"/></svg>
+          Написать в Telegram
+        </a>
+        <a class="act act-dim tel" href="tel:+79785850650">+7 (978) 585-06-50</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Стоимость фиксированная — 15 000 € за состав работ, перечисленный в предложении; график рассрочки закрепляется в договоре. Сопровождение после запуска — отдельной строкой договора. Наблюдения по сайту и присутствию в интернете — на дату подготовки предложения. Ссылки на регламенты ЕС приведены по официальным текстам; предложение не является юридической консультацией — юридическое сопровождение сделки ведёт лицензированный юрист.
+  </footer>
+
+</div>
+
+<div class="dock" id="dock">
+  <a class="act act-primary" href="https://t.me/profysales" target="_blank" rel="noopener">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.24 1.07-.88 1.33-1.78.83l-4.92-3.63-2.37 2.29c-.26.26-.48.48-.99.48l.35-5.02 9.13-8.25c.4-.35-.09-.55-.62-.2L6.22 12.02 1.36 10.5c-1.06-.33-1.08-1.06.22-1.57L20.53 2.7c.88-.33 1.65.2 1.37 1.6Z"/></svg>
+    Обсудить проект
+  </a>
+</div>
+
+<script>
+  // Появление при прокрутке — как в основном КП.
+  (function () {
+    var slides = document.querySelectorAll('.slide, figure.line');
+    slides.forEach(function (el) { el.classList.add('rise'); });
+
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || !('IntersectionObserver' in window)) {
+      document.querySelectorAll('.rise').forEach(function (el) { el.classList.add('in'); });
+      return;
+    }
+    var hero = document.querySelectorAll('.hero .rise');
+    hero.forEach(function (el, i) {
+      el.style.transitionDelay = (i * 90) + 'ms';
+      requestAnimationFrame(function () { el.classList.add('in'); });
+    });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { rootMargin: '0px 0px -12% 0px', threshold: 0.06 });
+    document.querySelectorAll('.rise:not(.in)').forEach(function (el) { io.observe(el); });
+  })();
+
+  // Липкая кнопка: прячется, пока виден герой и блок контактов.
+  (function () {
+    var dock = document.getElementById('dock');
+    var hero = document.querySelector('.hero');
+    var end = document.querySelector('.contacts');
+    if (!dock || !hero || !end || !('IntersectionObserver' in window)) return;
+    var heroVisible = true, endVisible = false;
+    function sync() { dock.classList.toggle('show', !heroVisible && !endVisible); }
+    new IntersectionObserver(function (e) { heroVisible = e[0].isIntersecting; sync(); },
+      { threshold: 0.15 }).observe(hero);
+    new IntersectionObserver(function (e) { endVisible = e[0].isIntersecting; sync(); },
+      { threshold: 0.2 }).observe(end);
+  })();
+
+  // ── Калькулятор рассрочки ──────────────────────────────
+  // Всего 15 000 €. Первый платёж 2 000 € — всегда. Остаток 13 000 € делится
+  // на равные месячные доли; копеечный хвост от деления забирает последний
+  // платёж, чтобы сумма сходилась в 15 000 ровно.
+  (function () {
+    var TOTAL = 15000, FIRST = 2000, REST = TOTAL - FIRST;
+    var fmt = function (n) {
+      return n.toLocaleString('ru-RU').replace(/ /g, ' ') + ' €';
+    };
+    var mv = document.getElementById('cMonth');
+    var ml = document.getElementById('cMonthL');
+    var bars = document.getElementById('bars');
+    var cap = document.getElementById('schedCap');
+    var btns = document.querySelectorAll('.seg button');
+
+    function render(months) {
+      var base = Math.floor(REST / months);
+      var last = REST - base * (months - 1);
+      mv.textContent = fmt(base);
+      ml.textContent = months + ' платеж' + (months === 3 ? 'а' : 'ей') +
+        ' по графику' + (last !== base ? ' · последний ' + fmt(last) : '');
+      cap.textContent = 'график платежей · старт + ' + months + ' мес';
+
+      var max = FIRST > base ? FIRST : last;
+      var html = '<div class="bar b0"><i style="height:' +
+        Math.max(14, Math.round(FIRST / max * 96)) + 'px"></i>' +
+        '<div class="bv">' + fmt(FIRST) + '</div><div class="bl">старт</div></div>';
+      for (var i = 1; i <= months; i++) {
+        var v = (i === months) ? last : base;
+        html += '<div class="bar"><i style="height:' +
+          Math.max(14, Math.round(v / max * 96)) + 'px"></i>' +
+          '<div class="bv">' + fmt(v) + '</div><div class="bl">' + i + ' мес</div></div>';
+      }
+      bars.innerHTML = html;
+    }
+
+    btns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        btns.forEach(function (x) { x.classList.remove('on'); });
+        b.classList.add('on');
+        render(parseInt(b.dataset.months, 10));
+      });
+    });
+    render(6);
+  })();
+</script>
+</body>
+</html>

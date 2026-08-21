@@ -144,3 +144,5 @@ landing/*/
 landing/danilova/audit-pienenite.md
 # скриншоты аудита: пиксели уже вшиты в index.html data-URI, файлы — только исходники
 landing/danilova/shots/
+# сборка PDF-версии (make-pdf.mjs): артефакты, исходник — index.html
+landing/danilova/dist/

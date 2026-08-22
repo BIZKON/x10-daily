@@ -23,7 +23,7 @@ import { getEnv } from "../env";
 import { payoutBreakdown, wouldMakeCycle } from "../lib/partner-money";
 import { normalizeSlug } from "../lib/partner-slug";
 import { generatePayToken } from "../lib/pay-token";
-import { notifyPaymentSettled } from "../lib/payment-notify";
+import { notifyPaymentSettled, notifyRefund } from "../lib/payment-notify";
 import { refundDealPayment, settleDealPayment } from "../lib/payment-settle";
 import { payUrlFor } from "./partner";
 
@@ -50,6 +50,17 @@ const dealSchema = z.object({
   /** График рассрочки в месяцах. Потолок — решение владельца. */
   installmentMonths: z.coerce.number().int().min(1).max(MAX_INSTALLMENT_MONTHS).default(1),
   note: z.string().trim().max(2000).optional(),
+});
+
+/**
+ * Заказ из общего списка: партнёр необязателен.
+ *
+ * 🔴 Владелец продаёт и без партнёра, и это должен быть ТОТ ЖЕ заказ с той же
+ * ссылкой и тем же счётом, а не отдельная ветка кода (спека 7 §5.2). Нет
+ * партнёра — нет начислений, остальное одинаково.
+ */
+const orderSchema = dealSchema.extend({
+  partnerId: z.string().uuid().nullable().optional(),
 });
 
 const paymentSchema = z.object({
@@ -313,6 +324,144 @@ export const adminPartnersRoute = new Hono<AppEnv>()
   })
 
   /**
+   * GET /v1/admin/orders
+   * Все заказы одним списком — и партнёрские, и прямые.
+   *
+   * До этого заказ был виден только внутри карточки своего партнёра, а прямой
+   * не был виден вовсе: воронка продаж существовала, но посмотреть её было
+   * негде.
+   */
+  .get("/orders", async (c) => {
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    await requirePermission(c, db, "partners.manage");
+
+    const [rows, paidRows, everyone] = await Promise.all([
+      db
+        .select({
+          id: partnerDeals.id,
+          dealNo: partnerDeals.dealNo,
+          clientName: partnerDeals.clientName,
+          clientContact: partnerDeals.clientContact,
+          package: partnerDeals.package,
+          amountRub: partnerDeals.amountRub,
+          ratePercent: partnerDeals.ratePercent,
+          status: partnerDeals.status,
+          installments: partnerDeals.installments,
+          payToken: partnerDeals.payToken,
+          partnerId: partnerDeals.partnerId,
+          payerKind: partnerDeals.payerKind,
+          nextDueAt: partnerDeals.nextDueAt,
+          createdAt: partnerDeals.createdAt,
+        })
+        .from(partnerDeals)
+        .orderBy(desc(partnerDeals.dealNo))
+        .limit(200),
+      // Отдельной группировкой: коррелированный подзапрос в drizzle 15.08 молча
+      // вернул ноль при верных данных, и заказы показались бы неоплаченными.
+      db
+        .select({ dealId: dealPayments.dealId, total: sql<string>`sum(${dealPayments.amountRub})` })
+        .from(dealPayments)
+        .groupBy(dealPayments.dealId),
+      db
+        .select({ id: partners.id, name: partners.name, ratePercent: partners.ratePercent })
+        .from(partners)
+        .orderBy(partners.name),
+    ]);
+
+    const paidByDeal = new Map(paidRows.map((r) => [r.dealId, num(r.total)]));
+    const nameById = new Map(everyone.map((p) => [p.id, p.name]));
+
+    const orders = rows.map((d) => {
+      const paidRub = paidByDeal.get(d.id) ?? 0;
+      return {
+        id: d.id,
+        dealNo: d.dealNo,
+        clientName: d.clientName,
+        clientContact: d.clientContact,
+        package: d.package,
+        amountRub: num(d.amountRub),
+        paidRub,
+        ratePercent: num(d.ratePercent),
+        status: d.status,
+        installments: d.installments,
+        payUrl: d.payToken ? payUrlFor(env, d.payToken) : null,
+        payerKind: d.payerKind,
+        nextDueAt: iso(d.nextDueAt),
+        createdAt: iso(d.createdAt),
+        partner: d.partnerId ? { id: d.partnerId, name: nameById.get(d.partnerId) ?? "—" } : null,
+      };
+    });
+
+    const active = orders.filter((o) => o.status !== "cancelled");
+    return c.json({
+      orders,
+      totals: {
+        count: active.length,
+        soldRub: active.reduce((s, o) => s + o.amountRub, 0),
+        paidRub: active.reduce((s, o) => s + o.paidRub, 0),
+        awaitingRub: active.reduce((s, o) => s + Math.max(0, o.amountRub - o.paidRub), 0),
+      },
+      partners: everyone.map((p) => ({ id: p.id, name: p.name, ratePercent: num(p.ratePercent) })),
+      maxInstallmentMonths: MAX_INSTALLMENT_MONTHS,
+    });
+  })
+
+  /**
+   * POST /v1/admin/orders
+   * Заводит заказ. Партнёр необязателен — тогда начислять некому.
+   */
+  .post("/orders", zValidator("json", orderSchema), async (c) => {
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    await requirePermission(c, db, "partners.manage");
+    const body = c.req.valid("json");
+
+    let partnerId: string | null = null;
+    let rate = 0;
+
+    if (body.partnerId) {
+      const [partner] = await db
+        .select({ id: partners.id, ratePercent: partners.ratePercent })
+        .from(partners)
+        .where(eq(partners.id, body.partnerId))
+        .limit(1);
+      if (!partner) return c.json({ error: "partner_not_found", id: body.partnerId }, 404);
+      partnerId = partner.id;
+      // 🔴 Ставка КОПИРУЕТСЯ в сделку: правка настроек партнёра не должна
+      // переписывать уже случившиеся договорённости.
+      rate = body.ratePercent ?? num(partner.ratePercent);
+    }
+
+    const payToken = generatePayToken();
+    const [created] = await db
+      .insert(partnerDeals)
+      .values({
+        partnerId,
+        clientName: body.clientName,
+        clientContact: body.clientContact ?? null,
+        package: body.package,
+        amountRub: String(body.amountRub),
+        ratePercent: String(rate),
+        status: "negotiating",
+        installments: body.installmentMonths,
+        payToken,
+        note: body.note ?? null,
+      })
+      .returning({ id: partnerDeals.id, dealNo: partnerDeals.dealNo });
+
+    return c.json(
+      {
+        id: created?.id,
+        dealNo: created?.dealNo,
+        ratePercent: rate,
+        payUrl: payUrlFor(env, payToken),
+      },
+      201,
+    );
+  })
+
+  /**
    * POST /v1/admin/partners/:id/deals
    * Заводит сделку. 🔴 Ставка КОПИРУЕТСЯ в сделку — правка настроек партнёра
    * не должна переписывать уже случившиеся договорённости.
@@ -468,6 +617,10 @@ export const adminPartnersRoute = new Hono<AppEnv>()
         }
         return c.json({ error: "over_refund", message: "Вернуть больше полученного нельзя." }, 409);
       }
+
+      // Уведомления — после коммита: партнёр узнаёт причину от нас, а не
+      // обнаруживает уменьшившуюся сумму сам.
+      await notifyRefund(db, env, { dealId: id, result, reason: body.note ?? null });
 
       return c.json(
         {

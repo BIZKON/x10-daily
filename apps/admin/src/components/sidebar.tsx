@@ -16,6 +16,7 @@ import {
   Power,
   Rss,
   Share2,
+  ShoppingBag,
   Sparkles,
   Users,
   UsersRound,
@@ -78,6 +79,8 @@ const SECTIONS: Array<{
       // справочник клиента, а не выпуск наружу.
       { href: "/knowledge", label: "База знаний", icon: BookOpen, permission: "catalog.manage" },
       { href: "/team", label: "Команда", icon: UsersRound, permission: "team.manage" },
+      // Заказы выше партнёров: продажа первична, партнёр — способ её сделать.
+      { href: "/orders", label: "Заказы", icon: ShoppingBag, permission: "partners.manage" },
       { href: "/partners", label: "Партнёры", icon: HandCoins, permission: "partners.manage" },
       { href: "/channels", label: "Каналы", icon: Share2, permission: "settings.manage" },
       { href: "/sources", label: "Источники", icon: Rss, permission: "catalog.manage" },

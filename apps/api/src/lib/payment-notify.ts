@@ -4,9 +4,11 @@ import {
   type PaidNotice,
   mentorPaidMessage,
   ownerPaidMessage,
+  ownerRefundMessage,
+  partnerRefundMessage,
   sellerPaidMessage,
 } from "./payment-messages";
-import type { SettleDealResult } from "./payment-settle";
+import type { RefundDealResult, SettleDealResult } from "./payment-settle";
 import { sendMessage } from "./telegram-call";
 
 /**
@@ -133,5 +135,65 @@ export async function notifyPaymentSettled(
     );
   } catch (err) {
     console.error("[pay] не удалось разослать уведомления об оплате:", err);
+  }
+}
+
+/**
+ * Кому сказать о возврате (спека 7 §11).
+ *
+ * 🔴 Партнёр узнаёт причину от нас, а не обнаруживает уменьшившийся баланс
+ * сам. Молча упавшая цифра читается как обман, и следующий разговор
+ * начинается с этого — даже когда мы правы.
+ */
+export async function notifyRefund(
+  db: Database,
+  env: NotifyEnv,
+  args: {
+    dealId: string;
+    result: Extract<RefundDealResult, { ok: true }>;
+    reason: string | null;
+  },
+): Promise<void> {
+  try {
+    const [deal] = await db
+      .select({
+        dealNo: partnerDeals.dealNo,
+        clientName: partnerDeals.clientName,
+        partnerId: partnerDeals.partnerId,
+      })
+      .from(partnerDeals)
+      .where(eq(partnerDeals.id, args.dealId))
+      .limit(1);
+    if (!deal) return;
+
+    const notice = { dealNo: deal.dealNo, clientName: deal.clientName };
+    const reversedTotal = args.result.reversed.reduce((s, r) => s + Math.abs(r.amountRub), 0);
+
+    // Каждому, у кого сняли: продавцу и наставнику. Уровень решает, покажем ли
+    // имя клиента.
+    for (const row of args.result.reversed) {
+      const [person] = await db
+        .select({ platform: users.platform, platformUserId: users.platformUserId })
+        .from(partners)
+        .innerJoin(users, eq(users.id, partners.userId))
+        .where(eq(partners.id, row.partnerId))
+        .limit(1);
+      if (!person) continue;
+
+      await send(
+        env,
+        chatIdOf(person.platform, person.platformUserId),
+        partnerRefundMessage(notice, row.amountRub, args.reason, row.level === 1),
+      );
+    }
+
+    const opsChat = Number(env.TG_OPS_CHAT_ID ?? "");
+    await send(
+      env,
+      Number.isFinite(opsChat) && opsChat !== 0 ? opsChat : null,
+      ownerRefundMessage(notice, args.result.refundRub, reversedTotal),
+    );
+  } catch (err) {
+    console.error("[pay] не удалось разослать уведомления о возврате:", err);
   }
 }

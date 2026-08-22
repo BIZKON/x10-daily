@@ -1128,6 +1128,45 @@ export type AdminPartnerDeal = {
   createdAt: string | null;
 };
 
+/** Заказ в общем списке: и партнёрский, и прямой (спека 7 §5.2). */
+export type AdminOrder = {
+  id: string;
+  dealNo: number;
+  clientName: string;
+  clientContact: string | null;
+  package: string;
+  amountRub: number;
+  paidRub: number;
+  ratePercent: number;
+  status: string;
+  installments: number;
+  payUrl: string | null;
+  payerKind: string | null;
+  nextDueAt: string | null;
+  createdAt: string | null;
+  /** `null` — продали сами, начислять некому. */
+  partner: { id: string; name: string } | null;
+};
+
+export type AdminOrders = {
+  orders: AdminOrder[];
+  totals: { count: number; soldRub: number; paidRub: number; awaitingRub: number };
+  partners: Array<{ id: string; name: string; ratePercent: number }>;
+  maxInstallmentMonths: number;
+};
+
+export async function fetchOrders(): Promise<AdminOrders | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  try {
+    const res = await fetchWithTimeout(`${base}/v1/admin/orders`, { headers: await authHeaders() });
+    if (!res.ok) return null;
+    return (await res.json()) as AdminOrders;
+  } catch {
+    return null;
+  }
+}
+
 export type AdminPartnerCard = {
   partner: {
     id: string;

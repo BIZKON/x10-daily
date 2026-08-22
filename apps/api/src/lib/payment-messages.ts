@@ -67,3 +67,45 @@ export function ownerPaidMessage(
   if (n.fullyPaid) lines.push("Заказ закрыт полностью.");
   return lines.join("\n");
 }
+
+export type RefundNotice = { dealNo: number; clientName: string };
+
+/**
+ * Партнёру: почему уменьшилась его сумма.
+ *
+ * 🔴 Молча уменьшившийся баланс читается как «нас обманули», и следующий
+ * разговор начинается с этого. Причину называем всегда, даже когда она
+ * неприятная.
+ *
+ * Наставнику имя клиента не показываем — то же правило, что и в оплате.
+ */
+export function partnerRefundMessage(
+  n: RefundNotice,
+  reversedRub: number,
+  reason: string | null,
+  isMentor = false,
+): string {
+  const who = isMentor ? "по заказу приведённого партнёра" : `клиенту ${n.clientName}`;
+  const why = reason ? `\nПричина: ${reason}.` : "";
+  return (
+    `<b>Возврат по заказу № ${formatDealNo(n.dealNo)}</b>\n` +
+    `Мы вернули деньги ${who}, поэтому начисленная комиссия уменьшена на ` +
+    `<b>${rub(Math.abs(reversedRub))}</b>.${why}`
+  );
+}
+
+/** Владельцу: сколько вернули клиенту и сколько сняли с партнёров. */
+export function ownerRefundMessage(
+  n: RefundNotice,
+  refundRub: number,
+  reversedRub: number,
+): string {
+  const back =
+    reversedRub > 0
+      ? `\nСторно комиссии: ${rub(Math.abs(reversedRub))}.`
+      : "\nКомиссию сторнировать было не с чего.";
+  return (
+    `<b>Возврат по заказу № ${formatDealNo(n.dealNo)}</b>\n` +
+    `${n.clientName} — вернули ${rub(refundRub)}.${back}`
+  );
+}

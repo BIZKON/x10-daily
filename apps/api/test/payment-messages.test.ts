@@ -3,6 +3,8 @@ import {
   type PaidNotice,
   mentorPaidMessage,
   ownerPaidMessage,
+  ownerRefundMessage,
+  partnerRefundMessage,
   sellerPaidMessage,
 } from "../src/lib/payment-messages";
 
@@ -96,5 +98,49 @@ describe("сообщение владельцу", () => {
       }),
     );
     expect(m).not.toContain("Наставнику");
+  });
+});
+
+describe("сообщение о возврате", () => {
+  /**
+   * 🔴 Партнёр обязан узнать ПРИЧИНУ, а не только новую цифру. Молча
+   * уменьшившийся баланс читается как «нас обманули», и следующий разговор
+   * начинается с этого.
+   */
+  it("партнёру называем заказ, сумму сторно и причину", () => {
+    const msg = plain(
+      partnerRefundMessage(
+        { dealNo: 1042, clientName: "ООО «Ромашка»" },
+        35000,
+        "клиент отказался",
+      ),
+    );
+    expect(msg).toContain("1042");
+    expect(msg).toContain("35 000 ₽");
+    expect(msg).toContain("клиент отказался");
+  });
+
+  it("без причины сообщение всё равно осмысленное", () => {
+    const msg = plain(partnerRefundMessage({ dealNo: 7, clientName: "ИП Петров" }, 1000, null));
+    expect(msg).toContain("1 000 ₽");
+    expect(msg).not.toContain("null");
+  });
+
+  it("🔴 имя клиента наставнику не раскрывается", () => {
+    // То же правило, что в кабинете и в оплате: процент — не повод открывать
+    // чужую клиентскую базу.
+    const msg = plain(
+      partnerRefundMessage({ dealNo: 7, clientName: "ИП Петров" }, 1000, null, true),
+    );
+    expect(msg).not.toContain("Петров");
+  });
+
+  it("владельцу — заказ, возврат и сколько сняли с партнёров", () => {
+    const msg = plain(
+      ownerRefundMessage({ dealNo: 1042, clientName: "ООО «Ромашка»" }, 175000, 43750),
+    );
+    expect(msg).toContain("1042");
+    expect(msg).toContain("175 000 ₽");
+    expect(msg).toContain("43 750 ₽");
   });
 });

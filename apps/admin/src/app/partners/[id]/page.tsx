@@ -3,7 +3,7 @@ import { ArrowLeft, HandCoins, Link as LinkIcon } from "lucide-react";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { DealForm, MentorForm, PaymentForm, PayoutForm, ProfileForm } from "./forms";
+import { DealForm, MentorForm, PaymentForm, PayoutForm, ProfileForm, RefundForm } from "./forms";
 
 export const metadata = { title: "Партнёр — ProAgent AI Admin" };
 
@@ -64,8 +64,12 @@ async function Content({ params }: { params: Promise<{ id: string }> }) {
     );
   }
 
-  const { partner, balance, deals, accruals, payouts, candidates, maxInstallmentMonths } = data;
+  const { partner, balance, payout, deals, accruals, payouts, candidates, maxInstallmentMonths } =
+    data;
   const openDeals = deals.filter((d) => d.status !== "cancelled");
+  // Возвращать можно только то, что получено: пустая форма возврата на
+  // сделке без оплат — приглашение к ошибке.
+  const paidDeals = openDeals.filter((d) => d.paidRub > 0);
 
   return (
     <>
@@ -205,7 +209,21 @@ async function Content({ params }: { params: Promise<{ id: string }> }) {
         <div className="space-y-4">
           <DealForm partnerId={partner.id} maxInstallmentMonths={maxInstallmentMonths} />
           {openDeals.length > 0 && <PaymentForm partnerId={partner.id} deals={openDeals} />}
-          <PayoutForm partnerId={partner.id} dueRub={balance.dueRub} />
+          <PayoutForm partnerId={partner.id} dueRub={balance.dueRub} payout={payout} />
+          {paidDeals.length > 0 && <RefundForm partnerId={partner.id} deals={paidDeals} />}
+          {/* 🔴 Форма была написана, но на экран её не поставили: правка ставки,
+              адреса КП и налогового статуса оставалась недоступной. */}
+          <ProfileForm
+            partnerId={partner.id}
+            slug={partner.slug}
+            name={partner.name}
+            contact={partner.contact}
+            ratePercent={partner.ratePercent}
+            status={partner.status}
+            taxStatus={partner.taxStatus}
+            inn={partner.inn}
+            baseUrl={KP_BASE}
+          />
           <MentorForm partnerId={partner.id} parentId={partner.parentId} candidates={candidates} />
         </div>
       </div>

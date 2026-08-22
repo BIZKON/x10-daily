@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import { JoinButton } from "./join-button";
 import { OrderForm } from "./order-form";
 import { PromoLink } from "./promo-link";
+import { TaxForm } from "./tax-form";
 
 export const metadata = { title: "Партнёрам — ИИ работает на вас" };
 
@@ -164,7 +165,7 @@ const rub = (v: number) =>
   `${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(v)} ₽`;
 
 function Cabinet({ data }: { data: ApiPartnerCabinet }) {
-  const { partner, balance, deals, invited, payouts } = data;
+  const { partner, balance, payout, deals, invited, payouts } = data;
   const empty = deals.length === 0;
 
   return (
@@ -185,7 +186,22 @@ function Cabinet({ data }: { data: ApiPartnerCabinet }) {
             Выплачено <b className="font-mono text-white/85">{rub(balance.paidRub)}</b>
           </span>
         </div>
+
+        {/* 🔴 У физлица НДФЛ удерживается из его же 20%. Крупная цифра выше —
+            начисленное; здесь честно сказано, сколько придёт на карту. Узнать
+            это в момент перевода, а не в кабинете, — повод для спора. */}
+        {payout.ndflRub > 0 && (
+          <div className="mt-3 border-white/10 border-t pt-2.5 text-[12.5px] text-white/60">
+            НДФЛ 13% удерживаем: <b className="font-mono text-white/85">{rub(payout.ndflRub)}</b>
+            <span className="mx-1.5 text-white/25">·</span>
+            на карту <b className="font-mono text-success">{rub(payout.netRub)}</b>
+          </div>
+        )}
       </section>
+
+      {/* Статус спрашиваем, когда деньги уже есть, — до этого он ни на что не
+          влияет, а анкета при вступлении отсекает людей в момент интереса. */}
+      {!payout.statusKnown && balance.dueRub > 0 && <TaxForm dueRub={balance.dueRub} />}
 
       {/* 🔴 Ссылка ведёт В МИНИ-АПП, а не на статическое КП. Раньше человек
           читал документ и в продукт не попадал никогда — ни в ленту, ни в

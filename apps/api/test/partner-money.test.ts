@@ -6,6 +6,7 @@ import {
   mentorStillEarns,
   partnerBalance,
   payoutBreakdown,
+  refundAccruals,
   settlementPlan,
   wouldMakeCycle,
 } from "../src/lib/partner-money";
@@ -316,5 +317,101 @@ describe("dueNowRub — сколько платить прямо сейчас", 
   it("частичная оплата не превращается в требование сверх договора", () => {
     // Клиент заплатил 300 000 из 350 000 — остаётся 50 000, а не ещё 175 000.
     expect(dueNowRub({ amountRub: 350000, paidRub: 300000, installments: 2 })).toBe(50000);
+  });
+});
+
+describe("refundAccruals — сторно комиссии при возврате клиенту", () => {
+  /** Что уже начислено по сделке: 20% продавцу и 5% наставнику с 350 000 ₽. */
+  const ACCRUED = [
+    { partnerId: SELLER.id, level: 0 as const, ratePercent: 20, amountRub: 70_000 },
+    { partnerId: MENTOR.id, level: 1 as const, ratePercent: 5, amountRub: 17_500 },
+  ];
+
+  it("полный возврат обнуляет начисленное: сторно ровно на минус ту же сумму", () => {
+    const rows = refundAccruals({
+      paymentId: "ref-1",
+      paidRub: 350_000,
+      refundRub: 350_000,
+      accrued: ACCRUED,
+    });
+
+    expect(rows).toEqual([
+      {
+        paymentId: "ref-1",
+        partnerId: SELLER.id,
+        level: 0,
+        ratePercent: 20,
+        amountRub: -70_000,
+        reason: "refund",
+      },
+      {
+        paymentId: "ref-1",
+        partnerId: MENTOR.id,
+        level: 1,
+        ratePercent: 5,
+        amountRub: -17_500,
+        reason: "refund",
+      },
+    ]);
+  });
+
+  it("частичный возврат режет пропорционально полученному", () => {
+    const rows = refundAccruals({
+      paymentId: "ref-2",
+      paidRub: 350_000,
+      refundRub: 175_000,
+      accrued: ACCRUED,
+    });
+
+    expect(rows.map((r) => r.amountRub)).toEqual([-35_000, -8_750]);
+  });
+
+  it("🔴 наставник сторнируется, даже если срок его бонуса уже истёк", () => {
+    // Начислено — значит выплачено или будет выплачено. Возврат забирает то,
+    // что реально начислили, а не то, что начислили бы сегодня заново.
+    const rows = refundAccruals({
+      paymentId: "ref-3",
+      paidRub: 350_000,
+      refundRub: 350_000,
+      accrued: ACCRUED,
+    });
+
+    expect(rows.some((r) => r.partnerId === MENTOR.id && r.amountRub === -17_500)).toBe(true);
+  });
+
+  it("сделка без партнёра — сторнировать нечего", () => {
+    expect(
+      refundAccruals({ paymentId: "ref-4", paidRub: 350_000, refundRub: 350_000, accrued: [] }),
+    ).toEqual([]);
+  });
+
+  it("денег по сделке не приходило — на ноль не делим", () => {
+    expect(
+      refundAccruals({ paymentId: "ref-5", paidRub: 0, refundRub: 10_000, accrued: ACCRUED }),
+    ).toEqual([]);
+  });
+
+  it("🔴 возврат больше полученного не сторнирует больше начисленного", () => {
+    // Защита от опечатки в сумме: иначе баланс партнёра уходит в минус глубже,
+    // чем он когда-либо зарабатывал, и мы требуем с него денег.
+    const rows = refundAccruals({
+      paymentId: "ref-6",
+      paidRub: 100_000,
+      refundRub: 500_000,
+      accrued: [{ partnerId: SELLER.id, level: 0, ratePercent: 20, amountRub: 20_000 }],
+    });
+
+    expect(rows[0]?.amountRub).toBe(-20_000);
+  });
+
+  it("копейки округляются до двух знаков", () => {
+    const rows = refundAccruals({
+      paymentId: "ref-7",
+      paidRub: 10_000,
+      refundRub: 3_333,
+      accrued: [{ partnerId: SELLER.id, level: 0, ratePercent: 20, amountRub: 2_000 }],
+    });
+
+    expect(rows[0]?.amountRub).toBe(-666.6);
   });
 });

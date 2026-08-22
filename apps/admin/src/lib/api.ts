@@ -1139,8 +1139,13 @@ export type AdminPartnerCard = {
     parentId: string | null;
     mentorName: string | null;
     joinedAt: string | null;
+    /** `self_employed` · `entrepreneur` · `individual`. Пусто — не спросили. */
+    taxStatus: string | null;
+    inn: string | null;
   };
   balance: { accruedRub: number; paidRub: number; dueRub: number };
+  /** Сколько переводить и что удержать. Считает api — одной функцией с кабинетом. */
+  payout: { grossRub: number; ndflRub: number; netRub: number; statusKnown: boolean };
   deals: AdminPartnerDeal[];
   accruals: Array<{
     id: string;

@@ -2,6 +2,8 @@ import { zValidator } from "@hono/zod-validator";
 import { MAX_INSTALLMENT_MONTHS } from "@x10/config";
 import {
   DEAL_PACKAGES,
+  PARTNER_TAX_STATUSES,
+  type PartnerTaxStatus,
   dealPayments,
   desc,
   eq,
@@ -18,11 +20,11 @@ import type { AppEnv } from "../app";
 import { requirePermission } from "../auth";
 import { getDb } from "../db";
 import { getEnv } from "../env";
-import { wouldMakeCycle } from "../lib/partner-money";
+import { payoutBreakdown, wouldMakeCycle } from "../lib/partner-money";
 import { normalizeSlug } from "../lib/partner-slug";
 import { generatePayToken } from "../lib/pay-token";
 import { notifyPaymentSettled } from "../lib/payment-notify";
-import { settleDealPayment } from "../lib/payment-settle";
+import { refundDealPayment, settleDealPayment } from "../lib/payment-settle";
 import { payUrlFor } from "./partner";
 
 /**
@@ -56,6 +58,13 @@ const paymentSchema = z.object({
   note: z.string().trim().max(500).optional(),
 });
 
+const refundSchema = z.object({
+  /** Сколько вернули клиенту. Положительное: знак ставит сторно, а не человек. */
+  amountRub: z.coerce.number().positive().max(100_000_000),
+  refundedAt: z.string().datetime().optional(),
+  note: z.string().trim().max(500).optional(),
+});
+
 const payoutSchema = z.object({
   amountRub: z.coerce.number().positive().max(100_000_000),
   paidAt: z.string().datetime().optional(),
@@ -72,6 +81,14 @@ const profileSchema = z.object({
   contact: z.string().trim().max(200).nullable().optional(),
   ratePercent: z.coerce.number().min(0).max(100).optional(),
   status: z.enum(["active", "paused"]).optional(),
+  /** Налоговый статус: от него зависит, удерживаем ли мы НДФЛ при выплате. */
+  taxStatus: z.enum(PARTNER_TAX_STATUSES).nullable().optional(),
+  inn: z
+    .string()
+    .trim()
+    .regex(/^\d{10,12}$/, "ИНН — это 10 или 12 цифр")
+    .nullable()
+    .optional(),
 });
 
 const num = (v: unknown): number => Number(v ?? 0);
@@ -163,6 +180,8 @@ export const adminPartnersRoute = new Hono<AppEnv>()
         ratePercent: partners.ratePercent,
         parentId: partners.parentId,
         joinedAt: partners.joinedAt,
+        taxStatus: partners.taxStatus,
+        inn: partners.inn,
       })
       .from(partners)
       .where(eq(partners.id, id))
@@ -247,8 +266,18 @@ export const adminPartnersRoute = new Hono<AppEnv>()
           ? (everyone.find((p) => p.id === partner.parentId)?.name ?? null)
           : null,
         joinedAt: iso(partner.joinedAt),
+        taxStatus: partner.taxStatus,
+        inn: partner.inn,
       },
       balance: { accruedRub: accrued, paidRub: paid, dueRub: accrued - paid },
+      /**
+       * Сколько переводить и что удержать (спека 7 §10).
+       *
+       * 🔴 Считается здесь, а не в админке: та же функция, что показывает
+       * цифру партнёру. Два независимых расчёта одной выплаты — это спор,
+       * в котором мы неправы по определению.
+       */
+      payout: payoutBreakdown(accrued - paid, partner.taxStatus as PartnerTaxStatus | null),
       deals: deals.map((d) => ({
         id: d.id,
         clientName: d.clientName,
@@ -404,6 +433,59 @@ export const adminPartnersRoute = new Hono<AppEnv>()
   )
 
   /**
+   * POST /v1/admin/deals/:id/refunds
+   * Возврат денег клиенту: отрицательный платёж и сторно комиссии (спека 7 §11).
+   *
+   * 🔴 Возврат в самой ЮKassa делает человек — здесь фиксируется следствие. Без
+   * этой отметки баланс партнёра врёт в его пользу, и мы платим комиссию за
+   * отменённую продажу.
+   */
+  .post(
+    "/deals/:id/refunds",
+    zValidator("param", idParam),
+    zValidator("json", refundSchema),
+    async (c) => {
+      const env = getEnv(c.env);
+      const db = getDb(env.DATABASE_URL);
+      await requirePermission(c, db, "partners.manage");
+      const { id } = c.req.valid("param");
+      const body = c.req.valid("json");
+
+      const result = await refundDealPayment(db, {
+        dealId: id,
+        amountRub: body.amountRub,
+        refundedAt: body.refundedAt ? new Date(body.refundedAt) : new Date(),
+        note: body.note ?? null,
+      });
+
+      if (!result.ok) {
+        if (result.reason === "deal_not_found") return c.json({ error: "not_found", id }, 404);
+        if (result.reason === "nothing_paid") {
+          return c.json(
+            { error: "nothing_paid", message: "По этой сделке денег не приходило." },
+            409,
+          );
+        }
+        return c.json({ error: "over_refund", message: "Вернуть больше полученного нельзя." }, 409);
+      }
+
+      return c.json(
+        {
+          paymentId: result.paymentId,
+          refundRub: result.refundRub,
+          reversed: result.reversed.map((r) => ({
+            partnerId: r.partnerId,
+            level: r.level,
+            ratePercent: r.ratePercent,
+            amountRub: r.amountRub,
+          })),
+        },
+        201,
+      );
+    },
+  )
+
+  /**
    * POST /v1/admin/partners/:id/payouts
    * Отмечает выплату партнёру. Перевод делает человек — здесь только след.
    */
@@ -462,6 +544,10 @@ export const adminPartnersRoute = new Hono<AppEnv>()
       // 🔴 Ставка правится только для БУДУЩИХ сделок: в уже заведённых лежит
       // своя копия, и прошлое от этой правки не меняется.
       if (body.ratePercent !== undefined) patch.ratePercent = String(body.ratePercent);
+      // Налоговый статус и ИНН: без них выплату физлицу не посчитать, а
+      // самозанятому — не попросить чек НПД.
+      if (body.taxStatus !== undefined) patch.taxStatus = body.taxStatus;
+      if (body.inn !== undefined) patch.inn = body.inn || null;
 
       if (body.slug !== undefined) {
         const slug = normalizeSlug(body.slug);

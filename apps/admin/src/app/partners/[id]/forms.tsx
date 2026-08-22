@@ -3,7 +3,14 @@
 import { Field } from "@/components/form/field";
 import { Loader2 } from "lucide-react";
 import { useActionState } from "react";
-import { addPayment, addPayout, createDeal, setMentor, updatePartner } from "../actions";
+import {
+  addPayment,
+  addPayout,
+  createDeal,
+  refundPayment,
+  setMentor,
+  updatePartner,
+} from "../actions";
 import { PARTNER_FORM_IDLE, type PartnerFormState } from "../form-state";
 
 /**
@@ -198,26 +205,123 @@ export function PaymentForm({
   );
 }
 
-export function PayoutForm({ partnerId, dueRub }: { partnerId: string; dueRub: number }) {
+export function RefundForm({
+  partnerId,
+  deals,
+}: {
+  partnerId: string;
+  deals: Array<{ id: string; clientName: string; amountRub: number; paidRub: number }>;
+}) {
+  const [state, action, pending] = useActionState(refundPayment, PARTNER_FORM_IDLE);
+
+  return (
+    <section className="rounded-2xl border border-red/40 bg-card p-4">
+      <h3 className="m-0 mb-1 font-display text-[15px] font-extrabold">Вернули деньги клиенту</h3>
+      <p className="m-0 mb-3 text-[12.5px] leading-relaxed text-mist">
+        Отметьте возврат — начисленная комиссия сторнируется сама, в той же доле.
+      </p>
+      {/* Возврат делается в личном кабинете ЮKassa или платёжкой из банка.
+          Здесь — только след в системе, иначе баланс партнёра останется
+          завышенным, и мы заплатим за отменённую продажу. */}
+      <p className="m-0 mb-3 rounded-xl border border-red/40 bg-red/5 px-3 py-2 text-[12px] leading-relaxed text-mist">
+        Сначала верните деньги клиенту — в кабинете ЮKassa или со счёта. Эта форма только записывает
+        возврат и снимает комиссию партнёра, сама она деньги не возвращает.
+      </p>
+      <form action={action} className="space-y-3">
+        <input type="hidden" name="partnerId" value={partnerId} />
+
+        <Field
+          label="Сделка"
+          required
+          help="По какой сделке вернули деньги. В скобках — сколько по ней сейчас числится полученным."
+        >
+          <select name="dealId" required className={input}>
+            {deals.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.clientName} (получено {new Intl.NumberFormat("ru-RU").format(d.paidRub)} из{" "}
+                {new Intl.NumberFormat("ru-RU").format(d.amountRub)} ₽)
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <Field
+          label="Сколько вернули, ₽"
+          required
+          help="Положительное число — минус система поставит сама. Больше полученного вернуть нельзя: сервер такую сумму не примет."
+        >
+          <input
+            name="amountRub"
+            required
+            inputMode="decimal"
+            className={input}
+            placeholder="10000"
+          />
+        </Field>
+
+        <Field
+          label="Причина"
+          help="Например, «клиент отказался до старта работ». Пригодится, когда партнёр спросит, почему уменьшилась его сумма."
+        >
+          <input name="note" maxLength={500} className={input} />
+        </Field>
+
+        <Submit pending={pending}>{pending ? "Записываем" : "Записать возврат"}</Submit>
+        <Result state={state} />
+      </form>
+    </section>
+  );
+}
+
+export function PayoutForm({
+  partnerId,
+  dueRub,
+  payout,
+}: {
+  partnerId: string;
+  dueRub: number;
+  payout: { grossRub: number; ndflRub: number; netRub: number; statusKnown: boolean };
+}) {
   const [state, action, pending] = useActionState(addPayout, PARTNER_FORM_IDLE);
+  const money = (v: number) => `${new Intl.NumberFormat("ru-RU").format(Math.round(v))} ₽`;
 
   return (
     <section className="rounded-2xl border border-fence bg-card p-4">
       <h3 className="m-0 mb-1 font-display text-[15px] font-extrabold">Выплата партнёру</h3>
       <p className="m-0 mb-3 text-[12.5px] text-mist">
         Перевод делаете вы сами — здесь остаётся след. К выплате сейчас{" "}
-        <b className="font-mono text-gold">
-          {new Intl.NumberFormat("ru-RU").format(Math.max(0, Math.round(dueRub)))} ₽
-        </b>
-        .
+        <b className="font-mono text-gold">{money(Math.max(0, dueRub))}</b>.
       </p>
+
+      {/* 🔴 Две суммы, а не одна: у физлица НДФЛ удерживается из его же 20%.
+          Перевести «начислено» значит заплатить налог сверх из своего кармана,
+          перевести «на руки» без этой строки — недоплатить и спорить потом. */}
+      {payout.ndflRub > 0 && (
+        <dl className="m-0 mb-3 grid grid-cols-2 gap-y-1 rounded-xl border border-fence bg-night px-3 py-2.5 text-[12.5px]">
+          <dt className="m-0 text-mist">Начислено</dt>
+          <dd className="m-0 text-right font-mono text-paper">{money(payout.grossRub)}</dd>
+          <dt className="m-0 text-mist">Удержим НДФЛ 13%</dt>
+          <dd className="m-0 text-right font-mono text-red">−{money(payout.ndflRub)}</dd>
+          <dt className="m-0 font-bold text-paper">Перевести на карту</dt>
+          <dd className="m-0 text-right font-mono font-bold text-success">
+            {money(payout.netRub)}
+          </dd>
+        </dl>
+      )}
+
+      {!payout.statusKnown && dueRub > 0 && (
+        <p className="m-0 mb-3 rounded-xl border border-red/40 bg-red/5 px-3 py-2 text-[12px] leading-relaxed text-mist">
+          Налоговый статус не указан — считаем без удержания. Если партнёр обычное физлицо, НДФЛ
+          удерживаем мы, и перевод будет меньше. Заполните статус в карточке ниже.
+        </p>
+      )}
       <form action={action} className="space-y-3">
         <input type="hidden" name="partnerId" value={partnerId} />
 
         <Field
           label="Сумма, ₽"
           required
-          help="Сколько реально перевели. Можно частями: баланс считается как начислено минус выплачено."
+          help="Записывайте НАЧИСЛЕННУЮ сумму — она закрывает долг целиком. Удержанный НДФЛ мы перечисляем за партнёра, поэтому на карту уходит меньше, а долг всё равно погашен. Можно частями: баланс считается как начислено минус выплачено."
         >
           <input
             name="amountRub"
@@ -301,6 +405,8 @@ export function ProfileForm({
   contact,
   ratePercent,
   status,
+  taxStatus,
+  inn,
   baseUrl,
 }: {
   partnerId: string;
@@ -309,6 +415,8 @@ export function ProfileForm({
   contact: string | null;
   ratePercent: number;
   status: string;
+  taxStatus: string | null;
+  inn: string | null;
   baseUrl: string;
 }) {
   const [state, action, pending] = useActionState(updatePartner, PARTNER_FORM_IDLE);
@@ -359,6 +467,32 @@ export function ProfileForm({
             <option value="active">Активен</option>
             <option value="paused">Приостановлен</option>
           </select>
+        </Field>
+
+        <Field
+          label="Налоговый статус"
+          help="От него зависит выплата. Самозанятый и ИП платят налог сами — переводим всё начисленное. Обычному физлицу НДФЛ 13% удерживаем мы из его же 20%, а взносы в СФР платим сверх, из своих. Не знаете — оставьте «не спросили»: система посчитает без удержания и предупредит об этом у выплаты."
+        >
+          <select name="taxStatus" defaultValue={taxStatus ?? ""} className={input}>
+            <option value="">Не спросили</option>
+            <option value="self_employed">Самозанятый (НПД)</option>
+            <option value="entrepreneur">ИП</option>
+            <option value="individual">Обычное физлицо</option>
+          </select>
+        </Field>
+
+        <Field
+          label="ИНН"
+          help="Нужен самозанятому — чтобы он выбил чек НПД на нашу выплату, и физлицу — для отчётности по удержанному НДФЛ. 12 цифр. У ИП тоже 12."
+        >
+          <input
+            name="inn"
+            inputMode="numeric"
+            maxLength={12}
+            defaultValue={inn ?? ""}
+            className={input}
+            placeholder="770123456789"
+          />
         </Field>
 
         <Submit pending={pending}>{pending ? "Сохраняем" : "Сохранить"}</Submit>

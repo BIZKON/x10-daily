@@ -50,6 +50,43 @@ export async function createDeal(
 }
 
 /**
+ * Оформляет возврат денег клиенту.
+ *
+ * 🔴 Комиссия партнёра сторнируется тем же действием, одной транзакцией на
+ * сервере. Возврат без сторно — это оплаченная нами отменённая продажа, и
+ * через месяц связь между возвратом и лишней выплатой уже не восстановить.
+ */
+export async function refundPayment(
+  _prev: PartnerFormState,
+  form: FormData,
+): Promise<PartnerFormState> {
+  const dealId = String(form.get("dealId") ?? "").trim();
+  const partnerId = String(form.get("partnerId") ?? "").trim();
+  const amountRub = num(form, "amountRub");
+
+  if (!dealId) return { status: "error", message: "Не указана сделка." };
+  if (!Number.isFinite(amountRub) || amountRub <= 0) {
+    return { status: "error", message: "Сумма возврата должна быть больше нуля." };
+  }
+
+  const res = await adminMutate<{ reversed: Array<{ amountRub: number }> }>(
+    "POST",
+    `/v1/admin/deals/${encodeURIComponent(dealId)}/refunds`,
+    { amountRub, note: String(form.get("note") ?? "").trim() || undefined },
+  );
+  if (!res.ok) return { status: "error", message: res.error };
+
+  revalidatePath(`/partners/${partnerId}`);
+  revalidatePath("/partners");
+
+  const back = res.data.reversed.reduce((sum, r) => sum + Math.abs(r.amountRub), 0);
+  return {
+    status: "ok",
+    message: back > 0 ? `Возврат записан, комиссия сторнирована на ${back} ₽.` : "Возврат записан.",
+  };
+}
+
+/**
  * Записывает поступивший платёж клиента.
  *
  * 🔴 Именно здесь начисляется доля партнёру и наставнику — на сервере, одной
@@ -152,6 +189,10 @@ export async function updatePartner(
     contact: String(form.get("contact") ?? "").trim(),
     ratePercent: rate ? Number(rate.replace(",", ".")) : undefined,
     status: String(form.get("status") ?? "") || undefined,
+    // Пустая строка — «не спросили»: статус сбрасывается в null, и выплата
+    // снова считается без удержания, честно предупреждая об этом.
+    taxStatus: String(form.get("taxStatus") ?? "").trim() || null,
+    inn: String(form.get("inn") ?? "").trim() || null,
   });
   if (!res.ok) return { status: "error", message: res.error };
 

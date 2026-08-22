@@ -432,6 +432,20 @@ export type ApiPartnerCabinet = {
     kpUrl: string | null;
   };
   balance: { accruedRub: number; paidRub: number; dueRub: number };
+  /**
+   * Сколько выйдет на руки (спека 7 §10).
+   *
+   * У физлица НДФЛ удерживается из его же 20%. Одна строка «к выплате» тут
+   * врёт: человек ждёт 70 000, а на карту приходит 60 900.
+   */
+  payout: {
+    grossRub: number;
+    ndflRub: number;
+    netRub: number;
+    statusKnown: boolean;
+    taxStatus: string | null;
+    innKnown: boolean;
+  };
   program: ApiPartnerProgram;
   deals: ApiPartnerDeal[];
   accruals: Array<{
@@ -504,6 +518,22 @@ export async function createPartnerOrder(body: {
 /** Регистрация в программе. Возвращает текст ошибки или null при успехе. */
 export async function joinPartnerProgram(ref?: string): Promise<string | null> {
   const res = await postAuthed("/v1/partner/join", ref ? { ref } : {});
+  if (!res) return "Нет связи с сервером. Попробуйте ещё раз.";
+  if (res.ok) return null;
+  try {
+    const j = (await res.json()) as { message?: string; error?: string };
+    return j.message ?? j.error ?? `Ошибка ${res.status}`;
+  } catch {
+    return `Ошибка ${res.status}`;
+  }
+}
+
+/** Партнёр сообщает свой налоговый статус. `null` — сохранено. */
+export async function savePartnerTax(args: {
+  taxStatus: string;
+  inn?: string;
+}): Promise<string | null> {
+  const res = await postAuthed("/v1/partner/tax", args);
   if (!res) return "Нет связи с сервером. Попробуйте ещё раз.";
   if (res.ok) return null;
   try {

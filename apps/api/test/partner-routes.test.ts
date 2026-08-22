@@ -117,3 +117,37 @@ describe("условия читаются до регистрации", () => {
     expect([200, 401, 503]).toContain(res.status);
   });
 });
+
+describe("налоговый статус партнёра", () => {
+  /**
+   * 🔴 Статус нужен не ради анкеты: от него зависит, удерживаем ли мы НДФЛ из
+   * его 20% и сколько он получит на руки. Спрашиваем при первом начислении —
+   * регистрация остаётся в один тап (решение владельца 14.08).
+   */
+  it("без входа статус не поменять", async () => {
+    const res = await call("/v1/partner/tax", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taxStatus: "self_employed", inn: "770123456789" }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("выдуманный статус не принимается", async () => {
+    const res = await call("/v1/partner/tax", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taxStatus: "оптимизатор" }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("ИНН из букв не принимается", async () => {
+    const res = await call("/v1/partner/tax", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taxStatus: "entrepreneur", inn: "не скажу" }),
+    });
+    expect(res.status).toBe(400);
+  });
+});

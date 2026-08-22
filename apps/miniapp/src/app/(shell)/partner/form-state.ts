@@ -21,3 +21,10 @@ export type OrderState =
   | { status: "created"; payUrl: string; dealNo: number; firstPaymentRub: number };
 
 export const ORDER_IDLE: OrderState = { status: "idle" };
+
+/**
+ * Налоговый статус: спрашиваем при первом начислении, а не при регистрации.
+ */
+export type TaxState = { status: "idle" | "ok" | "error"; message: string };
+
+export const TAX_IDLE: TaxState = { status: "idle", message: "" };

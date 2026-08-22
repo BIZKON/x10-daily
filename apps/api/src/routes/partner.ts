@@ -12,6 +12,8 @@ import {
 } from "@x10/config";
 import {
   DEAL_PACKAGES,
+  PARTNER_TAX_STATUSES,
+  type PartnerTaxStatus,
   and,
   dealPayments,
   desc,
@@ -30,7 +32,7 @@ import type { AppEnv } from "../app";
 import { extractSession } from "../auth";
 import { getDb } from "../db";
 import { getEnv } from "../env";
-import { partnerBalance } from "../lib/partner-money";
+import { partnerBalance, payoutBreakdown } from "../lib/partner-money";
 import { normalizeSlug, reservedSlugFor } from "../lib/partner-slug";
 import { generatePayToken } from "../lib/pay-token";
 import { sendMessage } from "../lib/telegram-call";
@@ -97,6 +99,23 @@ export function checkJoinable(args: {
 const joinSchema = z.object({
   /** Кто пригласил: slug партнёра из ссылки-приглашения. */
   ref: z.string().trim().max(64).optional(),
+});
+
+/**
+ * Налоговый статус партнёра.
+ *
+ * 🔴 Спрашиваем при первом начислении, а не при регистрации: вступление
+ * остаётся в один тап (решение владельца 14.08). Но без статуса выплату
+ * посчитать нельзя — у физлица мы удерживаем НДФЛ из его же 20%.
+ */
+const taxSchema = z.object({
+  taxStatus: z.enum(PARTNER_TAX_STATUSES),
+  /** ИНН: нужен самозанятому для чека НПД и физлицу для отчётности. */
+  inn: z
+    .string()
+    .trim()
+    .regex(/^\d{10,12}$/, "ИНН — это 10 или 12 цифр")
+    .optional(),
 });
 
 /**
@@ -243,6 +262,26 @@ export const partnerRoute = new Hono<AppEnv>()
   })
 
   /**
+   * POST /v1/partner/tax
+   * Партнёр указывает свой налоговый статус сам.
+   */
+  .post("/tax", zValidator("json", taxSchema), async (c) => {
+    const env = requireEnabled(c);
+    const claims = await extractSession(c);
+    const db = getDb(env.DATABASE_URL);
+    const body = c.req.valid("json");
+
+    const [updated] = await db
+      .update(partners)
+      .set({ taxStatus: body.taxStatus, ...(body.inn ? { inn: body.inn } : {}) })
+      .where(eq(partners.userId, claims.userId))
+      .returning({ id: partners.id });
+
+    if (!updated) return c.json({ error: "not_partner" }, 404);
+    return c.json({ ok: true, taxStatus: body.taxStatus });
+  })
+
+  /**
    * GET /v1/partner/me
    * Кабинет: сводка, сделки, начисления, выплаты, приведённые партнёры.
    */
@@ -260,6 +299,8 @@ export const partnerRoute = new Hono<AppEnv>()
         ratePercent: partners.ratePercent,
         parentId: partners.parentId,
         joinedAt: partners.joinedAt,
+        taxStatus: partners.taxStatus,
+        inn: partners.inn,
       })
       .from(partners)
       .where(eq(partners.userId, claims.userId))
@@ -377,6 +418,19 @@ export const partnerRoute = new Hono<AppEnv>()
           : null,
       },
       balance,
+      /**
+       * Сколько партнёр получит на руки (спека 7 §10).
+       *
+       * 🔴 Показываем ДВЕ строки, а не одну: у физлица мы удерживаем НДФЛ из
+       * его же 20%, и «к выплате 70 000» с переводом 60 900 — это спор через
+       * месяц. Взносы СФР сверх партнёру не показываем: это наш расход, а не
+       * его удержание.
+       */
+      payout: {
+        ...payoutBreakdown(balance.dueRub, me.taxStatus as PartnerTaxStatus | null),
+        taxStatus: me.taxStatus,
+        innKnown: Boolean(me.inn),
+      },
       program: publicProgram(),
       deals: dealRows.map((d) => ({
         id: d.id,

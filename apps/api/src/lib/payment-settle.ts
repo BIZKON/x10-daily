@@ -12,7 +12,7 @@ import {
   payments,
   sql,
 } from "@x10/db";
-import { type Accrual, accrualsForPayment, settlementPlan } from "./partner-money";
+import { type Accrual, accrualsForPayment, refundAccruals, settlementPlan } from "./partner-money";
 
 /**
  * Единственное место, где платёж считается принятым (спека 7).
@@ -202,6 +202,122 @@ export async function settleDealPayment(
     fullyPaid: plan.fullyPaid,
     nextDueAt: plan.nextDueAt,
   };
+}
+
+export type RefundDealArgs = {
+  dealId: string;
+  /** Сколько вернули клиенту. Положительное число. */
+  amountRub: number;
+  refundedAt: Date;
+  note?: string | null;
+};
+
+export type RefundDealResult =
+  | {
+      ok: true;
+      /** Отрицательная строка платежа: к ней привязано сторно. */
+      paymentId: string;
+      refundRub: number;
+      reversed: Accrual[];
+    }
+  | { ok: false; reason: "deal_not_found" | "nothing_paid" | "over_refund" };
+
+/**
+ * Возврат денег клиенту (спека 7 §11).
+ *
+ * Возврат в самой ЮKassa инициирует человек — автоматики не делаем. Здесь
+ * фиксируется следствие: отрицательная строка `deal_payments` и отрицательные
+ * начисления `reason='refund'`, всё одной транзакцией.
+ *
+ * 🔴 Без сторно баланс партнёра врёт в его пользу, и мы платим комиссию за
+ * отменённую продажу. Полгода спустя это не восстановить: партнёр деньги уже
+ * получил, а связи с возвратом в данных нет.
+ *
+ * Доля считается от ЧИСТОГО полученного (с учётом прежних возвратов), поэтому
+ * два частичных возврата подряд обнуляют начисление ровно, а не с хвостом.
+ */
+export async function refundDealPayment(
+  db: Database,
+  args: RefundDealArgs,
+): Promise<RefundDealResult> {
+  return db.transaction(async (tx) => {
+    const [deal] = await tx
+      .select({ id: partnerDeals.id, partnerId: partnerDeals.partnerId })
+      .from(partnerDeals)
+      .where(eq(partnerDeals.id, args.dealId))
+      .limit(1);
+    if (!deal) return { ok: false, reason: "deal_not_found" } as const;
+
+    // Чистое полученное: прошлые возвраты уже лежат отрицательными строками.
+    const [paidRow] = await tx
+      .select({ sum: sql<string>`coalesce(sum(${dealPayments.amountRub}), 0)` })
+      .from(dealPayments)
+      .where(eq(dealPayments.dealId, deal.id));
+    const paidRub = num(paidRow?.sum ?? 0);
+
+    if (paidRub <= 0) return { ok: false, reason: "nothing_paid" } as const;
+    // Вернуть больше полученного нельзя: это опечатка в сумме, а не операция.
+    if (args.amountRub > paidRub) return { ok: false, reason: "over_refund" } as const;
+
+    const [payment] = await tx
+      .insert(dealPayments)
+      .values({
+        dealId: deal.id,
+        amountRub: String(-args.amountRub),
+        paidAt: args.refundedAt,
+        providerPaymentId: null,
+        note: args.note ?? "возврат клиенту",
+      })
+      .returning({ id: dealPayments.id });
+    if (!payment) throw new Error("не удалось записать возврат по сделке");
+
+    // Начислено по сделке — чистыми, по получателям. Группировка в базе, а не
+    // в коде: строк начислений на сделку может быть много (две части рассрочки
+    // × два уровня × прошлые возвраты).
+    const accruedRows = await tx
+      .select({
+        partnerId: partnerAccruals.partnerId,
+        level: partnerAccruals.level,
+        ratePercent: partnerAccruals.ratePercent,
+        sum: sql<string>`sum(${partnerAccruals.amountRub})`,
+      })
+      .from(partnerAccruals)
+      .innerJoin(dealPayments, eq(dealPayments.id, partnerAccruals.paymentId))
+      .where(eq(dealPayments.dealId, deal.id))
+      .groupBy(partnerAccruals.partnerId, partnerAccruals.level, partnerAccruals.ratePercent);
+
+    const reversed = refundAccruals({
+      paymentId: payment.id,
+      paidRub,
+      refundRub: args.amountRub,
+      accrued: accruedRows
+        .map((r) => ({
+          partnerId: r.partnerId,
+          level: (r.level === 1 ? 1 : 0) as 0 | 1,
+          ratePercent: num(r.ratePercent),
+          amountRub: num(r.sum),
+        }))
+        // Уже обнулённое сторнировать нечем: минус на минус вернул бы партнёру
+        // деньги за возврат.
+        .filter((r) => r.amountRub > 0),
+    });
+
+    if (reversed.length > 0) {
+      await tx.insert(partnerAccruals).values(
+        reversed.map((r) => ({
+          partnerId: r.partnerId,
+          paymentId: r.paymentId,
+          level: r.level,
+          ratePercent: String(r.ratePercent),
+          amountRub: String(r.amountRub),
+          reason: r.reason,
+          note: args.note ?? null,
+        })),
+      );
+    }
+
+    return { ok: true, paymentId: payment.id, refundRub: args.amountRub, reversed } as const;
+  });
 }
 
 /**

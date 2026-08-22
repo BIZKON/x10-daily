@@ -12,12 +12,14 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.0.4",
+    "@resvg/resvg-js": "^2.6.2",
     "@x10/agents": "workspace:*",
     "@x10/config": "workspace:*",
     "@x10/db": "workspace:*",
     "@x10/worker-ingest": "workspace:*",
     "hono": "^4.12.23",
     "inngest": "^4.4.0",
+    "satori": "^0.33.3",
     "undici": "^7.24.8",
     "zod": "^4.4.3"
   },

@@ -50,3 +50,46 @@ export async function regenerateVisual(articleId: string) {
   if (!res.ok) throw new Error(`Не удалось запустить перегенерацию: ${res.error}`);
   revalidatePath("/visuals");
 }
+
+/**
+ * Карусель — тот же HumanGate, что у обложки (реестр §3.5).
+ *
+ * 🔴 «Одобрить» здесь не просто меняет статус: тем же действием карусель встаёт
+ * в очередь публикации. Иначе появилось бы состояние «одобрено, но никуда не
+ * поставлено», в котором редактор нажал, а альбом не вышел.
+ */
+export async function approveCarousel(articleId: string) {
+  const res = await adminMutate(
+    "POST",
+    `/v1/admin/carousels/${encodeURIComponent(articleId)}/approve`,
+  );
+  if (!res.ok) {
+    // 409 — слайды ещё не нарисованы либо решение уже принято в другой вкладке.
+    if (res.status === 409) {
+      throw new Error("Слайды ещё не нарисованы или решение уже принято — обнови страницу.");
+    }
+    throw new Error(`Не удалось одобрить: ${res.error}`);
+  }
+  revalidatePath("/visuals");
+  revalidatePath("/posting");
+}
+
+/** Отклонить: в канал альбом не пойдёт, слайды остаются для разбора. */
+export async function rejectCarousel(articleId: string) {
+  const res = await adminMutate(
+    "POST",
+    `/v1/admin/carousels/${encodeURIComponent(articleId)}/reject`,
+  );
+  if (!res.ok) throw new Error(`Не удалось отклонить: ${res.error}`);
+  revalidatePath("/visuals");
+}
+
+/** Нарисовать заново. Платный прогон модели — поэтому только руками. */
+export async function makeCarousel(articleId: string) {
+  const res = await adminMutate(
+    "POST",
+    `/v1/admin/carousels/${encodeURIComponent(articleId)}/make`,
+  );
+  if (!res.ok) throw new Error(`Не удалось запустить: ${res.error}`);
+  revalidatePath("/visuals");
+}

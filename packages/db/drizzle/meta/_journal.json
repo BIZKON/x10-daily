@@ -253,6 +253,20 @@
       "when": 1781883973449,
       "tag": "0035_store_payments",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1781970373449,
+      "tag": "0036_carousel",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1781970433449,
+      "tag": "0037_agent_kind_carousel",
+      "breakpoints": true
     }
   ]
 }

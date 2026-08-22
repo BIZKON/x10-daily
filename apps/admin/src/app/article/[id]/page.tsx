@@ -3,6 +3,7 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { makeCarouselAction } from "./carousel-action";
 import { publishAction } from "./publish-action";
 
 // Cache Components (Next 16): async data (params/searchParams/fetch) ДОЛЖНА
@@ -337,6 +338,22 @@ function PublishPanel({ id, status }: { id: string; status: string }) {
       <p className="m-0 mt-2 text-[11px] text-haze">
         Переведёт status='published', выставит publishedAt = now. Появится в /v1/feed/daily.
       </p>
+
+      {/* Карусель — второй формат того же материала. Слайды рисует код, поэтому
+          цифры на них точные; в канал альбом уходит только после одобрения. */}
+      <form action={makeCarouselAction} className="mt-4 border-fence border-t pt-4">
+        <input type="hidden" name="id" value={id} />
+        <button
+          type="submit"
+          className="w-full rounded-xl border border-gold/50 px-5 py-2.5 font-display text-[13.5px] font-extrabold text-gold transition-colors hover:bg-gold/10"
+        >
+          Сделать карусель
+        </button>
+        <p className="m-0 mt-2 text-[11px] text-haze">
+          Разберёт материал на слайды и нарисует их. Через минуту они появятся на экране «Обложки и
+          карусели» — там же одобряются.
+        </p>
+      </form>
     </Card>
   );
 }

@@ -1128,6 +1128,44 @@ export type AdminPartnerDeal = {
   createdAt: string | null;
 };
 
+/** Слайд карусели, как его отдаёт api. */
+export type AdminCarouselSlide = {
+  index: number;
+  kind: string;
+  title: string;
+  body?: string;
+  source?: string;
+  url: string;
+};
+
+export type AdminCarouselItem = {
+  id: string;
+  slug: string;
+  tease: string;
+  lede: string;
+  category: string | null;
+  carouselStatus: string;
+  slides: AdminCarouselSlide[];
+  createdAt: string | null;
+};
+
+/** Очередь каруселей, ждущих решения редактора. */
+export async function fetchCarouselQueue(status: string): Promise<AdminCarouselItem[] | null> {
+  const base = getBaseUrl();
+  if (!base) return null;
+  try {
+    const res = await fetchWithTimeout(
+      `${base}/v1/admin/carousels?status=${encodeURIComponent(status)}`,
+      { headers: await authHeaders() },
+    );
+    if (!res.ok) return null;
+    const j = (await res.json()) as { items: AdminCarouselItem[] };
+    return j.items;
+  } catch {
+    return null;
+  }
+}
+
 /** Заказ в общем списке: и партнёрский, и прямой (спека 7 §5.2). */
 export type AdminOrder = {
   id: string;

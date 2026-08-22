@@ -152,3 +152,19 @@ export {
   type VisualInput,
   type VisualOutput,
 } from "./agents/visual";
+export {
+  CAROUSEL_MAX,
+  CAROUSEL_MIN,
+  COVER_TITLE_MAX,
+  TITLE_MAX,
+  BODY_MAX,
+  SOURCE_MAX,
+  SLIDE_KINDS,
+  type Slide,
+  type SlideKind,
+  type NormalizedSlide,
+  normalizeCarousel,
+  CarouselAgent,
+  type CarouselInput,
+  type CarouselOutput,
+} from "./agents/carousel";

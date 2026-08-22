@@ -274,6 +274,7 @@ export function createDrainPostSlotsFunction(
           let visualRef: string | null = r.visualRef;
           let captionHtml: string | null = null;
           let captionPlain: string | null = null;
+          let slideUrls: string[] | null = null;
 
           // Для TG статью тянем ВСЕГДА: без неё не узнать, одобрена ли обложка
           // (Спека 2). Это PK-лукап — дешевле прежней хитрой ветки needArticle.
@@ -287,6 +288,8 @@ export function createDrainPostSlotsFunction(
                 slug: articles.slug,
                 coverImageUrl: articles.coverImageUrl,
                 visualStatus: articles.visualStatus,
+                carousel: articles.carousel,
+                carouselStatus: articles.carouselStatus,
               })
               .from(articles)
               .where(eq(articles.id, articleId))
@@ -306,8 +309,17 @@ export function createDrainPostSlotsFunction(
                 visualRef = a.coverImageUrl;
               }
 
-              if (visualRef) {
-                // Фото-пост: короткая подпись ≤1024, богатый формат — в Mini App.
+              // Строка очереди формата `carousel` публикуется альбомом слайдов —
+              // и тоже только после одобрения редактором. Не одобрена или не
+              // нарисована → строка уходит обычным постом, а не молчит: слот
+              // терять дороже, чем выпустить тот же материал текстом.
+              if (format === "carousel" && a.carouselStatus === "approved" && a.carousel) {
+                slideUrls = a.carousel.map((s) => s.url).filter(Boolean);
+              }
+
+              if (visualRef || slideUrls) {
+                // Фото-пост и альбом: короткая подпись ≤1024, богатый формат —
+                // в Mini App. У альбома подпись уходит с первым слайдом.
                 const caption = buildPhotoCaption(a, { linkUrl: deepLinkUrl ?? webUrl });
                 captionHtml = caption.html;
                 captionPlain = caption.plain;
@@ -327,7 +339,15 @@ export function createDrainPostSlotsFunction(
               }
             }
           }
-          return { text: r.text, visualRef, html, previewUrl, captionHtml, captionPlain };
+          return {
+            text: r.text,
+            visualRef,
+            html,
+            previewUrl,
+            captionHtml,
+            captionPlain,
+            slideUrls,
+          };
         });
 
         // Send — отдельный step. Бросок (сеть/5xx) → Inngest ретраит функцию,
@@ -344,6 +364,7 @@ export function createDrainPostSlotsFunction(
               previewUrl: row.previewUrl,
               captionHtml: row.captionHtml,
               captionPlain: row.captionPlain,
+              slideUrls: row.slideUrls,
             },
             { fetchImpl: opts.fetchImpl },
           ),

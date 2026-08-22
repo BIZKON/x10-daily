@@ -8,6 +8,7 @@ import { createBreakdownLinkFunction } from "./inngest/functions/breakdown-link"
 import { createBuildContentPlanFunction } from "./inngest/functions/build-content-plan";
 import { createDraftArticleFunction } from "./inngest/functions/draft-article";
 import { createDrainPostSlotsFunction } from "./inngest/functions/drain-post-slots";
+import { createGenerateCarouselFunction } from "./inngest/functions/generate-carousel";
 import { createGenerateCoverFunction } from "./inngest/functions/generate-cover";
 import { createImportKnowledgeFunction } from "./inngest/functions/import-knowledge";
 import { createIngestRssFunction } from "./inngest/functions/ingest-rss";
@@ -63,6 +64,7 @@ export function createApp() {
         createRetryOpsAlertsFunction(client, c.env),
         createBreakdownLinkFunction(client, c.env),
         createGenerateCoverFunction(client, c.env),
+        createGenerateCarouselFunction(client, c.env),
         createPrimeSourceFunction(client, c.env),
         createSendReviewCardFunction(client, c.env),
         createRewriteArticleFunction(client, c.env),

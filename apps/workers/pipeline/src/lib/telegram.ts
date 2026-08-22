@@ -57,7 +57,16 @@ export async function callTelegram(
   if (!res.ok || !json.ok) {
     throw new Error(`Telegram API ${method} failed: HTTP ${res.status} ${json.description ?? ""}`);
   }
-  return { ok: json.ok, method, messageId: json.result?.message_id ?? null };
+  // 🔴 sendMediaGroup отдаёт МАССИВ сообщений, а не одно: у альбома столько
+  // message_id, сколько картинок. Ссылкой на пост берём первое — по нему
+  // Telegram открывает весь альбом.
+  const result = json.result as unknown;
+  const first = Array.isArray(result) ? result[0] : result;
+  return {
+    ok: json.ok,
+    method,
+    messageId: (first as { message_id?: number } | undefined)?.message_id ?? null,
+  };
 }
 
 /** sendMessage — текстовое сообщение в чат/канал. */

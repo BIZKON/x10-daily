@@ -16,6 +16,22 @@ import { id, timestamps } from "./_shared";
 import { authors } from "./authors";
 import { users } from "./users";
 
+/**
+ * Слайд карусели в том виде, в каком он лежит в `articles.carousel`.
+ *
+ * Тип объявлен здесь, а не импортирован из `@x10/agents`: схема базы не должна
+ * зависеть от пакета агентов — иначе `@x10/db` перестанет собираться отдельно.
+ */
+export type CarouselSlide = {
+  index: number;
+  kind: "cover" | "point" | "number" | "quote" | "cta";
+  title: string;
+  body?: string;
+  source?: string;
+  /** Публичный адрес нарисованного PNG. */
+  url: string;
+};
+
 export const articleStatus = pgEnum("article_status", [
   "draft",
   "in_pipeline",
@@ -109,6 +125,17 @@ export const articles = pgTable(
     visualStatus: varchar("visual_status", { length: 20 }).default("none").notNull(),
     /** Промпт иллюстрации — чтобы перегенерить без повторного крафта. */
     visualPrompt: text("visual_prompt"),
+
+    /**
+     * Слайды карусели (миграция 0036): массив
+     * `{index, kind, title, body?, source?, url}` в порядке показа.
+     *
+     * 🔴 Не отдельная таблица: слайд не живёт без материала, отдельно не
+     * ищется и не переиспользуется. Порядок элементов и есть порядок показа.
+     */
+    carousel: jsonb("carousel").$type<CarouselSlide[]>(),
+    /** Состояние карусели: none → generating → pending_review → approved | rejected. */
+    carouselStatus: varchar("carousel_status", { length: 20 }).default("none").notNull(),
 
     /** Автор статьи — ссылка на authors (богатый профиль), brief §6. */
     authorId: uuid("author_id").references(() => authors.id, { onDelete: "set null" }),

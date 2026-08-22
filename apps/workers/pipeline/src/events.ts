@@ -186,6 +186,32 @@ export const articleCoverRequestedEvent = eventType("article/cover.requested", {
 export const ARTICLE_COVER_REQUESTED = articleCoverRequestedEvent.event;
 
 /* ----------------------------------------------------------------
+ * article/carousel.requested — разобрать материал на слайды и нарисовать их
+ * (реестр §3.5, обещание КП «пост, карусель, ролик»).
+ *
+ * 🔴 Триггер РУЧНОЙ: кнопка в админке. Автоматически на каждую статью карусель
+ * не делаем — это лишний платный прогон модели на материал, который может
+ * никуда не пойти. Когда форматы станут настройкой экземпляра (§3.10), сюда
+ * добавится автотриггер по флагу.
+ *
+ * Карусель НЕ публикуется сама: генерация ставит carousel_status =
+ * 'pending_review', в канал альбом пускает редактор (HumanGate).
+ * ---------------------------------------------------------------- */
+export const articleCarouselRequestedDataSchema = z.object({
+  articleId: z.string().uuid(),
+  /** Сколько слайдов просить у модели. Пусто — шесть. */
+  target: z.number().int().min(2).max(10).optional(),
+  /** Перерисовать поверх уже готовой карусели. */
+  force: z.boolean().optional(),
+});
+export type ArticleCarouselRequestedData = z.infer<typeof articleCarouselRequestedDataSchema>;
+
+export const articleCarouselRequestedEvent = eventType("article/carousel.requested", {
+  schema: articleCarouselRequestedDataSchema,
+});
+export const ARTICLE_CAROUSEL_REQUESTED = articleCarouselRequestedEvent.event;
+
+/* ----------------------------------------------------------------
  * posting/drain.requested — опубликовать одну статью из очереди НЕМЕДЛЕННО,
  * не дожидаясь слота. Тот же путь, что у крона: те же гарды (пауза, тихие
  * часы, окно свежести), та же пометка posted_at — поэтому ручная публикация

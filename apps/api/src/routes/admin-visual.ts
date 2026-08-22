@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, articles, desc, eq, isNotNull } from "@x10/db";
+import { and, articles, channels, desc, eq, isNotNull } from "@x10/db";
 import { Hono } from "hono";
 import { Inngest } from "inngest";
 import { z } from "zod";
@@ -19,6 +19,7 @@ import { getEnv } from "../env";
  */
 
 const ARTICLE_COVER_REQUESTED = "article/cover.requested" as const;
+const ARTICLE_CAROUSEL_REQUESTED = "article/carousel.requested" as const;
 
 /** Состояния, которые редактор может видеть в очереди. */
 const listQuerySchema = z.object({
@@ -150,4 +151,140 @@ export const adminVisualRoute = new Hono<AppEnv>()
     });
 
     return c.json({ accepted: true, eventIds: ids, articleId: id }, 202);
+  })
+
+  /* ── Карусели (реестр §3.5) ─────────────────────────────────────────────
+   * Тот же HumanGate, что у обложек, и намеренно в том же файле: правило
+   * «ИИ не публикует автономно» должно жить одним куском, а не расползаться
+   * по маршрутам, где его легко забыть.
+   * ------------------------------------------------------------------- */
+
+  /** Очередь карусели: слайды, ждущие решения редактора. */
+  .get("/carousels", zValidator("query", listQuerySchema), async (c) => {
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
+    const { status, limit } = c.req.valid("query");
+
+    const rows = await db
+      .select({
+        id: articles.id,
+        slug: articles.slug,
+        tease: articles.tease,
+        lede: articles.lede,
+        category: articles.category,
+        carousel: articles.carousel,
+        carouselStatus: articles.carouselStatus,
+        createdAt: articles.createdAt,
+      })
+      .from(articles)
+      .where(and(eq(articles.carouselStatus, status), isNotNull(articles.carousel)))
+      .orderBy(desc(articles.createdAt))
+      .limit(limit);
+
+    return c.json({
+      items: rows.map((r) => ({
+        ...r,
+        slides: r.carousel ?? [],
+        createdAt: r.createdAt?.toISOString() ?? null,
+        carousel: undefined,
+      })),
+    });
+  })
+
+  /**
+   * Просит нарисовать карусель.
+   *
+   * 🔴 Ручной вызов, а не автомат на каждую статью: это платный прогон модели
+   * на материал, который может никуда не пойти.
+   */
+  .post("/carousels/:id/make", zValidator("param", idParam), async (c) => {
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
+    const { id } = c.req.valid("param");
+
+    const [row] = await db
+      .select({ id: articles.id })
+      .from(articles)
+      .where(eq(articles.id, id))
+      .limit(1);
+    if (!row) return c.json({ error: "not_found", id }, 404);
+
+    const { ids } = await getInngest(env).send({
+      name: ARTICLE_CAROUSEL_REQUESTED,
+      data: { articleId: id, force: true },
+    });
+
+    return c.json({ accepted: true, eventIds: ids, articleId: id }, 202);
+  })
+
+  /**
+   * Одобряет карусель и ставит её в очередь публикации.
+   *
+   * 🔴 Одобрение и постановка в очередь — ОДНА транзакция. Разведи их, и
+   * появится состояние «одобрено, но никуда не поставлено»: редактор нажал,
+   * альбом не вышел, и понять почему невозможно.
+   */
+  .post("/carousels/:id/approve", zValidator("param", idParam), async (c) => {
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
+    const { id } = c.req.valid("param");
+
+    const [article] = await db
+      .select({
+        id: articles.id,
+        tease: articles.tease,
+        lede: articles.lede,
+        carousel: articles.carousel,
+      })
+      .from(articles)
+      .where(eq(articles.id, id))
+      .limit(1);
+    if (!article) return c.json({ error: "not_found", id }, 404);
+    if (!article.carousel || article.carousel.length === 0) {
+      return c.json(
+        { error: "no_slides", message: "Слайды ещё не нарисованы — сначала «Сделать карусель»." },
+        409,
+      );
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.update(articles).set({ carouselStatus: "approved" }).where(eq(articles.id, id));
+
+      // Текст строки очереди — запасной вариант на случай, если Telegram
+      // отобьёт альбом: пост уйдёт словами, а не пропадёт вместе со слотом.
+      await tx
+        .insert(channels)
+        .values({
+          articleId: id,
+          channel: "tg",
+          format: "carousel",
+          status: "queued",
+          text: `${article.tease}\n\n${article.lede}`,
+        })
+        // Повторное одобрение не должно плодить строки: уникальный индекс стоит
+        // на (article_id, channel, format).
+        .onConflictDoNothing();
+    });
+
+    return c.json({ approved: true, articleId: id, slides: article.carousel.length });
+  })
+
+  /** Отклоняет карусель: в канал она не пойдёт, слайды остаются для разбора. */
+  .post("/carousels/:id/reject", zValidator("param", idParam), async (c) => {
+    const env = getEnv(c.env);
+    const db = getDb(env.DATABASE_URL);
+    await requireRole(c, db, EDITOR_ROLES);
+    const { id } = c.req.valid("param");
+
+    const [updated] = await db
+      .update(articles)
+      .set({ carouselStatus: "rejected" })
+      .where(eq(articles.id, id))
+      .returning({ id: articles.id });
+
+    if (!updated) return c.json({ error: "not_found", id }, 404);
+    return c.json({ rejected: true, articleId: id });
   });

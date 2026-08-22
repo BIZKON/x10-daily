@@ -1,12 +1,20 @@
-import { type VisualStatus, fetchVisualQueue } from "@/lib/api";
+import { type VisualStatus, fetchCarouselQueue, fetchVisualQueue } from "@/lib/api";
 import { ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { approveVisual, regenerateVisual, rejectVisual } from "./actions";
+import {
+  approveCarousel,
+  approveVisual,
+  makeCarousel,
+  regenerateVisual,
+  rejectCarousel,
+  rejectVisual,
+} from "./actions";
+import { CarouselCard } from "./carousel-card";
 import { VisualCard } from "./visual-card";
 
-export const metadata = { title: "Обложки — ProAgent AI Admin" };
+export const metadata = { title: "Обложки и карусели — ProAgent AI Admin" };
 
 /**
  * Вкладки состояний. Не только `pending_review`: уже одобренную обложку тоже
@@ -61,13 +69,16 @@ async function VisualsContent({
   // статичен, очередь тянется в рантайме.
   await connection();
   const status = parseStatus((await searchParams).status);
-  const queue = await fetchVisualQueue(status);
+  const [queue, carousels] = await Promise.all([
+    fetchVisualQueue(status),
+    fetchCarouselQueue(status),
+  ]);
 
   return (
     <>
       <header className="mb-6 border-b border-fence pb-5">
         <h1 className="m-0 flex items-center gap-2 font-display text-2xl font-extrabold">
-          <ImageIcon size={22} strokeWidth={1.75} /> Обложки
+          <ImageIcon size={22} strokeWidth={1.75} /> Обложки и карусели
         </h1>
         <p className="mt-1.5 text-[13px] text-mist">
           Сгенерированные иллюстрации ждут решения редактора. В канал картинка уходит только после
@@ -90,6 +101,28 @@ async function VisualsContent({
           ))}
         </nav>
       </header>
+
+      {carousels && carousels.length > 0 && (
+        <section className="mb-8">
+          <h2 className="m-0 mb-1 font-display text-lg font-extrabold">Карусели</h2>
+          <p className="m-0 mb-4 max-w-[76ch] text-[12.5px] leading-relaxed text-mist">
+            Слайды нарисованы кодом, поэтому цифры и знаки на них точные. Проверьте порядок: в канал
+            альбом уйдёт ровно в этом виде.
+          </p>
+          <div className="grid gap-5 xl:grid-cols-2">
+            {carousels.map((item) => (
+              <CarouselCard
+                key={item.id}
+                item={item}
+                status={status}
+                onApprove={approveCarousel}
+                onReject={rejectCarousel}
+                onRemake={makeCarousel}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {queue === null ? (
         <ApiUnavailable />

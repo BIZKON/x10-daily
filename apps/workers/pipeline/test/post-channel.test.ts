@@ -374,3 +374,103 @@ describe("sendToChannel — ступень успеха в mode", () => {
     expect(calls).not.toContain("sendPhoto");
   });
 });
+
+describe("sendToChannel — карусель альбомом", () => {
+  /** Мок Telegram: отдаёт то, что реально отдаёт sendMediaGroup — МАССИВ. */
+  function albumFetch(capture: { url?: string; body?: Record<string, unknown> }) {
+    return vi.fn(async (u: unknown, init: unknown) => {
+      capture.url = String(u);
+      capture.body = JSON.parse((init as { body: string }).body);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ok: true,
+          result: [{ message_id: 900 }, { message_id: 901 }, { message_id: 902 }],
+        }),
+      };
+    }) as unknown as typeof fetch;
+  }
+
+  const SLIDES = [
+    "https://cdn.example/covers/a1-1.png",
+    "https://cdn.example/covers/a1-2.png",
+    "https://cdn.example/covers/a1-3.png",
+  ];
+
+  it("шлёт sendMediaGroup со всеми слайдами по порядку", async () => {
+    const cap: { url?: string; body?: Record<string, unknown> } = {};
+    const out = await sendToChannel(
+      TG_ENV,
+      { channel: "tg", articleId: "a1", text: "Пост", visualRef: null, slideUrls: SLIDES },
+      { fetchImpl: albumFetch(cap) },
+    );
+
+    expect(cap.url).toContain("/sendMediaGroup");
+    const media = JSON.parse(String(cap.body?.media)) as Array<{ type: string; media: string }>;
+    expect(media.map((m) => m.media)).toEqual(SLIDES);
+    expect(media.every((m) => m.type === "photo")).toBe(true);
+    expect(out.ok).toBe(true);
+  });
+
+  it("🔴 подпись только на первом слайде — иначе Telegram повторит её под каждым", async () => {
+    const cap: { url?: string; body?: Record<string, unknown> } = {};
+    await sendToChannel(
+      TG_ENV,
+      {
+        channel: "tg",
+        articleId: "a1",
+        text: "Пост",
+        visualRef: null,
+        slideUrls: SLIDES,
+        captionHtml: "<b>Заголовок</b>",
+      },
+      { fetchImpl: albumFetch(cap) },
+    );
+
+    const media = JSON.parse(String(cap.body?.media)) as Array<{ caption?: string }>;
+    expect(media[0]?.caption).toBe("<b>Заголовок</b>");
+    expect(media.slice(1).every((m) => m.caption === undefined)).toBe(true);
+  });
+
+  it("ссылкой на пост берётся первое сообщение альбома", async () => {
+    const cap: { url?: string; body?: Record<string, unknown> } = {};
+    const out = await sendToChannel(
+      TG_ENV,
+      { channel: "tg", articleId: "a1", text: "Пост", visualRef: null, slideUrls: SLIDES },
+      { fetchImpl: albumFetch(cap) },
+    );
+    expect(out).toMatchObject({ ok: true, postRef: "900", mode: "carousel" });
+  });
+
+  it("🔴 альбом отбило — уходим текстом, а не молчим", async () => {
+    // Слот терять нельзя: пост ушёл бы и без картинок. То же правило, что у
+    // обложки, — бот НЕ молчит.
+    let calls = 0;
+    const fetchImpl = vi.fn(async () => {
+      calls++;
+      if (calls === 1) {
+        return { ok: false, status: 400, json: async () => ({ ok: false, description: "bad" }) };
+      }
+      return { ok: true, status: 200, json: async () => ({ ok: true, result: { message_id: 7 } }) };
+    }) as unknown as typeof fetch;
+
+    const out = await sendToChannel(
+      TG_ENV,
+      { channel: "tg", articleId: "a1", text: "Пост", visualRef: null, slideUrls: SLIDES },
+      { fetchImpl },
+    );
+    expect(out).toMatchObject({ ok: true, postRef: "7" });
+    expect(calls).toBe(2);
+  });
+
+  it("пустой список слайдов каруселью не считается", async () => {
+    const cap: { url?: string; body?: Record<string, unknown> } = {};
+    await sendToChannel(
+      TG_ENV,
+      { channel: "tg", articleId: "a1", text: "Пост", visualRef: null, slideUrls: [] },
+      { fetchImpl: albumFetch(cap) },
+    );
+    expect(cap.url).toContain("/sendMessage");
+  });
+});

@@ -32,7 +32,14 @@ export type PostableChannel = "tg" | "vk";
  * ошибкой не считается (пост уходит, `lastError` пуст, `attempts` не растёт),
  * и без этого поля факт был невосстановим уже через один деплой.
  */
-export type PostMode = "photo" | "photo_plain" | "text_html" | "text_plain" | "vk";
+export type PostMode =
+  | "photo"
+  | "photo_plain"
+  /** Альбом слайдов карусели (sendMediaGroup). */
+  | "carousel"
+  | "text_html"
+  | "text_plain"
+  | "vk";
 
 export type SendOutcome =
   | { ok: true; postRef: string | null; mode: PostMode }
@@ -72,6 +79,14 @@ export type SendInput = {
    * укладывается и сам по себе дал бы 400.
    */
   captionPlain?: string | null;
+  /**
+   * Слайды карусели по порядку показа (реестр §3.5). Непустой список → альбом
+   * вместо одиночной картинки.
+   *
+   * Как и обложка, попадают сюда ТОЛЬКО после одобрения редактором:
+   * drain-post-slots не проставляет слайды неодобренной карусели.
+   */
+  slideUrls?: readonly string[] | null;
 };
 
 /** Успешный исход одной ступени: message_id + чем именно ушло. */
@@ -112,6 +127,39 @@ export async function sendToChannel(
     // — тап по тексту. Только sendMessage: у sendPhoto своя картинка.
     const withPreview = <T extends Record<string, unknown>>(body: T) =>
       input.previewUrl ? { ...body, link_preview_options: { url: input.previewUrl } } : body;
+
+    // Карусель — альбомом. Идёт ПЕРЕД одиночной картинкой: если у материала
+    // есть одобренные слайды, публикуем именно их, а не обложку.
+    if (input.slideUrls && input.slideUrls.length > 0) {
+      // 🔴 Подпись только у ПЕРВОГО вложения. Telegram показывает подпись
+      // альбома от первого элемента; повторённая у каждого, она печатается
+      // под каждой картинкой при открытии — альбом превращается в простыню.
+      const media = input.slideUrls.map((url, i) => ({
+        type: "photo" as const,
+        media: url,
+        ...(i === 0 && (input.captionHtml || input.captionPlain)
+          ? input.captionHtml
+            ? { caption: input.captionHtml, parse_mode: "HTML" as const }
+            : { caption: input.captionPlain as string }
+          : {}),
+      }));
+
+      try {
+        const res = await callTelegram(
+          "sendMediaGroup",
+          // media уходит СТРОКОЙ: Bot API ждёт JSON-сериализованный массив
+          // даже в JSON-запросе.
+          { chat_id: chatId, media: JSON.stringify(media) },
+          tgOpts,
+        );
+        return ok(res, "carousel");
+      } catch (e) {
+        // 400 — битая разметка подписи, недоступная картинка или слишком
+        // большой файл. Слот терять нельзя: пост ушёл бы и без слайдов.
+        if (!(e instanceof Error) || !/HTTP 400/.test(e.message)) throw e;
+        console.warn(`sendToChannel(tg): sendMediaGroup 400 → деградация в текст. ${e.message}`);
+      }
+    }
 
     // Порядок деградации (золотое правило skill telegram-rich-text: бот НЕ
     // молчит): фото с HTML-подписью → фото с plain-подписью → rich-HTML текстом
